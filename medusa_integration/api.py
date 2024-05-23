@@ -1,22 +1,20 @@
 import frappe
-import requests
 import json
 from medusa_integration.constants import get_headers,get_url
 from medusa_integration.utils import send_request,generate_random_string
 
 def create_medusa_product(self, method):
 	if get_url()[1] and not self.get_doc_before_save() and not self.variant_of:
-		collection_id = frappe.get_value("Item Group", {"item_group_name": self.item_group}, "custom_collection_id")
-
-		if not collection_id:
-			collection_id = create_medusa_collection(self, method)
+		item_group = frappe.get_doc("Item Group", self.item_group)
+		if not item_group.medusa_id:
+			create_medusa_collection(self=item_group,method=None)
 			
 		payload = json.dumps({
 								"title": self.item_code,
 								"handle": "",
 								"discountable": False,
 								"is_giftcard": False,
-								"collection_id": collection_id,
+								"collection_id": item_group.medusa_id,
 								"description": self.description,
 								"options": [],
 								"variants": [],
@@ -88,16 +86,9 @@ def create_medusa_option(product_id):
 	return send_request(args).get("product").get("options")[0].get("id")
 
 def create_medusa_collection(self, method):
-	if self.doctype == "Item":
-		title = self.item_group
-	else:
-		title = self.item_group_name
-
 	if get_url()[1] and not self.get_doc_before_save():
 		payload = json.dumps({
-								"title": title,
-								"handle": "",
-								"metadata": {}
+								"title": self.name,
 		})
 		args = frappe._dict({
 			"method" : "POST",
@@ -107,9 +98,7 @@ def create_medusa_collection(self, method):
 			"throw_message": "We are unable to fetch access token please check your admin credentials"
 		})
 
-		collection_id = send_request(args).get("collection").get("id")
-		self.custom_collection_id = collection_id
-# 		return collection_id
+		self.db_set("medusa_id", send_request(args).get("collection").get("id"))
 
 # def create_medusa_price_list(self, method):
 #   payload = json.dumps({
