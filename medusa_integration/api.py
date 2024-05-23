@@ -30,7 +30,8 @@ def create_medusa_product(self, method):
     })
 
     self.medusa_id = send_request(args).get("product").get("id")
-    create_medusa_variant(self.medusa_id)
+    
+    self.medusa_variant_id = create_medusa_variant(self.medusa_id)
 
 
 def create_medusa_variant(product_id):
@@ -69,7 +70,7 @@ def create_medusa_variant(product_id):
     "throw_message": "We are unable to fetch access token please check your admin credentials"
   })
   
-  send_request(args)
+  return send_request(args).get("product").get("variants")[0].get("id")
 
 def create_medusa_option(product_id):
   payload = json.dumps({
@@ -102,24 +103,20 @@ def create_medusa_collection(self, method):
     
 def create_medusa_price_list(self, method):
 	if get_url()[1] and not self.get_doc_before_save():
+		doc = frappe.get_doc("Item", self.item_code)
 		payload = json.dumps({
 			"name":self.item_code,
 			"description":self.item_description,
-			"type":self.price_list,
+			"type":"sale",
 			"customer_groups":[],
 			"status":"active",
 			"ends_at":"2024-06-30T18:30:00.000Z",
 			"starts_at":"2024-05-30T18:30:00.000Z",
 			"prices":[
 			{
-				"amount":2200,
-				"variant_id":"variant_01HYFJ4SYSBDJJPERRFP5RP69E",
-				"currency_code":"usd"
-			},
-			{
-				"amount":2200,
-				"variant_id":"variant_01HYFJ4SYSBDJJPERRFP5RP69E",
-				"currency_code":"eur"
+				"amount":self.price_list_rate,
+				"variant_id":doc.medusa_variant_id,
+				"currency_code":"omr"
 			}
 			]
 			})
@@ -130,5 +127,4 @@ def create_medusa_price_list(self, method):
 			"payload": payload,
 			"throw_message": "We are unable to fetch access token please check your admin credentials"
 		})
-
-		custom_medusa_pricelist_id = send_request(args).get("price_list").get("id")
+		self.db_set("medusa_id", send_request(args).get("price_list").get("id"))
