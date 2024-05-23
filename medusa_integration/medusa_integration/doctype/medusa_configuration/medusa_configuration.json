@@ -9,7 +9,8 @@
   "enable",
   "url",
   "admin_email",
-  "admin_password"
+  "admin_password",
+  "access_token"
  ],
  "fields": [
   {
@@ -35,12 +36,18 @@
    "fieldname": "admin_password",
    "fieldtype": "Password",
    "label": "Admin Password"
+  },
+  {
+   "fieldname": "access_token",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Access Token"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2024-05-22 16:09:33.968230",
+ "modified": "2024-05-22 18:41:31.637512",
  "modified_by": "Administrator",
  "module": "Medusa Integration",
  "name": "Medusa Configuration",
