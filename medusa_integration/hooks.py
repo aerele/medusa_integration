@@ -129,9 +129,9 @@ doc_events = {
 	"Item Group": {
 		"validate": "medusa_integration.api.create_medusa_collection"
 	},
-	# "Item Price": {
-	# 	"validate": "medusa_integration.api.create_medusa_price_list"
-	# }
+	"Item Price": {
+		"validate": "medusa_integration.api.create_medusa_price_list"
+	}
 }
 
 # Scheduled Tasks
