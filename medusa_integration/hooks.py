@@ -125,7 +125,13 @@ app_license = "mit"
 doc_events = {
 	"Item": {
 		"validate": "medusa_integration.api.create_medusa_product"
-	}
+	},
+	"Item Group": {
+		"validate": "medusa_integration.api.create_medusa_collection"
+	},
+	# "Item Price": {
+	# 	"validate": "medusa_integration.api.create_medusa_price_list"
+	# }
 }
 
 # Scheduled Tasks

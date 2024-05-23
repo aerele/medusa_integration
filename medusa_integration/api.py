@@ -6,11 +6,17 @@ from medusa_integration.utils import send_request,generate_random_string
 
 def create_medusa_product(self, method):
 	if get_url()[1] and not self.get_doc_before_save() and not self.variant_of:
+		collection_id = frappe.get_value("Item Group", {"item_group_name": self.item_group}, "custom_collection_id")
+
+		if not collection_id:
+			collection_id = create_medusa_collection(self, method)
+			
 		payload = json.dumps({
 								"title": self.item_code,
 								"handle": "",
 								"discountable": False,
 								"is_giftcard": False,
+								"collection_id": collection_id,
 								"description": self.description,
 								"options": [],
 								"variants": [],
@@ -80,3 +86,52 @@ def create_medusa_option(product_id):
 	})
 
 	return send_request(args).get("product").get("options")[0].get("id")
+
+def create_medusa_collection(self, method):
+	if self.doctype == "Item":
+		title = self.item_group
+	else:
+		title = self.item_group_name
+
+	if get_url()[1] and not self.get_doc_before_save():
+		payload = json.dumps({
+								"title": title,
+								"handle": "",
+								"metadata": {}
+		})
+		args = frappe._dict({
+			"method" : "POST",
+			"url" : f"{get_url()[0]}/admin/collections",
+			"headers": get_headers(with_token=True),
+			"payload": payload,
+			"throw_message": "We are unable to fetch access token please check your admin credentials"
+		})
+
+		collection_id = send_request(args).get("collection").get("id")
+		self.custom_collection_id = collection_id
+# 		return collection_id
+
+# def create_medusa_price_list(self, method):
+#   payload = json.dumps({
+# 		"name":"Price",
+# 		"description":"Summer Sale",
+# 		"type":"sale",
+# 		"customer_groups":[
+		  
+# 		],
+# 		"status":"active",
+# 		"ends_at":"2024-05-30T18:30:00.000Z",
+# 		"starts_at":"2024-04-30T18:30:00.000Z",
+# 		"prices":[
+# 		  {
+# 			"amount":2200,
+# 			"variant_id":"variant_01HYFPHE0PD55HCZJXPH88GC4C",
+# 			"currency_code":"usd"
+# 		  },
+# 		  {
+# 			"amount":2200,
+# 			"variant_id":"variant_01HYFPHE0PD55HCZJXPH88GC4C",
+# 			"currency_code":"eur"
+# 		  }
+# 		]
+#   })

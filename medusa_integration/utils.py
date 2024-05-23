@@ -6,7 +6,6 @@ def generate_random_string(length=26):
 	return random_string
 
 
-
 def create_response_log(log_details):
 	log = frappe.get_doc({
 							"doctype": "Medusa Request Log",
