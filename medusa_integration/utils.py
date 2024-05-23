@@ -1,4 +1,10 @@
-import frappe,json,requests
+import frappe,json,requests,random,string
+
+def generate_random_string(length=26):
+	characters = string.ascii_uppercase + string.digits
+	random_string = ''.join(random.choice(characters) for _ in range(length))
+	return random_string
+
 
 
 def create_response_log(log_details):
@@ -14,19 +20,26 @@ def create_response_log(log_details):
 	return log.name
 
 def send_request(args):
-	response = requests.request(args.method, args.url, headers=args.headers, data=args.payload)
-	data = frappe._dict(json.loads(response.text))
-	log_name = create_response_log(frappe._dict({
-							"status": "Success" if response.ok else "Failure",
-							"payload": args.payload,
-							"voucher_type": args.get("voucher_type") or "",
-							"voucher_name": args.get("voucher_name") or "",
-							"response": json.loads(response.text),
-	}))
+	try:
+		response = requests.request(args.method, args.url, headers=args.headers, data=args.payload)
+		print(response.text)
+		if response.ok:
+			data = frappe._dict(json.loads(response.text))
+		log_name = create_response_log(frappe._dict({
+								"status": "Success" if response.ok else "Failure",
+								"payload": args.payload,
+								"voucher_type": args.get("voucher_type") or "",
+								"voucher_name": args.get("voucher_name") or "",
+								"response": json.loads(response.text),
+		}))
 
-	if response.ok:
-		return data
+		if response.ok:
+			return data
 
-	else:
-		frappe.throw(args.get("throw_message") or response.text)
+		else:
+			frappe.throw(args.get("throw_message") or response.text)
+
+	except Exception as e:
+		frappe.log_error("send_request", frappe.get_traceback())
+		frappe.throw(args.get("throw_message"))
 
