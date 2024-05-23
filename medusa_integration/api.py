@@ -5,9 +5,9 @@ from medusa_integration.utils import send_request,generate_random_string
 
 def create_medusa_product(self, method):
 	if get_url()[1] and not self.get_doc_before_save() and not self.variant_of:
-		# item_group = frappe.get_doc("Item Group", self.item_group)
-		# if not item_group.custom_collection_id:
-		# 	create_medusa_collection(self=item_group,method=None)
+		item_group = frappe.get_doc("Item Group", self.item_group)
+		if not item_group.custom_collection_id:
+			create_medusa_collection(self=item_group,method=None)
 		custom_collection_id = frappe.get_value("Item Group", {"item_group_name": self.item_group}, "custom_collection_id")
 
 		if not custom_collection_id:
