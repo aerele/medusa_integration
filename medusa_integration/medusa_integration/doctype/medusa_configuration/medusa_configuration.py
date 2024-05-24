@@ -11,24 +11,29 @@ from medusa_integration.utils import send_request
 class MedusaConfiguration(Document):
 	def validate(self):
 		if self.enable:
-			get_access_token(self=self)
+			self.get_access_token()
 		else:
 			self.access_token = ""
 
 
-def get_access_token(self):
-	args = frappe._dict({
-			"method" : "POST",
-			"url" : f"{self.url}/admin/auth/token",
-			"headers": get_headers(),
-			"payload": json.dumps({
-									"email": self.admin_email,
-									"password": self.get_password("admin_password")
-			}),
-			"voucher_type": self.doctype,
-			"voucher_name": self.name,
-			"throw_message": "We are unable to fetch access token please check your admin credentials"
-		})
 
-	access_token = send_request(args).get("access_token")
-	self.db_set("access_token", access_token)
+	def get_access_token(self):
+		try:
+			args = frappe._dict({
+					"method" : "POST",
+					"url" : f"{self.url}/admin/auth/token",
+					"headers": get_headers(),
+					"payload": json.dumps({
+											"email": self.admin_email,
+											"password": self.get_password("admin_password")
+					}),
+					"voucher_type": self.doctype,
+					"voucher_name": self.name,
+					"throw_message": "We are unable to fetch access token please check your admin credentials"
+				})
+
+			access_token = send_request(args).get("access_token")
+			self.db_set("access_token", access_token)
+
+		except Exception as e:
+			frappe.log_error("Access Token", frappe.get_traceback())
