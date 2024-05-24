@@ -4,34 +4,41 @@ from medusa_integration.constants import get_headers,get_url
 from medusa_integration.utils import send_request,generate_random_string
 
 def create_medusa_product(self, method):
-	if get_url()[1] and not self.get_doc_before_save() and not self.variant_of:
-		item_group = frappe.get_doc("Item Group", self.item_group)
-		if not item_group.medusa_id:
-			create_medusa_collection(self=item_group,method=None)
-		
-		payload = json.dumps({
+	item_group = frappe.get_doc("Item Group", self.item_group)
+	payload = {
 					"title": self.item_code,
-					"handle": "",
 					"discountable": False,
 					"is_giftcard": False,
 					"collection_id": item_group.medusa_id,
 					"description": self.description,
-					"options": [],
-					"variants": [],
-					"status": "published",
-					"sales_channels": []
-		})
+					"status": "published"
+	}
+	if not item_group.medusa_id:
+		create_medusa_collection(self=item_group,method=None)
+
+
+	if get_url()[1] and not self.get_doc_before_save():
 		args = frappe._dict({
-		"method" : "POST",
-		"url" : f"{get_url()[0]}/admin/products",
-		"headers": get_headers(with_token=True),
-		"payload": payload,
-		"throw_message": "We are unable to fetch access token please check your admin credentials"
+								"method" : "POST",
+								"url" : f"{get_url()[0]}/admin/products",
+								"headers": get_headers(with_token=True),
+								"payload": json.dumps(payload),
+								"throw_message": "We are unable to fetch access token please check your admin credentials"
 		})
 
 		self.medusa_id = send_request(args).get("product").get("id")
-		
 		self.medusa_variant_id = create_medusa_variant(self.medusa_id)
+
+	if self.medusa_id and self.get_doc_before_save():
+		payload.pop("is_giftcard")
+		args = frappe._dict({
+								"method" : "POST",
+								"url" : f"{get_url()[0]}/admin/products/{self.medusa_id}",
+								"headers": get_headers(with_token=True),
+								"payload": json.dumps(payload),
+								"throw_message": "We are unable to fetch access token please check your admin credentials"
+		})
+		send_request(args)
 
 
 def create_medusa_variant(product_id):
