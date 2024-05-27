@@ -10,12 +10,12 @@ def generate_random_string(length=26):
 
 def create_response_log(log_details):
 	log = frappe.get_doc({
-							"doctype": "Medusa Request Log",
-							"status": log_details.status,
-							"payload": json.dumps(log_details.get("payload"), indent=4) or "",
-							"voucher_type": log_details.get("voucher_type"),
-							"voucher_name": log_details.get("voucher_name"),
-							"response": json.dumps(log_details.get("response"), indent=4) if isinstance(log_details.get("response"), dict) else json.dumps({"response":log_details.get("response")}),
+					"doctype": "Medusa Request Log",
+					"status": log_details.status,
+					"payload": json.dumps(log_details.get("payload"), indent=4) or "",
+					"voucher_type": log_details.get("voucher_type"),
+					"voucher_name": log_details.get("voucher_name"),
+					"response": json.dumps(log_details.get("response"), indent=4) if isinstance(log_details.get("response"), dict) else json.dumps({"response":log_details.get("response")}),
 	}).insert(ignore_permissions=True)
 	frappe.db.commit()
 	return log.name

@@ -24,8 +24,8 @@ class MedusaConfiguration(Document):
 					"url" : f"{self.url}/admin/auth/token",
 					"headers": get_headers(),
 					"payload": json.dumps({
-											"email": self.admin_email,
-											"password": self.get_password("admin_password")
+									"email": self.admin_email,
+									"password": self.get_password("admin_password")
 					}),
 					"voucher_type": self.doctype,
 					"voucher_name": self.name,
