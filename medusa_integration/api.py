@@ -16,7 +16,6 @@ def create_medusa_product(self, method):
 	if not item_group.medusa_id:
 		create_medusa_collection(self=item_group,method=None)
 
-
 	if get_url()[1] and not self.get_doc_before_save():
 		args = frappe._dict({
 								"method" : "POST",
@@ -39,7 +38,6 @@ def create_medusa_product(self, method):
 								"throw_message": "We are unable to fetch access token please check your admin credentials"
 		})
 		send_request(args)
-
 
 def create_medusa_variant(product_id):
   option_id = create_medusa_option(product_id)
@@ -109,18 +107,45 @@ def create_medusa_collection(self, method):
 		self.db_set("medusa_id", send_request(args).get("collection").get("id"))
 	
 def create_medusa_price_list(self, method):
+	doc = frappe.get_doc("Item", self.item_code)
+	payload = json.dumps({
+		"name": self.item_code,
+		"description": self.item_description,
+		"type": "override", # or "sale"
+		"customer_groups": [],
+		"status": "active",
+		"starts_at": self.valid_from,
+		"ends_at": self.valid_upto,
+		"prices": [
+			{
+				"amount": self.price_list_rate * 100,
+				"variant_id": doc.medusa_variant_id,
+				"currency_code": "usd"
+			}
+		]
+	})
+	
 	if get_url()[1] and not self.get_doc_before_save():
-		doc = frappe.get_doc("Item", self.item_code)
+		args = frappe._dict({	
+			"method" : "POST",
+			"url" : f"{get_url()[0]}/admin/price-lists",
+			"headers": get_headers(with_token=True),
+			"payload": payload,
+			"throw_message": "We are unable to fetch access token please check your admin credentials"
+		})
+		response = send_request(args).get("price_list")
+		self.db_set("medusa_id", response.get("id"))
+
+		prices = response.get("prices", [])
+		self.db_set("medusa_price_id", prices[0].get("id"))
+
+		# self.db_set("medusa_id", send_request(args).get("price_list").get("id"))
+	
+	if self.medusa_id and self.get_doc_before_save():
 		payload = json.dumps({
-			"name": self.item_code,
-			"description": self.item_description,
-			"type": "sale",
-			"customer_groups": [],
-			"status": "active",
-			"starts_at": self.valid_from,
-			"ends_at": self.valid_upto,
 			"prices": [
 				{
+					"id": self.medusa_price_id,
 					"amount": self.price_list_rate * 100,
 					"variant_id": doc.medusa_variant_id,
 					"currency_code": "usd"
@@ -129,12 +154,12 @@ def create_medusa_price_list(self, method):
 		})
 		args = frappe._dict({	
 			"method" : "POST",
-			"url" : f"{get_url()[0]}/admin/price-lists",
+			"url" : f"{get_url()[0]}/admin/price-lists/{self.medusa_id}",
 			"headers": get_headers(with_token=True),
 			"payload": payload,
 			"throw_message": "We are unable to fetch access token please check your admin credentials"
 		})
-		self.db_set("medusa_id", send_request(args).get("price_list").get("id"))
+		send_request(args)
 
 def create_medusa_customer(self, method):
 	if get_url()[1] and not self.get_doc_before_save():
