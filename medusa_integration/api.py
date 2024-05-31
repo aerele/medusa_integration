@@ -163,9 +163,20 @@ def create_medusa_price_list(self, method):
 
 def create_medusa_customer(self, method):
 	if get_url()[1] and not self.get_doc_before_save():
+		def split_name(full_name):
+			full_name = full_name.strip()
+			if " " not in full_name:
+				return full_name, "" 
+
+			last_space_index = full_name.rfind(" ")
+			first_name = full_name[:last_space_index]
+			last_name = full_name[last_space_index + 1:]
+			return first_name, last_name
+
+		first_name, last_name = split_name(self.customer_name)
 		payload = json.dumps({
-			"first_name": self.customer_name, # frappe.get_value("Contact", {"mobile_no": self.mobile_no}, "first_name"),
-			"last_name":frappe.get_value("Contact", {"mobile_no": self.mobile_no}, "first_name"),
+			"first_name": first_name, # frappe.get_value("Contact", {"mobile_no": self.mobile_no}, "first_name"),
+			"last_name": str(last_name),
 			"email": self.email_id,
 			"phone": self.mobile_no,
 			"password": str(self.email_id) + str(self.mobile_no),
