@@ -126,7 +126,7 @@ doctype_js = {"Customer" : "public/js/customer.js"}
 
 doc_events = {
 	"Item": {
-		"validate": "medusa_integration.api.create_medusa_product"
+		"validate": "medusa_integration.api.upload_image_to_medusa"
 	},
 	"Item Group": {
 		"validate": "medusa_integration.api.create_medusa_collection"
@@ -136,7 +136,10 @@ doc_events = {
 	},
 	"Customer": {
 		"validate": "medusa_integration.api.create_medusa_customer"
-	}
+	},
+	"Website Item": {
+		"validate": "medusa_integration.api.create_medusa_product"
+	},
 }
 
 # Scheduled Tasks
