@@ -42,64 +42,6 @@ def create_medusa_product(self, method):
 		})
 		send_request(args)
 
-def upload_image_to_medusa(self, method):
-	if self.medusa_id: #and self.get_doc_before_save():
-		# image_path = frappe.get_value(
-		# 	"File",
-		# 	{"attached_to_doctype": self.doctype, "attached_to_name": self.item_name},
-		# 	"file_url")		
-		print("image uploaded")
-		doc = frappe.get_doc("File", {"attached_to_doctype": self.doctype, "attached_to_name": self.item_name})
-		image_path = doc.get_full_path()
-		# Parse the URL
-		parsed_url = urlparse(image_path)
-
-		# Assign the path to a variable
-		path = parsed_url.path
-		image_path = quote(path)
-		print("Image path: ",image_path)
-		print(self.item_name)
-		url = f"{get_url()[0]}/admin/uploads"
-		print("Upload URL",url)
-		headers = get_headers(with_token=True)
-		headers.pop('Content-Type', None)  # Remove the Content-Type header to let requests set it
-		payload = {}
-		print(1)
-		# image_path = "/home/chethank1407/Pictures/Screenshots/Screenshot.png"
-		with open(image_path, 'rb') as image_file:
-			print(2)
-			files = {'files': (image_path, image_file, 'image/jpeg')}
-			print(3)
-			response = requests.post(url, headers=headers, data=payload, files=files)
-			print(4)
-		
-		print(response)
-		print(response.text)
-		
-		if response.status_code == 200:
-			image_url = response.json().get('uploads')[0].get('url')
-			print(image_url)
-			attach_image_to_product(image_url, self.medusa_id)
-		else:
-			frappe.throw("Failed to upload image to Medusa")
-
-def attach_image_to_product(image_url, product_id):
-	print(product_id)
-	url = f"{get_url()[0]}/admin/products/{product_id}"
-	print("Product URL",url)
-	# url = "http://localhost:9000/admin/products/prod_01HYWJPAZ3539AEXZ29EPJ4CZ5/images"
-	headers = get_headers(with_token=True)
-	payload = json.dumps({"images": [image_url]})
-
-	args = frappe._dict({
-		"method": "POST",
-		"url": url,
-		"headers": headers,
-		"payload": payload,
-		"throw_message": "Failed to attach image to Medusa product"
-	})
-	send_request(args)
-
 def create_medusa_variant(product_id):
   option_id = create_medusa_option(product_id)
   payload = json.dumps({
@@ -250,3 +192,72 @@ def create_medusa_customer(self, method):
 			"throw_message": "We are unable to fetch access token please check your admin credentials"
 		})
 		self.db_set("medusa_id", send_request(args).get("customer").get("id"))
+
+def file_validation_wrapper(self, method):
+	# Call the namecheck function
+	namecheck(self, method)
+	print("Namecheck done")
+	
+	# Call the upload_image_to_medusa function
+	# if self.file_type in ["JPG", "JPEG", "PNG"]:
+	upload_image_to_medusa(self, method)
+	
+def upload_image_to_medusa(self, method):
+	print("Entered Image upload")
+	medusa_id = frappe.get_value("Item", {"item_name": self.attached_to_name}, "medusa_id")
+	if medusa_id: #and self.get_doc_before_save():
+		images = frappe.get_all("File", filters={"attached_to_doctype": self.attached_to_doctype, "attached_to_name": self.attached_to_name})
+		print(images)
+		image_urls = []
+
+		for image in images:
+			doc = frappe.get_doc("File", image)
+			image_path = doc.get_full_path()
+			print("Image path: ", image_path)
+			# print("Item name: ", self.item_name)
+			url = f"{get_url()[0]}/admin/uploads"
+			print("Upload URL: ",url)
+			headers = get_headers(with_token=True)
+			headers.pop('Content-Type', None)  # Remove the Content-Type header to let requests set it
+			payload = {}
+			print(1)
+			with open(image_path, 'rb') as image_file:
+				print(2)
+				files = {'files': (image_path, image_file, 'image/jpeg')}
+				print(3)
+				response = requests.post(url, headers=headers, data=payload, files=files)
+				print(4)
+				print(response)
+				print(response.text)
+				if response.status_code == 200:
+					uploaded_image_url = response.json().get('uploads')[0].get('url')
+					print("Image uploaded")
+					print("Image URL: ",uploaded_image_url)
+					image_urls.append(uploaded_image_url)
+				else:
+					frappe.throw("Failed to upload image to Medusa")
+				
+			
+
+		attach_image_to_product(image_urls, medusa_id)
+
+def attach_image_to_product(image_urls, product_id):
+	print("Image URLs: ", image_urls)
+	print("Product ID: ", product_id)
+	url = f"{get_url()[0]}/admin/products/{product_id}"
+	print("Product URL: ",url)
+	headers = get_headers(with_token=True)
+	payload = json.dumps({"images": image_urls})
+
+	args = frappe._dict({
+		"method": "POST",
+		"url": url,
+		"headers": headers,
+		"payload": payload,
+		"throw_message": "Failed to attach image to Medusa product"
+	})
+	send_request(args)
+
+def namecheck(self, method):
+	if ' ' in self.file_name:
+		frappe.throw("Invalid name format: File name cannot contain spaces")
