@@ -199,14 +199,25 @@ def file_validation_wrapper(self, method):
 	print("Namecheck done")
 	
 	# Call the upload_image_to_medusa function
-	# if self.file_type in ["JPG", "JPEG", "PNG"]:
+	# if self.attached_to_field == "image":
+	# 	upload_thumbnail(self, method)
+	# else:
 	upload_image_to_medusa(self, method)
+
+# def upload_thumbnail(self, method):
+# 	print("Entered Thumbnail upload")
+# 	medusa_id = frappe.get_value("Item", {"item_name": self.attached_to_name}, "medusa_id")
+# 	if medusa_id:
+# 		image_path = self.get_full_path()
+# 		print("Image path: ", image_path)
 	
+		
 def upload_image_to_medusa(self, method):
 	print("Entered Image upload")
+	print(self.attached_to_name)
 	medusa_id = frappe.get_value("Item", {"item_name": self.attached_to_name}, "medusa_id")
 	if medusa_id: #and self.get_doc_before_save():
-		images = frappe.get_all("File", filters={"attached_to_doctype": self.attached_to_doctype, "attached_to_name": self.attached_to_name})
+		images = frappe.get_all("File", filters={"attached_to_doctype": "Item", "attached_to_name": self.attached_to_name})
 		print(images)
 		image_urls = []
 
@@ -237,9 +248,27 @@ def upload_image_to_medusa(self, method):
 				else:
 					frappe.throw("Failed to upload image to Medusa")
 				
-			
+		if self.attached_to_field == "image": # Give function call
+			attach_thumbnail_to_product(image_urls, medusa_id)
+		else:
+			attach_image_to_product(image_urls, medusa_id)
 
-		attach_image_to_product(image_urls, medusa_id)
+def attach_thumbnail_to_product(image_urls, product_id):
+	print("Image URLs: ", image_urls)
+	print("Product ID: ", product_id)
+	url = f"{get_url()[0]}/admin/products/{product_id}"
+	print("Product URL: ",url)
+	headers = get_headers(with_token=True)
+	payload = json.dumps({"thumbnail": image_urls})
+
+	args = frappe._dict({
+		"method": "POST",
+		"url": url,
+		"headers": headers,
+		"payload": payload,
+		"throw_message": "Failed to attach thumbnail to Medusa product"
+	})
+	send_request(args)
 
 def attach_image_to_product(image_urls, product_id):
 	print("Image URLs: ", image_urls)

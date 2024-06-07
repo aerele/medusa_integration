@@ -141,7 +141,7 @@ doc_events = {
 		"validate": "medusa_integration.api.create_medusa_product"
 	},
 	"File": {
-		"validate": "medusa_integration.api.file_validation_wrapper"
+		"after_insert": "medusa_integration.api.file_validation_wrapper"
 	}
 }
 
