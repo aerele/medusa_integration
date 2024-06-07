@@ -125,9 +125,9 @@ doctype_js = {"Customer" : "public/js/customer.js"}
 # Hook on document methods and events
 
 doc_events = {
-	# "Item": {
-	# 	"validate": "medusa_integration.api.upload_image_to_medusa"
-	# },
+	"Item": {
+		"validate": "medusa_integration.api.export_item"
+	},
 	"Item Group": {
 		"validate": "medusa_integration.api.create_medusa_collection"
 	},
@@ -138,7 +138,7 @@ doc_events = {
 		"validate": "medusa_integration.api.create_medusa_customer"
 	},
 	"Website Item": {
-		"validate": "medusa_integration.api.create_medusa_product"
+		"validate": "medusa_integration.api.export_website_item"
 	},
 	"File": {
 		"after_insert": "medusa_integration.api.file_validation_wrapper"
