@@ -277,26 +277,30 @@ def file_validation_wrapper(self, method):
 	namecheck(self, method)
 	print("Namecheck done")
 	
-	# Call the upload_image_to_medusa function
-	# if self.attached_to_field == "image":
-	# 	upload_thumbnail(self, method)
-	# else:
 	upload_image_to_medusa(self, method)
+	print("Images uploaded")	
 
-# def upload_thumbnail(self, method):
-# 	print("Entered Thumbnail upload")
-# 	medusa_id = frappe.get_value("Item", {"item_name": self.attached_to_name}, "medusa_id")
-# 	if medusa_id:
-# 		image_path = self.get_full_path()
-# 		print("Image path: ", image_path)
-	
-		
 def upload_image_to_medusa(self, method):
 	print("Entered Image upload")
-	print(self.attached_to_name)
-	medusa_id = frappe.get_value("Item", {"item_name": self.attached_to_name}, "medusa_id")
-	if medusa_id: #and self.get_doc_before_save():
-		images = frappe.get_all("File", filters={"attached_to_doctype": "Item", "attached_to_name": self.attached_to_name})
+	print("Name: ", self.attached_to_name)
+	print("Doctype: ", self.attached_to_doctype) # Website item atteched to name chech in FILE
+	web_item = ""
+	if self.attached_to_doctype == "Website Item":
+		medusa_id = frappe.get_value("Website Item", {"name": self.attached_to_name}, "medusa_id")
+		print("Website item Medusa ID: ", medusa_id)
+		web_item = frappe.get_value("Website Item", {"name": self.attached_to_name}, "web_item_name")
+		print("Web Item Name: ", web_item)
+	elif self.attached_to_doctype == "Item":
+		medusa_id = frappe.get_value("Item", {"item_name": self.attached_to_name}, "medusa_id")
+		print("item Medusa ID: ", medusa_id)
+
+	if medusa_id and self.attached_to_field not in ["image", "website_image"]:
+		print("Web Item Name inside image getter: ", self.attached_to_doctype)
+		images = frappe.get_all("File", filters={
+						"attached_to_doctype": self.attached_to_doctype,
+						"attached_to_name": self.attached_to_name,
+						"attached_to_field": ["not in", ["image", "website_image"]]
+				})
 		print(images)
 		image_urls = []
 
@@ -304,9 +308,8 @@ def upload_image_to_medusa(self, method):
 			doc = frappe.get_doc("File", image)
 			image_path = doc.get_full_path()
 			print("Image path: ", image_path)
-			# print("Item name: ", self.item_name)
 			url = f"{get_url()[0]}/admin/uploads"
-			print("Upload URL: ",url)
+			print("Upload URL: ", url)
 			headers = get_headers(with_token=True)
 			headers.pop('Content-Type', None)  # Remove the Content-Type header to let requests set it
 			payload = {}
@@ -326,19 +329,45 @@ def upload_image_to_medusa(self, method):
 					image_urls.append(uploaded_image_url)
 				else:
 					frappe.throw("Failed to upload image to Medusa")
-				
-		if self.attached_to_field == "image": # Give function call
-			attach_thumbnail_to_product(image_urls, medusa_id)
-		else:
-			attach_image_to_product(image_urls, medusa_id)
 
-def attach_thumbnail_to_product(image_urls, product_id):
-	print("Image URLs: ", image_urls)
+		attach_image_to_product(image_urls, medusa_id)
+				
+	elif medusa_id and self.attached_to_field in ["image", "website_image"]:
+		image_url = ""
+		image_path = self.get_full_path()
+		print("Image path: ", image_path)
+		url = f"{get_url()[0]}/admin/uploads"
+		print("Upload URL: ", url)
+		headers = get_headers(with_token=True)
+		headers.pop('Content-Type', None)  # Remove the Content-Type header to let requests set it
+		payload = {}
+		print(1)
+		with open(image_path, 'rb') as image_file:
+			print(2)
+			files = {'files': (image_path, image_file, 'image/jpeg')}
+			print(3)
+			response = requests.post(url, headers=headers, data=payload, files=files)
+			print(4)
+			print(response)
+			print(response.text)
+			if response.status_code == 200:
+				uploaded_image_url = response.json().get('uploads')[0].get('url')
+				print("Image uploaded")
+				print("Image URL: ",uploaded_image_url)
+				image_url = uploaded_image_url
+				print("2nd Image URL: ", image_url)
+			else:
+				frappe.throw("Failed to upload image to Medusa")
+
+		attach_thumbnail_to_product(image_url, medusa_id)
+
+def attach_thumbnail_to_product(image_url, product_id):
+	print("Image URLs: ", image_url)
 	print("Product ID: ", product_id)
 	url = f"{get_url()[0]}/admin/products/{product_id}"
 	print("Product URL: ",url)
 	headers = get_headers(with_token=True)
-	payload = json.dumps({"thumbnail": image_urls})
+	payload = json.dumps({"thumbnail": image_url})
 
 	args = frappe._dict({
 		"method": "POST",
@@ -368,4 +397,4 @@ def attach_image_to_product(image_urls, product_id):
 
 def namecheck(self, method):
 	if ' ' in self.file_name:
-		frappe.throw("Invalid name format: File name cannot contain spaces")
+		frappe.throw("Invalid name format!<br>File name cannot contain spaces")
