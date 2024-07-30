@@ -1,8 +1,29 @@
 import requests
 import frappe
 import json
+from frappe import _
 from medusa_integration.constants import get_headers, get_url
 from medusa_integration.utils import send_request
+
+# @frappe.whitelist()
+# def greet(name=None):
+#     return f"Hello, {name}"
+
+# @frappe.whitelist(allow_guest=True)
+# def create_customer():
+#     data = json.loads(frappe.request.data)
+#     customer = frappe.get_doc({
+#         "doctype": "Customer",
+#         "medusa_id": data.get("id"),
+#         "customer_name": data.get("first_name") + " " + data.get("last_name"),
+#         "customer_type": data.get("business_type"),
+#         "email_id": data.get("email"),
+#         "is_business": data.get("is_business"),
+#         "t_c_acceptance": data.get("t_c_acceptance"),
+#         "offers_agreement": data.get("offers_agreement"),
+#     })
+#     customer.insert(ignore_permissions=True)
+#     return {"message": _("Customer created successfully"), "customer_id": customer.name}
 
 def export_item(self, method):
 	item_group = frappe.get_doc("Item Group", self.item_group)
@@ -11,15 +32,16 @@ def export_item(self, method):
 		create_medusa_collection(self=item_group, method=None)
 
 	payload = {
-					"title": self.item_code,
+					"title": self.item_name, #self.item_code,
 					"discountable": False,
 					"is_giftcard": False,
 					"collection_id": item_group.medusa_id,
 					"description": self.description,
-					"status": "published"
+					"status": "published",
+					"brand_name": self.brand
 	}
 
-	if get_url()[1] and not self.get_doc_before_save():
+	if get_url()[1] and not self.medusa_id:
 		args = frappe._dict({
 						"method" : "POST",
 						"url" : f"{get_url()[0]}/admin/products",
@@ -28,11 +50,16 @@ def export_item(self, method):
 						"throw_message": "Error while exporting Item to Medusa"
 		})
 
-		self.medusa_id = send_request(args).get("product").get("id")
-		self.medusa_variant_id = create_medusa_variant(self.medusa_id)
+		# self.medusa_id = send_request(args).get("product").get("id")
+		self.db_set("medusa_id", send_request(args).get("product").get("id"))
+		medusa_var_id = create_medusa_variant(self.medusa_id)
+		print(medusa_var_id)
+		self.db_set("medusa_variant_id", medusa_var_id)
+		# self.db_set("medusa_variant_id", send_request(args).get("product").get("id"))
 
-	if self.medusa_id and self.get_doc_before_save():
+	elif self.medusa_id and self.get_doc_before_save():
 		payload.pop("is_giftcard")
+		payload.pop("brand_name")
 		args = frappe._dict({
 						"method" : "POST",
 						"url" : f"{get_url()[0]}/admin/products/{self.medusa_id}",
@@ -56,7 +83,7 @@ def export_website_item(self, method):
 					"discountable": False,
 					"is_giftcard": False,
 					"collection_id": item_group.medusa_id,
-					"description": self.description,
+					"description": self.web_long_description,
 					"status": "published" if self.published else "draft",
 					"origin_country": "IN" # item.country_of_origin
 	}
@@ -283,7 +310,7 @@ def file_validation_wrapper(self, method):
 def upload_image_to_medusa(self, method):
 	print("Entered Image upload")
 	print("Name: ", self.attached_to_name)
-	print("Doctype: ", self.attached_to_doctype) # Website item atteched to name chech in FILE
+	print("Doctype: ", self.attached_to_doctype) # Website item atteched to name check in FILE
 	web_item = ""
 	if self.attached_to_doctype == "Website Item":
 		medusa_id = frappe.get_value("Website Item", {"name": self.attached_to_name}, "medusa_id")
@@ -398,3 +425,44 @@ def attach_image_to_product(image_urls, product_id):
 def namecheck(self, method):
 	if ' ' in self.file_name:
 		frappe.throw("Invalid name format!<br>File name cannot contain spaces")
+
+def export_old_data(doctype):
+	record = frappe.get_all(doctype, limit = 5)
+	print(record)
+	method = ""
+	for r in record:
+		doc = frappe.get_doc(doctype, r)
+		export_item(doc, method)
+	
+doctypes = []
+def export_multiple_doc(doctypes: list):
+	for d in doctypes:
+		export_old_data(d)
+
+
+def clear_medusa_id(): #clear_medusa_id() for Item Group
+    # Get all documents in the "Item Group" doctype
+    item_groups = frappe.get_all("Item Group", fields=["name"])
+    
+    # Iterate through each document and set the medusa_id to an empty string
+    for item_group in item_groups:
+        frappe.db.set_value("Item Group", item_group.name, "medusa_id", "")
+
+    # Commit the changes to the database
+    frappe.db.commit()
+
+import frappe
+
+def clear_medusa_fields(): #For items
+    # Get all documents in the "Item" doctype
+    items = frappe.get_all("Item", filters={"medusa_id": ["!=", ""]}, fields=["name"])
+    print(items)
+
+    # Iterate through each document and set the medusa_id and medusa_variant_id to an empty string
+    for item in items:
+        frappe.db.set_value("Item", item.name, {"medusa_id": "", "medusa_variant_id": ""})
+
+    # Commit the changes to the database
+    frappe.db.commit()
+
+clear_medusa_fields()
