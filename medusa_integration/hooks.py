@@ -125,24 +125,24 @@ doctype_js = {"Customer" : "public/js/customer.js"}
 # Hook on document methods and events
 
 doc_events = {
-	"Item": {
-		"validate": "medusa_integration.api.export_item"
-	},
+	# "Item": {
+	# 	"validate": "medusa_integration.api.export_item"
+	# },
 	# "Item Group": {
 	# 	"validate": "medusa_integration.api.create_medusa_collection"
 	# },
-	# "Item Price": {
-	# 	"validate": "medusa_integration.api.create_medusa_price_list"
-	# },
+	"Item Price": {
+		"validate": "medusa_integration.api.create_medusa_price_list"
+	},
 	# "Customer": {
 	# 	"validate": "medusa_integration.api.create_medusa_customer"
 	# },
-	# "Website Item": {
-	# 	"validate": "medusa_integration.api.export_website_item"
-	# },
-	"File": {
-		"after_insert": "medusa_integration.api.file_validation_wrapper"
-	}
+	"Website Item": {
+		"validate": "medusa_integration.api.export_website_item"
+	},
+	# "File": {
+	# 	"after_insert": "medusa_integration.api.file_validation_wrapper"
+	# }
 }
 
 # Scheduled Tasks
