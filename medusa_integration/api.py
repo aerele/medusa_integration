@@ -231,14 +231,17 @@ def create_medusa_collection(self, method):
 
 		self.db_set("medusa_id", send_request(args).get("collection").get("id"))
 	
-def create_medusa_price_list(self, method):
+def create_medusa_price_list(self, method, called_manually=False):
 	medusa_variant_id = frappe.db.get_value("Website Item", {"item_code": self.item_code}, "medusa_variant_id")
 	print("Var ID: ", medusa_variant_id)
-	# print("Var ID: ", doc.medusa_variant_id)
-	# starts_at = datetime.datetime.strptime(self.valid_from, "%Y-%m-%d").isoformat() if self.valid_from else None
-	# ends_at = datetime.datetime.strptime(self.valid_upto, "%Y-%m-%d").isoformat() if self.valid_upto else None
-	starts_at = self.valid_from.isoformat() if self.valid_from else None
-	ends_at = self.valid_upto.isoformat() if self.valid_upto else None
+	
+	if called_manually:
+		starts_at = self.valid_from.isoformat() if self.valid_from else None
+		ends_at = self.valid_upto.isoformat() if self.valid_upto else None
+	else:
+		starts_at = datetime.datetime.strptime(self.valid_from, "%Y-%m-%d").isoformat() if self.valid_from else None
+		ends_at = datetime.datetime.strptime(self.valid_upto, "%Y-%m-%d").isoformat() if self.valid_upto else None
+
 	print("Rate: ", self.price_list_rate)
 	
 	payload = json.dumps({
@@ -253,7 +256,7 @@ def create_medusa_price_list(self, method):
 			{
 				"amount": self.price_list_rate * 100,
 				"variant_id": medusa_variant_id,
-				"currency_code": "usd" #self.currency.lower(),
+				"currency_code": self.currency.lower(),
 			}
 		]
 	})
@@ -271,8 +274,6 @@ def create_medusa_price_list(self, method):
 
 		prices = response.get("prices", [])
 		self.db_set("medusa_price_id", prices[0].get("id"))
-
-		# self.db_set("medusa_id", send_request(args).get("price_list").get("id"))
 	
 	if self.medusa_id and self.get_doc_before_save():
 		payload = json.dumps({
@@ -281,7 +282,7 @@ def create_medusa_price_list(self, method):
 					"id": self.medusa_price_id,
 					"amount": self.price_list_rate * 100,
 					"variant_id": medusa_variant_id,
-					"currency_code": "usd" #self.currency.lower(),
+					"currency_code": self.currency.lower(),
 				}
 			]
 		})
@@ -451,18 +452,19 @@ def namecheck(self, method):
 		frappe.throw("Invalid name format!<br>File name cannot contain spaces")
 
 def export_all_medusa_price_list(doctype):
-	record = frappe.get_all(doctype, limit = 10)  # frappe.get_all(doctype, limit = 5)
+	record = frappe.get_all(doctype)
 	method = ""
 	for r in record:
 		doc = frappe.get_doc(doctype, r)
 		print(doc.name)
 		try:
-			create_medusa_price_list(doc, method)
+			create_medusa_price_list(doc, method, called_manually=True)
 		except frappe.ValidationError as e:
 			print(f"Skipping {doc.name} due to error: {str(e)}")
 		except Exception as e:
 			print(f"Unexpected error while exporting {doc.name}: {str(e)}")
 			raise e
+
 
 def export_all_website_item(doctype):
 	record = frappe.get_all(doctype)  # frappe.get_all(doctype, limit = 5)
