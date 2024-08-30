@@ -3,7 +3,7 @@
 
 import frappe
 import json
-from frappe.model.document import Document
+from frappe.model.document import Document # type: ignore
 from medusa_integration.constants import get_headers
 from medusa_integration.utils import send_request
 

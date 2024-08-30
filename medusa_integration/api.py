@@ -76,8 +76,10 @@ def export_website_item(self, method):
 	if not item_group.medusa_id:
 		create_medusa_collection(self=item_group, method=None)
 
-	item = frappe.get_doc("Item", self.item_code)
-	#origin_country = frappe.get_value("Item", {"item_code": self.item_code}, "country_of_origin")
+	origin_country = frappe.get_value("Item", {"item_code": self.item_code}, "country_of_origin")
+	if origin_country:
+		country_of_origin = frappe.get_value("Country", {"name": origin_country}, "code")
+	country_code = country_of_origin.upper() if origin_country else None
 	
 	payload = {
 		"title": self.web_item_name,
@@ -87,7 +89,7 @@ def export_website_item(self, method):
 		"description": self.web_long_description,
 		"status": "published" if self.published else "draft",
 		"brand_name": self.brand,
-		"origin_country": "IN"  # item.country_of_origin
+		"origin_country": country_code
 	}
 
 	try:
@@ -101,7 +103,7 @@ def export_website_item(self, method):
 			})
 
 			self.db_set("medusa_id", send_request(args).get("product").get("id"))
-			medusa_var_id = create_medusa_variant(self.medusa_id, self.on_backorder, item.country_of_origin)
+			medusa_var_id = create_medusa_variant(self.medusa_id, self.on_backorder, country_code)
 			# print("medusa_var_id", medusa_var_id)
 			self.db_set("medusa_variant_id", medusa_var_id)
 
@@ -126,15 +128,15 @@ def export_website_item(self, method):
 		print(f"Unexpected error while exporting {self.name}: {str(e)}")
 		raise e  # Re-raise unexpected errors
 
-def create_medusa_variant(product_id, backorder = False, country_of_origin = None):
+def create_medusa_variant(product_id, backorder = False, country_code = None):
+	
 	option_id = create_medusa_option(product_id)
-	#item = frappe.get_doc("Item", item_code)
 	payload = json.dumps({
 							"title": "Default",
 							"material": None,
 							"mid_code": None,
 							"hs_code": None,
-							"origin_country": "IN", # country_of_origin
+							"origin_country": country_code,
 							"sku": None,
 							"ean": None,
 							"upc": None,
@@ -231,10 +233,48 @@ def create_medusa_collection(self, method):
 
 		self.db_set("medusa_id", send_request(args).get("collection").get("id"))
 	
-def create_medusa_price_list(self, method, called_manually=False):
-	medusa_variant_id = frappe.db.get_value("Website Item", {"item_code": self.item_code}, "medusa_variant_id")
-	print("Var ID: ", medusa_variant_id)
+def create_medusa_price_list(self, called_manually=False):
 	
+	medusa_variant_id = frappe.db.get_value("Website Item", {"item_code": self.item_code}, "medusa_variant_id")
+
+	if not medusa_variant_id:
+		print(f"No Website Item found for item code {self.item_code}")
+		return
+	
+	item_price = 0
+	
+	if called_manually:
+		recent_item_price = frappe.db.sql("""
+			SELECT 
+				name, item_code, valid_from, price_list_rate
+			FROM 
+				`tabItem Price`
+			WHERE recent_item_pricec
+				item_code = %s
+			ORDER BY 
+				valid_from DESC
+			LIMIT 1
+		""", (self.item_code,), as_dict=True)
+
+		if recent_item_price[0]['name'] != self.name:
+			return
+
+		item_price = recent_item_price[0]['price_list_rate']
+
+	else:
+		item_price = self.price_list_rate
+
+	item_price = int(item_price * 1000)
+	# print("itemprice1: ", type(item_price1))
+	# item_price = int(round((item_price * 100), 3))
+	# print("itemprice: ", type(item_price))
+	sendable_item_price = item_price/100
+	print ("Sendable Item Price: ", sendable_item_price)
+	print("Item Price: ", item_price)
+	print("Var ID: ", medusa_variant_id)
+
+	name = frappe.db.get_value("Website Item", {"item_code": self.item_code}, "web_item_name")
+
 	if called_manually:
 		starts_at = self.valid_from.isoformat() if self.valid_from else None
 		ends_at = self.valid_upto.isoformat() if self.valid_upto else None
@@ -242,10 +282,9 @@ def create_medusa_price_list(self, method, called_manually=False):
 		starts_at = datetime.datetime.strptime(self.valid_from, "%Y-%m-%d").isoformat() if self.valid_from else None
 		ends_at = datetime.datetime.strptime(self.valid_upto, "%Y-%m-%d").isoformat() if self.valid_upto else None
 
-	print("Rate: ", self.price_list_rate)
 	
 	payload = json.dumps({
-		"name": self.item_name,
+		"name": name,
 		"description": self.item_description,
 		"type": "override",  # or "sale"
 		"customer_groups": [],
@@ -254,33 +293,34 @@ def create_medusa_price_list(self, method, called_manually=False):
 		"ends_at": ends_at,
 		"prices": [
 			{
-				"amount": self.price_list_rate * 100,
+				"amount": item_price,
 				"variant_id": medusa_variant_id,
 				"currency_code": self.currency.lower(),
 			}
 		]
 	})
 	
-	if get_url()[1] and not self.get_doc_before_save():
+	if get_url()[1] and not self.medusa_id:
 		args = frappe._dict({	
 			"method" : "POST",
 			"url" : f"{get_url()[0]}/admin/price-lists",
 			"headers": get_headers(with_token=True),
 			"payload": payload,
-			"throw_message": "Error while exporting Item Price to Medusa"
+			"throw_message": f"Error while exporting Item Price {self.name} to Medusa"
 		})
 		response = send_request(args).get("price_list")
 		self.db_set("medusa_id", response.get("id"))
 
 		prices = response.get("prices", [])
 		self.db_set("medusa_price_id", prices[0].get("id"))
+		print(self.name, "exported successfully")
 	
 	if self.medusa_id and self.get_doc_before_save():
 		payload = json.dumps({
 			"prices": [
 				{
 					"id": self.medusa_price_id,
-					"amount": self.price_list_rate * 100,
+					"amount": item_price,
 					"variant_id": medusa_variant_id,
 					"currency_code": self.currency.lower(),
 				}
@@ -451,19 +491,20 @@ def namecheck(self, method):
 	if ' ' in self.file_name:
 		frappe.throw("Invalid name format!<br>File name cannot contain spaces")
 
-def export_all_medusa_price_list(doctype):
+def export_all_medusa_price_list():
+	doctype = "Item Price"
 	record = frappe.get_all(doctype)
-	method = ""
 	for r in record:
 		doc = frappe.get_doc(doctype, r)
-		print(doc.name)
-		try:
-			create_medusa_price_list(doc, method, called_manually=True)
-		except frappe.ValidationError as e:
-			print(f"Skipping {doc.name} due to error: {str(e)}")
-		except Exception as e:
-			print(f"Unexpected error while exporting {doc.name}: {str(e)}")
-			raise e
+		if doc.medusa_id != "":
+			try:
+				print("Exporting: ", doc.name)
+				create_medusa_price_list(doc, called_manually=True)
+			except frappe.ValidationError as e:
+				print(f"Skipping {doc.name} due to error: {str(e)}")
+			except Exception as e:
+				print(f"Unexpected error while exporting {doc.name}: {str(e)}")
+				raise e
 
 
 def export_all_website_item(doctype):
@@ -481,7 +522,7 @@ def export_all_website_item(doctype):
 				print(f"Unexpected error while exporting {doc.name}: {str(e)}")
 				raise e
 
-def clear_item_group_id(): #cFor Item Group
+def clear_all_item_group_id(): #cFor Item Group
 	# Get all documents in the "Item Group" doctype
 	item_groups = frappe.get_all("Item Group", fields=["name"])
 	
@@ -492,7 +533,7 @@ def clear_item_group_id(): #cFor Item Group
 	# Commit the changes to the database
 	frappe.db.commit()
 
-def clear_website_item_id(): #For website items
+def clear_all_website_item_id(): #For website items
 	# Get all documents in the "Website Item" doctype
 	items = frappe.get_all("Website Item", filters={"medusa_id": ["!=", ""]}, fields=["name"])
 	print(items)
@@ -504,7 +545,7 @@ def clear_website_item_id(): #For website items
 	# Commit the changes to the database
 	frappe.db.commit()
 
-def clear_item_price_id(): #For item price
+def clear_all_item_price_id(): #For item price
 	# Get all documents in the "Item Price" doctype
 	item_prices = frappe.get_all("Item Price", filters={"medusa_id": ["!=", ""]}, fields=["name"])
 	print(item_prices)
