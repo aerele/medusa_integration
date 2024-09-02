@@ -26,11 +26,11 @@ import datetime
 #     customer.insert(ignore_permissions=True)
 #     return {"message": _("Customer created successfully"), "customer_id": customer.name}
 
-def export_item(self, method):
+def export_item(self):
 	item_group = frappe.get_doc("Item Group", self.item_group)
 
 	if not item_group.medusa_id:
-		create_medusa_collection(self=item_group, method=None)
+		create_medusa_collection(item_group)
 
 	payload = {
 					"title": self.item_name, #self.item_code,
@@ -48,15 +48,12 @@ def export_item(self, method):
 						"url" : f"{get_url()[0]}/admin/products",
 						"headers": get_headers(with_token=True),
 						"payload": json.dumps(payload),
-						"throw_message": "Error while exporting Item to Medusa"
+						"throw_message": f"Error while exporting Item {self.name} to Medusa"
 		})
 
-		# self.medusa_id = send_request(args).get("product").get("id")
 		self.db_set("medusa_id", send_request(args).get("product").get("id"))
 		medusa_var_id = create_medusa_variant(self.medusa_id)
-		# print(medusa_var_id)
 		self.db_set("medusa_variant_id", medusa_var_id)
-		# self.db_set("medusa_variant_id", send_request(args).get("product").get("id"))
 
 	elif self.medusa_id and self.get_doc_before_save():
 		payload.pop("is_giftcard")
@@ -66,15 +63,15 @@ def export_item(self, method):
 						"url" : f"{get_url()[0]}/admin/products/{self.medusa_id}",
 						"headers": get_headers(with_token=True),
 						"payload": json.dumps(payload),
-						"throw_message": "Error while updating Item in Medusa"
+						"throw_message": f"Error while updating Item {self.name} in Medusa"
 		})
 		send_request(args)
 
-def export_website_item(self, method):
+def export_website_item(self):
 	item_group = frappe.get_doc("Item Group", self.item_group)
 
 	if not item_group.medusa_id:
-		create_medusa_collection(self=item_group, method=None)
+		create_medusa_collection(item_group)
 
 	origin_country = frappe.get_value("Item", {"item_code": self.item_code}, "country_of_origin")
 	if origin_country:
@@ -89,7 +86,8 @@ def export_website_item(self, method):
 		"description": self.web_long_description,
 		"status": "published" if self.published else "draft",
 		"brand_name": self.brand,
-		"origin_country": country_code
+		"origin_country": country_code,
+		"metadata": {"UOM": self.stock_uom} 
 	}
 
 	try:
@@ -99,12 +97,11 @@ def export_website_item(self, method):
 				"url": f"{get_url()[0]}/admin/products",
 				"headers": get_headers(with_token=True),
 				"payload": json.dumps(payload),
-				"throw_message": "Error while exporting Website Item to Medusa"
+				"throw_message": f"Error while exporting Website Item {self.name} to Medusa"
 			})
 
 			self.db_set("medusa_id", send_request(args).get("product").get("id"))
 			medusa_var_id = create_medusa_variant(self.medusa_id, self.on_backorder, country_code)
-			# print("medusa_var_id", medusa_var_id)
 			self.db_set("medusa_variant_id", medusa_var_id)
 
 		if self.medusa_id and self.get_doc_before_save():
@@ -115,7 +112,7 @@ def export_website_item(self, method):
 				"url": f"{get_url()[0]}/admin/products/{self.medusa_id}",
 				"headers": get_headers(with_token=True),
 				"payload": json.dumps(payload),
-				"throw_message": "Error while updating Website Item in Medusa"
+				"throw_message": f"Error while updating Website Item {self.name} in Medusa"
 			})
 			send_request(args)
 	
@@ -123,10 +120,10 @@ def export_website_item(self, method):
 		if "Product with handle" in str(e) and "already exists" in str(e):
 			print(f"Duplicate error for {self.name}: {str(e)}")
 		else:
-			raise e  # Re-raise other validation errors
+			raise e
 	except Exception as e:
 		print(f"Unexpected error while exporting {self.name}: {str(e)}")
-		raise e  # Re-raise unexpected errors
+		raise e
 
 def create_medusa_variant(product_id, backorder = False, country_code = None):
 	
@@ -162,7 +159,7 @@ def create_medusa_variant(product_id, backorder = False, country_code = None):
 							"url" : f"{get_url()[0]}/admin/products/{product_id}/variants",
 							"headers": get_headers(with_token=True),
 							"payload": payload,
-							"throw_message": "Error while creating Item Variant in Medusa"
+							"throw_message": f"Error while creating Item Variant for {product_id} in Medusa"
 	})
 	
 	return send_request(args).get("product").get("variants")[0].get("id")
@@ -211,12 +208,12 @@ def create_medusa_option(product_id):
 					"url" : f"{get_url()[0]}/admin/products/{product_id}/options",
 					"headers": get_headers(with_token=True),
 					"payload": payload,
-					"throw_message": "Error while creating Item Option in Medusa"
+					"throw_message": f"Error while creating Item Option for {product_id} in Medusa"
 	})
 	
 	return send_request(args).get("product").get("options")[0].get("id")
 
-def create_medusa_collection(self, method):
+def create_medusa_collection(self):
 	if get_url()[1] and not self.medusa_id:
 		print("geturl: ", get_url()[1])
 		payload = json.dumps({
@@ -228,7 +225,7 @@ def create_medusa_collection(self, method):
 		"url" : f"{get_url()[0]}/admin/collections",
 		"headers": get_headers(with_token=True),
 		"payload": payload,
-		"throw_message": "Error while exporting Item Groups to Medusa"
+		"throw_message": f"Error while exporting Item Group {self.name} to Medusa"
 		})
 
 		self.db_set("medusa_id", send_request(args).get("collection").get("id"))
@@ -238,7 +235,7 @@ def create_medusa_price_list(self, called_manually=False):
 	medusa_variant_id = frappe.db.get_value("Website Item", {"item_code": self.item_code}, "medusa_variant_id")
 
 	if not medusa_variant_id:
-		print(f"No Website Item found for item code {self.item_code}")
+		print("No Website Item found for item code: ", self.item_code)
 		return
 	
 	item_price = 0
@@ -246,10 +243,10 @@ def create_medusa_price_list(self, called_manually=False):
 	if called_manually:
 		recent_item_price = frappe.db.sql("""
 			SELECT 
-				name, item_code, valid_from, price_list_rate
+				name, price_list_rate
 			FROM 
 				`tabItem Price`
-			WHERE recent_item_pricec
+			WHERE 
 				item_code = %s
 			ORDER BY 
 				valid_from DESC
@@ -257,6 +254,7 @@ def create_medusa_price_list(self, called_manually=False):
 		""", (self.item_code,), as_dict=True)
 
 		if recent_item_price[0]['name'] != self.name:
+			print(f"Skipping {self.name} as it is not the most recent Item Price of {self.item_code}")
 			return
 
 		item_price = recent_item_price[0]['price_list_rate']
@@ -265,15 +263,11 @@ def create_medusa_price_list(self, called_manually=False):
 		item_price = self.price_list_rate
 
 	item_price = int(item_price * 1000)
-	# print("itemprice1: ", type(item_price1))
-	# item_price = int(round((item_price * 100), 3))
-	# print("itemprice: ", type(item_price))
-	sendable_item_price = item_price/100
-	print ("Sendable Item Price: ", sendable_item_price)
 	print("Item Price: ", item_price)
-	print("Var ID: ", medusa_variant_id)
+	sendable_item_price = item_price/1000
+	print ("Sendable Item Price: ", sendable_item_price)
 
-	name = frappe.db.get_value("Website Item", {"item_code": self.item_code}, "web_item_name")
+	web_item_name = frappe.db.get_value("Website Item", {"item_code": self.item_code}, "web_item_name")
 
 	if called_manually:
 		starts_at = self.valid_from.isoformat() if self.valid_from else None
@@ -284,8 +278,8 @@ def create_medusa_price_list(self, called_manually=False):
 
 	
 	payload = json.dumps({
-		"name": name,
-		"description": self.item_description,
+		"name": web_item_name,
+		"description": self.price_list,
 		"type": "override",  # or "sale"
 		"customer_groups": [],
 		"status": "active",
@@ -331,7 +325,7 @@ def create_medusa_price_list(self, called_manually=False):
 			"url" : f"{get_url()[0]}/admin/price-lists/{self.medusa_id}",
 			"headers": get_headers(with_token=True),
 			"payload": payload,
-			"throw_message": "Error while updating Item Price in Medusa"
+			"throw_message": f"Error while updating Item Price {self.name} in Medusa"
 		})
 		send_request(args)
 
@@ -360,7 +354,7 @@ def create_medusa_customer(self, method):
 			"url" : f"{get_url()[0]}/admin/customers",
 			"headers": get_headers(with_token=True),
 			"payload": payload,
-			"throw_message": "Error while exporting Customer to Medusa"
+			"throw_message": f"Error while exporting Customer {self.name} to Medusa"
 		})
 		self.db_set("medusa_id", send_request(args).get("customer").get("id"))
 
@@ -466,7 +460,7 @@ def attach_thumbnail_to_product(image_url, product_id):
 		"url": url,
 		"headers": headers,
 		"payload": payload,
-		"throw_message": "Error while attaching thumbnail to the Medusa product"
+		"throw_message": f"Error while attaching thumbnail {image_url} to the Medusa product {product_id}"
 	})
 	send_request(args)
 
@@ -496,9 +490,13 @@ def export_all_medusa_price_list():
 	record = frappe.get_all(doctype)
 	for r in record:
 		doc = frappe.get_doc(doctype, r)
+		is_diabled = frappe.get_value("Item", {"item_code": doc.item_code}, "disabled")
+		if is_diabled:
+			print(f"skipping {doc.name} due to disabled item {doc.item_code}")
+			continue
 		if doc.medusa_id != "":
 			try:
-				print("Exporting: ", doc.name)
+				print("Beginning to export: ", doc.name)
 				create_medusa_price_list(doc, called_manually=True)
 			except frappe.ValidationError as e:
 				print(f"Skipping {doc.name} due to error: {str(e)}")
@@ -509,13 +507,12 @@ def export_all_medusa_price_list():
 
 def export_all_website_item(doctype):
 	record = frappe.get_all(doctype)  # frappe.get_all(doctype, limit = 5)
-	method = ""
 	for r in record:
 		doc = frappe.get_doc(doctype, r)
 		print(doc.name)
 		if doc.published and doc.medusa_id != "":
 			try:
-				export_website_item(doc, method)
+				export_website_item(doc)
 			except frappe.ValidationError as e:
 				print(f"Skipping {doc.name} due to error: {str(e)}")
 			except Exception as e:
