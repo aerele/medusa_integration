@@ -101,7 +101,7 @@ def export_website_item(self):
 			})
 
 			self.db_set("medusa_id", send_request(args).get("product").get("id"))
-			medusa_var_id = create_medusa_variant(self.medusa_id, self.on_backorder, country_code)
+			medusa_var_id = create_medusa_variant(self.medusa_id, self.item_code, self.on_backorder, country_code)
 			self.db_set("medusa_variant_id", medusa_var_id)
 
 		if self.medusa_id and self.get_doc_before_save():
@@ -125,7 +125,10 @@ def export_website_item(self):
 		print(f"Unexpected error while exporting {self.name}: {str(e)}")
 		raise e
 
-def create_medusa_variant(product_id, backorder = False, country_code = None):
+def create_medusa_variant(product_id, item_code, backorder = False, country_code = None):
+    
+	inventory_quantity = frappe.get_list('Bin', filters={'item_code': item_code}, fields='actual_qty', pluck='actual_qty')
+	qty = int(sum(inventory_quantity))
 	
 	option_id = create_medusa_option(product_id)
 	payload = json.dumps({
@@ -138,7 +141,7 @@ def create_medusa_variant(product_id, backorder = False, country_code = None):
 							"ean": None,
 							"upc": None,
 							"barcode": None,
-							"inventory_quantity": 0,
+							"inventory_quantity": qty,
 							"manage_inventory": True,
 							"allow_backorder": True if backorder else False,
 							"weight": None,
