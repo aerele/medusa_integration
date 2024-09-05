@@ -68,6 +68,7 @@ def export_item(self):
 		send_request(args)
 
 def export_website_item(self):
+    
 	item_group = frappe.get_doc("Item Group", self.item_group)
 
 	if not item_group.medusa_id:
@@ -99,10 +100,10 @@ def export_website_item(self):
 				"payload": json.dumps(payload),
 				"throw_message": f"Error while exporting Website Item {self.name} to Medusa"
 			})
-
 			self.db_set("medusa_id", send_request(args).get("product").get("id"))
 			medusa_var_id = create_medusa_variant(self.medusa_id, self.item_code, self.on_backorder, country_code)
 			self.db_set("medusa_variant_id", medusa_var_id)
+			print(self.name, " exported successfully")
 
 		if self.medusa_id and self.get_doc_before_save():
 			payload.pop("is_giftcard")
@@ -126,7 +127,7 @@ def export_website_item(self):
 		raise e
 
 def create_medusa_variant(product_id, item_code, backorder = False, country_code = None):
-    
+	
 	inventory_quantity = frappe.get_list('Bin', filters={'item_code': item_code}, fields='actual_qty', pluck='actual_qty')
 	qty = int(sum(inventory_quantity))
 	
@@ -141,7 +142,7 @@ def create_medusa_variant(product_id, item_code, backorder = False, country_code
 							"ean": None,
 							"upc": None,
 							"barcode": None,
-							"inventory_quantity": qty,
+							"inventory_quantity": qty, # Needs to be updated
 							"manage_inventory": True,
 							"allow_backorder": True if backorder else False,
 							"weight": None,
@@ -218,7 +219,6 @@ def create_medusa_option(product_id):
 
 def create_medusa_collection(self):
 	if get_url()[1] and not self.medusa_id:
-		print("geturl: ", get_url()[1])
 		payload = json.dumps({
 					"title": self.name,
 					"metadata": {"parent_item_group": self.parent_item_group, "is_group": self.is_group}
@@ -361,15 +361,14 @@ def create_medusa_customer(self, method):
 		})
 		self.db_set("medusa_id", send_request(args).get("customer").get("id"))
 
-def file_validation_wrapper(self, method):
-	# Call the namecheck function
-	namecheck(self, method)
+def file_validation_wrapper(self):
+	namecheck(self)
 	print("Namecheck done")
 	
-	upload_image_to_medusa(self, method)
+	upload_image_to_medusa(self)
 	print("Images uploaded")	
 
-def upload_image_to_medusa(self, method):
+def upload_image_to_medusa(self):
 	print("Entered Image upload")
 	print("Name: ", self.attached_to_name)
 	print("Doctype: ", self.attached_to_doctype) # Website item atteched to name check in FILE
@@ -467,13 +466,10 @@ def attach_thumbnail_to_product(image_url, product_id):
 	})
 	send_request(args)
 
-def attach_image_to_product(image_urls, product_id):
-	print("Image URLs: ", image_urls)
-	print("Product ID: ", product_id)
+def attach_image_to_product(image_url, product_id):
 	url = f"{get_url()[0]}/admin/products/{product_id}"
-	print("Product URL: ",url)
 	headers = get_headers(with_token=True)
-	payload = json.dumps({"images": image_urls})
+	payload = json.dumps({"images": image_url})
 
 	args = frappe._dict({
 		"method": "POST",
@@ -483,10 +479,71 @@ def attach_image_to_product(image_urls, product_id):
 		"throw_message": "Error while attaching image to the Medusa product"
 	})
 	send_request(args)
+ 
+def export_image_to_medusa(self):
+	medusa_id = frappe.get_value("Website Item", {"name": self.attached_to_name}, "medusa_id")
+	print(medusa_id)
 
-def namecheck(self, method):
+	if medusa_id and self.attached_to_field in ["image", "website_image"]:
+		image_url = ""
+		image_path = self.get_full_path()
+		print("Image path: ", image_path)
+		url = f"{get_url()[0]}/admin/uploads"
+		headers = get_headers(with_token=True)
+		headers.pop('Content-Type', None)  # Remove the Content-Type header to let requests set it
+		payload = {}
+		image_url = []
+		with open(image_path, 'rb') as image_file:
+			files = {'files': (image_path, image_file, 'image/jpeg')}
+			response = requests.post(url, headers=headers, data=payload, files=files)
+			if response.status_code == 200:
+				uploaded_image_url = response.json().get('uploads')[0].get('url')
+				print("uploaded_image_url: ", uploaded_image_url)
+				image_url.append(uploaded_image_url)
+
+			else:
+				frappe.throw("Failed to upload image to Medusa")
+
+		attach_image_to_product(image_url, medusa_id)
+		self.db_set("medusa_id", medusa_id)
+
+def namecheck(self):
 	if ' ' in self.file_name:
 		frappe.throw("Invalid name format!<br>File name cannot contain spaces")
+
+def export_all_website_item():
+	print("Exporting all website items to Medusa...")
+	doctype = "Website Item"
+	record = frappe.get_all(doctype)  # frappe.get_all(doctype, limit = 5)
+	for r in record:
+		doc = frappe.get_doc(doctype, r)
+		if doc.published and not doc.medusa_id:
+			try:
+				print("Beginning to export: ", doc.name)
+				export_website_item(doc)
+			except frappe.ValidationError as e:
+				print(f"Skipping {doc.name} due to error: {str(e)}")
+			except Exception as e:
+				print(f"Unexpected error while exporting {doc.name}: {str(e)}")
+				raise e
+
+def export_all_website_images():
+	doctype = "File"
+	images = frappe.get_all(doctype, filters={
+						"attached_to_doctype": "Website Item",
+						"attached_to_field": ["in", ["image", "website_image"]]
+				}, limit=5)
+	for image in images:
+		doc = frappe.get_doc(doctype, image)
+		if not doc.medusa_id:
+			try:
+				print("Beginning to export: ", doc.name)
+				export_image_to_medusa(doc)
+			except frappe.ValidationError as e:
+				print(f"Skipping {doc.name} due to error: {str(e)}")
+			except Exception as e:
+				print(f"Unexpected error while exporting {doc.name}: {str(e)}")
+				raise e
 
 def export_all_medusa_price_list():
 	doctype = "Item Price"
@@ -497,7 +554,7 @@ def export_all_medusa_price_list():
 		if is_diabled:
 			print(f"skipping {doc.name} due to disabled item {doc.item_code}")
 			continue
-		if doc.medusa_id != "":
+		if doc.medusa_id == "":
 			try:
 				print("Beginning to export: ", doc.name)
 				create_medusa_price_list(doc, called_manually=True)
@@ -507,24 +564,10 @@ def export_all_medusa_price_list():
 				print(f"Unexpected error while exporting {doc.name}: {str(e)}")
 				raise e
 
-
-def export_all_website_item(doctype):
-	record = frappe.get_all(doctype)  # frappe.get_all(doctype, limit = 5)
-	for r in record:
-		doc = frappe.get_doc(doctype, r)
-		print(doc.name)
-		if doc.published and doc.medusa_id != "":
-			try:
-				export_website_item(doc)
-			except frappe.ValidationError as e:
-				print(f"Skipping {doc.name} due to error: {str(e)}")
-			except Exception as e:
-				print(f"Unexpected error while exporting {doc.name}: {str(e)}")
-				raise e
-
-def clear_all_item_group_id(): #cFor Item Group
+def clear_all_item_group_id(): #For Item Group
 	# Get all documents in the "Item Group" doctype
-	item_groups = frappe.get_all("Item Group", fields=["name"])
+	item_groups = frappe.get_all("Item Group", filters={"medusa_id": ["!=", ""]}, fields=["name"])
+	print(item_groups)
 	
 	# Iterate through each document and set the medusa_id to an empty string
 	for item_group in item_groups:
@@ -545,6 +588,18 @@ def clear_all_website_item_id(): #For website items
 	# Commit the changes to the database
 	frappe.db.commit()
 
+def clear_all_website_image_id(): #For website images
+	# Get all documents in the "File" doctype
+	images = frappe.get_all("File", filters={"medusa_id": ["!=", ""]}, fields=["name"])
+	print(images)
+
+	# Iterate through each document and set the medusa_id to an empty string
+	for image in images:
+		frappe.db.set_value("File", image.name, {"medusa_id": ""})
+
+	# Commit the changes to the database
+	frappe.db.commit()
+ 
 def clear_all_item_price_id(): #For item price
 	# Get all documents in the "Item Price" doctype
 	item_prices = frappe.get_all("Item Price", filters={"medusa_id": ["!=", ""]}, fields=["name"])
