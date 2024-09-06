@@ -67,8 +67,7 @@ def export_item(self):
 		})
 		send_request(args)
 
-def export_website_item(self):
-    
+def export_website_item(self):    
 	item_group = frappe.get_doc("Item Group", self.item_group)
 
 	if not item_group.medusa_id:
@@ -126,8 +125,7 @@ def export_website_item(self):
 		print(f"Unexpected error while exporting {self.name}: {str(e)}")
 		raise e
 
-def create_medusa_variant(product_id, item_code, backorder = False, country_code = None):
-	
+def create_medusa_variant(product_id, item_code, backorder = False, country_code = None):	
 	inventory_quantity = frappe.get_list('Bin', filters={'item_code': item_code}, fields='actual_qty', pluck='actual_qty')
 	qty = int(sum(inventory_quantity))
 	
@@ -233,8 +231,7 @@ def create_medusa_collection(self):
 
 		self.db_set("medusa_id", send_request(args).get("collection").get("id"))
 	
-def create_medusa_price_list(self, called_manually=False):
-	
+def create_medusa_price_list(self, called_manually=False):	
 	medusa_variant_id = frappe.db.get_value("Website Item", {"item_code": self.item_code}, "medusa_variant_id")
 
 	if not medusa_variant_id:
@@ -467,6 +464,7 @@ def attach_thumbnail_to_product(image_url, product_id):
 	send_request(args)
 
 def attach_image_to_product(image_url, product_id):
+	print ("Entered attach image")
 	url = f"{get_url()[0]}/admin/products/{product_id}"
 	headers = get_headers(with_token=True)
 	payload = json.dumps({"images": image_url})
@@ -482,29 +480,33 @@ def attach_image_to_product(image_url, product_id):
  
 def export_image_to_medusa(self):
 	medusa_id = frappe.get_value("Website Item", {"name": self.attached_to_name}, "medusa_id")
-	print(medusa_id)
 
-	if medusa_id and self.attached_to_field in ["image", "website_image"]:
-		image_url = ""
+	if medusa_id:
+		print("Entered IF Condition")
 		image_path = self.get_full_path()
 		print("Image path: ", image_path)
 		url = f"{get_url()[0]}/admin/uploads"
+		print("Upload URL: ", url)
 		headers = get_headers(with_token=True)
-		headers.pop('Content-Type', None)  # Remove the Content-Type header to let requests set it
+		headers.pop('Content-Type', None)
 		payload = {}
 		image_url = []
 		with open(image_path, 'rb') as image_file:
 			files = {'files': (image_path, image_file, 'image/jpeg')}
 			response = requests.post(url, headers=headers, data=payload, files=files)
+			print(response)
+			print(response.text)
 			if response.status_code == 200:
 				uploaded_image_url = response.json().get('uploads')[0].get('url')
+				print("Image uploaded")
 				print("uploaded_image_url: ", uploaded_image_url)
 				image_url.append(uploaded_image_url)
 
 			else:
 				frappe.throw("Failed to upload image to Medusa")
-
+		print("Uploaded image")
 		attach_image_to_product(image_url, medusa_id)
+		print("Completed image attach")
 		self.db_set("medusa_id", medusa_id)
 
 def namecheck(self):
@@ -532,7 +534,7 @@ def export_all_website_images():
 	images = frappe.get_all(doctype, filters={
 						"attached_to_doctype": "Website Item",
 						"attached_to_field": ["in", ["image", "website_image"]]
-				}, limit=5)
+				})
 	for image in images:
 		doc = frappe.get_doc(doctype, image)
 		if not doc.medusa_id:
