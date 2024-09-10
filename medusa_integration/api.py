@@ -30,7 +30,7 @@ def export_item(self):
 	item_group = frappe.get_doc("Item Group", self.item_group)
 
 	if not item_group.medusa_id:
-		create_medusa_collection(item_group)
+		export_item_group(item_group)
 
 	payload = {
 					"title": self.item_name, #self.item_code,
@@ -71,7 +71,7 @@ def export_website_item(self):
 	item_group = frappe.get_doc("Item Group", self.item_group)
 
 	if not item_group.medusa_id:
-		create_medusa_collection(item_group)
+		export_item_group(item_group)
 
 	origin_country = frappe.get_value("Item", {"item_code": self.item_code}, "country_of_origin")
 	if origin_country:
@@ -215,7 +215,7 @@ def create_medusa_option(product_id):
 	
 	return send_request(args).get("product").get("options")[0].get("id")
 
-def create_medusa_collection(self):
+def export_item_group(self):
 	if get_url()[1] and not self.medusa_id:
 		payload = json.dumps({
 					"title": self.name,
@@ -230,6 +230,7 @@ def create_medusa_collection(self):
 		})
 
 		self.db_set("medusa_id", send_request(args).get("collection").get("id"))
+		print(self.name, " exported successfully")
 	
 def create_medusa_price_list(self, called_manually=False):	
 	medusa_variant_id = frappe.db.get_value("Website Item", {"item_code": self.item_code}, "medusa_variant_id")
@@ -529,6 +530,22 @@ def export_all_website_item():
 				print(f"Unexpected error while exporting {doc.name}: {str(e)}")
 				raise e
 
+def export_all_item_groups():
+	print("Exporting all item groups to Medusa...")
+	doctype = "Item Group"
+	groups = frappe.get_all(doctype)  # frappe.get_all(doctype, limit = 5)
+	for group in groups:
+		doc = frappe.get_doc(doctype, group)
+		if not doc.medusa_id:
+			try:
+				print("Beginning to export: ", doc.name)
+				export_item_group(doc)
+			except frappe.ValidationError as e:
+				print(f"Skipping {doc.name} due to error: {str(e)}")
+			except Exception as e:
+				print(f"Unexpected error while exporting {doc.name}: {str(e)}")
+				raise e
+
 def export_all_website_images():
 	doctype = "File"
 	images = frappe.get_all(doctype, filters={
@@ -556,7 +573,7 @@ def export_all_medusa_price_list():
 		if is_diabled:
 			print(f"skipping {doc.name} due to disabled item {doc.item_code}")
 			continue
-		if doc.medusa_id == "":
+		if not doc.medusa_id:
 			try:
 				print("Beginning to export: ", doc.name)
 				create_medusa_price_list(doc, called_manually=True)
