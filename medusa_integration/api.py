@@ -510,6 +510,102 @@ def export_image_to_medusa(self):
 		print("Completed image attach")
 		self.db_set("medusa_id", medusa_id)
 
+def get_medusa_products_by_brand(brand_name):
+	# Query Medusa API to fetch all products by brand_name
+	url = f"{get_url()}/store/product-listing-with-filters"
+	headers = get_headers(with_token=True)
+	params = {
+		"parent" : "Products",	 
+		"brand_name": brand_name
+	}
+
+	response = requests.get(url, headers=headers, params=params)
+	if response.status_code == 200:
+		products = response.json().get("products", [])
+		if products:
+			print(f"Found {len(products)} products for brand {brand_name}")
+			return products  # Return all products
+		else:
+			print(f"No products found for brand {brand_name}")
+			return []
+	else:
+		print(f"Failed to fetch products from Medusa for brand {brand_name}. Status code: {response.status_code}")
+		return []
+
+def attach_image_to_products(image_url, products):
+	# Attach the uploaded image to all products of the brand
+	for product in products:
+		product_id = product.get("id")
+		if product_id:
+			print(f"Attaching image to product: {product_id}")
+			url = f"{get_medusa_base_url()}/admin/products/{product_id}"
+			headers = get_headers(with_token=True)
+			payload = json.dumps({"images": image_url})
+
+			args = frappe._dict({
+				"method": "POST",
+				"url": url,
+				"headers": headers,
+				"payload": payload,
+				"throw_message": "Error while attaching image to Medusa product"
+			})
+			send_request(args)
+
+def export_image_to_medusa_by_brand(doc):
+	# Get the brand name from the file's attached_to_name
+	brand_name = doc.attached_to_name
+	
+	# Fetch all products with the matching brand name from Medusa
+	products = get_medusa_products_by_brand(brand_name)
+	
+	if products:
+		# Proceed with image export
+		image_path = doc.get_full_path()
+		print(f"Exporting image: {doc.name}, Image path: {image_path}")
+		url = f"{get_medusa_base_url()}/admin/uploads"
+		headers = get_headers(with_token=True)
+		headers.pop('Content-Type', None)
+		payload = {}
+		image_url = []
+		
+		with open(image_path, 'rb') as image_file:
+			files = {'files': (image_path, image_file, 'image/jpeg')}
+			response = requests.post(url, headers=headers, data=payload, files=files)
+			print(response)
+			print(response.text)
+
+			if response.status_code == 200:
+				uploaded_image_url = response.json().get('uploads')[0].get('url')
+				print(f"Image uploaded, URL: {uploaded_image_url}")
+				image_url.append(uploaded_image_url)
+			else:
+				frappe.throw("Failed to upload image to Medusa")
+
+		# Attach the uploaded image to all matching products
+		attach_image_to_products(image_url, products)
+		print(f"Completed attaching image to {len(products)} products.")
+	else:
+		print(f"No products found for brand: {brand_name}")
+
+def export_all_brand_images():
+	doctype = "File"
+	images = frappe.get_all(doctype, filters={
+						"attached_to_doctype": "Brand",
+						"attached_to_field": ["in", ["image", "website_image"]]
+				})
+	for image in images:
+		doc = frappe.get_doc(doctype, image)
+		if not doc.medusa_id:
+			try:
+				print(f"Starting export for: {doc.name}")
+				export_image_to_medusa_by_brand(doc)
+			except frappe.ValidationError as e:
+				print(f"Skipping {doc.name} due to error: {str(e)}")
+			except Exception as e:
+				print(f"Unexpected error while exporting {doc.name}: {str(e)}")
+				raise e
+
+
 def namecheck(self):
 	if ' ' in self.file_name:
 		frappe.throw("Invalid name format!<br>File name cannot contain spaces")
