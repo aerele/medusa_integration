@@ -330,6 +330,47 @@ def create_medusa_price_list(self, called_manually=False):
 		})
 		send_request(args)
 
+def export_brand(self):
+	payload = {
+		"brand_name": self.brand_name,
+		"description": self.description,
+		"image": self.image_url,  # Assuming `image_url` is the field where the image URL is stored
+	}
+
+	try:
+		# Check if the brand doesn't have a Medusa ID and create a new brand in Medusa
+		if not self.medusa_id:
+			args = frappe._dict({
+				"method": "POST",
+				"url": f"{get_url()[0]}/admin/brands",  # Assuming you have an endpoint for brands in Medusa
+				"headers": get_headers(with_token=True),
+				"payload": json.dumps(payload),
+				"throw_message": f"Error while exporting Brand {self.name} to Medusa"
+			})
+			self.db_set("medusa_id", send_request(args).get("brand").get("id"))
+			print(self.name, " exported successfully")
+
+		# If the brand already exists in Medusa, update it
+		if self.medusa_id and self.get_doc_before_save():
+			args = frappe._dict({
+				"method": "POST",
+				"url": f"{get_url()[0]}/admin/brands/{self.medusa_id}",
+				"headers": get_headers(with_token=True),
+				"payload": json.dumps(payload),
+				"throw_message": f"Error while updating Brand {self.name} in Medusa"
+			})
+			send_request(args)
+
+	except frappe.ValidationError as e:
+		if "Brand with handle" in str(e) and "already exists" in str(e):
+			print(f"Duplicate error for {self.name}: {str(e)}")
+		else:
+			raise e
+	except Exception as e:
+		print(f"Unexpected error while exporting {self.name}: {str(e)}")
+		raise e
+
+
 def create_medusa_customer(self, method):
 	if get_url()[1] and not self.get_doc_before_save():
 		def split_name(full_name):
