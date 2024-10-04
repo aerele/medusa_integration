@@ -1,7 +1,11 @@
-## Medusa Integration
+# ERPNext Medusa Integration
 
-Medusa Integration with ERP
+## Introduction
 
-#### License
+The **ERPNext Medusa Integration** app connects ERPNext with **Medusa**, a headless eCommerce platform. This integration helps sync products, orders, and inventory between ERPNext and Medusa, making it easier to manage your eCommerce operations seamlessly.
 
-mit
+## Key Features
+
+- Sync products between ERPNext and Medusa
+- Sync orders from Medusa to ERPNext for processing
+- Sync inventory updates between platforms
