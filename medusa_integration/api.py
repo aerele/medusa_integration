@@ -835,3 +835,27 @@ def clear_all_item_price_id(): #For item price
 
 	# Commit the changes to the database
 	frappe.db.commit()
+
+def clear_all_brand_id(): #For brand
+	# Get all documents in the "Brand" doctype
+	brands = frappe.get_all("Brand", filters={"medusa_id": ["!=", ""]}, fields=["name"])
+	print(brands)
+
+	# Iterate through each document and set the medusa_id and medusa_price_id to an empty string
+	for brand in brands:
+		frappe.db.set_value("Brand", brand.name, {"medusa_id": ""})
+
+	# Commit the changes to the database
+	frappe.db.commit()
+
+def clear_all_brand_image_id(): #For brand
+	# Get all documents in the "File" doctype
+	images = frappe.get_all("File", filters={"attached_to_doctype": "Brand", "medusa_id": ["!=", ""]}, fields=["name"])
+	print(images)
+
+	# Iterate through each document and set the medusa_id to an empty string
+	for image in images:
+		frappe.db.set_value("File", image.name, {"medusa_id": ""})
+
+	# Commit the changes to the database
+	frappe.db.commit()
