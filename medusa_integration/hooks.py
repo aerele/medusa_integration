@@ -140,6 +140,9 @@ doc_events = {
 	"Website Item": {
 		"validate": "medusa_integration.api.export_website_item"
 	},
+ 	# "Brand": {
+	# 	"validate": "medusa_integration.api.export_brand"
+	# },
 	# "File": {
 	# 	"after_insert": "medusa_integration.api.file_validation_wrapper"
 	# }

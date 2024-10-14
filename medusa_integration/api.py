@@ -350,16 +350,16 @@ def export_brand(self):
 			self.db_set("medusa_id", send_request(args).get("brand").get("id"))
 			print(self.name, " exported successfully")
 
-		if self.medusa_id and self.get_doc_before_save():
-			args = frappe._dict({
-				"method": "POST",
-				"url": f"{get_url()[0]}/store/brand-create/{self.medusa_id}",
-				"headers": get_headers(with_token=True),
-				"payload": json.dumps(payload),
-				"throw_message": f"Error while updating Brand {self.name} in Medusa"
-			})
-			send_request(args)
-			print(self.name, "updated successfully")
+		# elif self.medusa_id and self.get_doc_before_save():
+		# 	args = frappe._dict({
+		# 		"method": "POST",
+		# 		"url": f"{get_url()[0]}/store/brand-update?={self.medusa_id}",
+		# 		"headers": get_headers(with_token=True),
+		# 		"payload": json.dumps(payload),
+		# 		"throw_message": f"Error while updating Brand {self.name} in Medusa"
+		# 	})
+		# 	send_request(args)
+		# 	print(self.name, "updated successfully")
 
 	except frappe.ValidationError as e:
 		if "Brand with handle" in str(e) and "already exists" in str(e):
@@ -630,6 +630,57 @@ def export_image_to_medusa_by_brand(doc):
 		attach_image_to_products(image_url, product_ids)
 		print(f"Completed attaching image to {len(product_ids)} products")
 
+def export_image_to_medusa_for_brand(doc):
+	# Get the brand name from the file's attached_to_name
+	brand_name = doc.attached_to_name
+
+	# Fetch the brand's medusa_id
+	medusa_id = frappe.get_value("Brand", {"brand": brand_name}, "medusa_id")
+
+	if medusa_id:
+		print(f"Uploading image for brand: {brand_name}")
+		image_path = doc.get_full_path()
+		print(f"Image path: {image_path}")
+		url = f"{get_url()[0]}/admin/uploads"
+		headers = get_headers(with_token=True)
+		headers.pop('Content-Type', None)
+		payload = {}
+		# image_url = []
+
+		with open(image_path, 'rb') as image_file:
+			files = {'files': (image_path, image_file, 'image/jpeg')}
+			response = requests.post(url, headers=headers, data=payload, files=files)
+			print(response)
+			print(response.text)
+
+			if response.status_code == 200:
+				uploaded_image_url = response.json().get('uploads')[0].get('url')
+				print(f"Image uploaded, URL: {uploaded_image_url}")
+				# image_url.append(uploaded_image_url)
+			else:
+				frappe.throw("Failed to upload image to Medusa")
+
+		# Attach the uploaded image to the brand
+		attach_image_to_brand(uploaded_image_url, medusa_id)
+		print(f"Completed attaching image to brand: {brand_name}")
+		print("Completed image attach")
+		doc.db_set("medusa_id", medusa_id)
+
+def attach_image_to_brand(uploaded_image_url, brand_id):
+	print("Attaching image to brand")
+	url = f"{get_url()[0]}/store/brand-update?id={brand_id}"
+	headers = get_headers(with_token=True)
+	payload = json.dumps({"image": uploaded_image_url})
+
+	args = frappe._dict({
+		"method": "POST",
+		"url": url,
+		"headers": headers,
+		"payload": payload,
+		"throw_message": "Error while attaching image to the Medusa brand"
+	})
+	send_request(args)
+
 def export_all_brand_images():
 	doctype = "File"
 	images = frappe.get_all(doctype, filters={
@@ -641,13 +692,12 @@ def export_all_brand_images():
 		if not doc.medusa_id:
 			try:
 				print(f"Starting export for: {doc.name}")
-				export_image_to_medusa_by_brand(doc)
+				export_image_to_medusa_for_brand(doc)
 			except frappe.ValidationError as e:
 				print(f"Skipping {doc.name} due to error: {str(e)}")
 			except Exception as e:
 				print(f"Unexpected error while exporting {doc.name}: {str(e)}")
 				raise e
-
 
 def namecheck(self):
 	if ' ' in self.file_name:
