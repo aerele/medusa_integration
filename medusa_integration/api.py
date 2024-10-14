@@ -332,10 +332,11 @@ def create_medusa_price_list(self, called_manually=False):
 
 def export_brand(self):
 	payload = {
-		"brand_name": self.brand_name,
-		"description": self.description,
-		"image": self.image_url,
+		"brand_name": self.brand,
 	}
+	
+	if self.description:
+		payload["description"] = self.description
 
 	try:
 		if not self.medusa_id:
@@ -701,6 +702,22 @@ def export_all_website_images():
 			except Exception as e:
 				print(f"Unexpected error while exporting {doc.name}: {str(e)}")
 				raise e
+
+def export_all_brands():
+	doctype = "Brand"
+	records = frappe.get_all(doctype)
+	for r in records:
+		doc = frappe.get_doc(doctype, r)
+		if not doc.medusa_id:
+			try:
+				print("Beginning to export: ", doc.name)
+				export_brand(doc)
+			except frappe.ValidationError as e:
+				print(f"Skipping {doc.name} due to error: {str(e)}")
+			except Exception as e:
+				print(f"Unexpected error while exporting {doc.name}: {str(e)}")
+				raise e
+
 
 def export_all_medusa_price_list():
 	doctype = "Item Price"
