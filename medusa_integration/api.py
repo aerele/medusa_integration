@@ -125,6 +125,65 @@ def export_website_item(self):
 		print(f"Unexpected error while exporting {self.name}: {str(e)}")
 		raise e
 
+def update_website_item(self,method):    
+	item_group = frappe.get_doc("Item Group", self.item_group)
+	product_id = self.medusa_id
+	
+	if not item_group.medusa_id:
+		export_item_group(item_group)
+
+	origin_country = frappe.get_value("Item", {"item_code": self.item_code}, "country_of_origin")
+	if origin_country:
+		country_of_origin = frappe.get_value("Country", {"name": origin_country}, "code")
+	country_code = country_of_origin.upper() if origin_country else None
+	
+	payload = {
+		"title": self.web_item_name,
+		"discountable": False,
+		"is_giftcard": False,
+		"collection_id": item_group.medusa_id,
+		"description": self.web_long_description,
+		"status": "published" if self.published else "draft",
+		"brand_name": self.brand,
+		"origin_country": country_code,
+		"metadata": {"UOM": self.stock_uom} 
+	}
+
+	try:
+		if get_url()[1] and not self.medusa_id:
+			args = frappe._dict({
+				"method": "POST",
+				"url": f"{get_url()[0]}/admin/products/{product_id}",
+				"headers": get_headers(with_token=True),
+				"payload": json.dumps(payload),
+				"throw_message": f"Error while exporting Website Item {self.name} to Medusa"
+			})
+			self.db_set("medusa_id", send_request(args).get("product").get("id"))
+			medusa_var_id = create_medusa_variant(self.medusa_id, self.item_code, self.on_backorder, country_code)
+			self.db_set("medusa_variant_id", medusa_var_id)
+			print(self.name, " exported successfully")
+
+		if self.medusa_id and self.get_doc_before_save():
+			payload.pop("is_giftcard")
+			payload.pop("brand_name")
+			args = frappe._dict({
+				"method": "POST",
+				"url": f"{get_url()[0]}/admin/products/{self.medusa_id}",
+				"headers": get_headers(with_token=True),
+				"payload": json.dumps(payload),
+				"throw_message": f"Error while updating Website Item {self.name} in Medusa"
+			})
+			send_request(args)
+	
+	except frappe.ValidationError as e:
+		if "Product with handle" in str(e) and "already exists" in str(e):
+			print(f"Duplicate error for {self.name}: {str(e)}")
+		else:
+			raise e
+	except Exception as e:
+		print(f"Unexpected error while exporting {self.name}: {str(e)}")
+		raise e
+
 def create_medusa_variant(product_id, item_code, backorder = False, country_code = None):	
 	inventory_quantity = frappe.get_list('Bin', filters={'item_code': item_code}, fields='actual_qty', pluck='actual_qty')
 	qty = int(sum(inventory_quantity))
@@ -823,7 +882,7 @@ def clear_all_website_image_id(): #For website images
 
 	# Commit the changes to the database
 	frappe.db.commit()
- 
+
 def clear_all_item_price_id(): #For item price
 	# Get all documents in the "Item Price" doctype
 	item_prices = frappe.get_all("Item Price", filters={"medusa_id": ["!=", ""]}, fields=["name"])
