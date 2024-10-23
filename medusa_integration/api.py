@@ -67,7 +67,7 @@ def export_item(self):
 		})
 		send_request(args)
 
-def export_website_item(self):    
+def export_website_item(self, method):    
 	item_group = frappe.get_doc("Item Group", self.item_group)
 
 	if not item_group.medusa_id:
@@ -77,9 +77,18 @@ def export_website_item(self):
 	if origin_country:
 		country_of_origin = frappe.get_value("Country", {"name": origin_country}, "code")
 	country_code = country_of_origin.upper() if origin_country else None
+
+	specifications = []
+	if self.website_specifications:
+		for spec in self.website_specifications:
+			specifications.append({
+				"label": spec.label,
+				"description": spec.description
+			})
 	
 	payload = {
 		"title": self.web_item_name,
+		"item_code": self.item_code,
 		"discountable": False,
 		"is_giftcard": False,
 		"collection_id": item_group.medusa_id,
@@ -87,7 +96,8 @@ def export_website_item(self):
 		"status": "published" if self.published else "draft",
 		"brand_name": self.brand,
 		"origin_country": country_code,
-		"metadata": {"UOM": self.stock_uom} 
+		"metadata": {"UOM": self.stock_uom},
+		"specifications": specifications
 	}
 
 	try:
@@ -103,18 +113,6 @@ def export_website_item(self):
 			medusa_var_id = create_medusa_variant(self.medusa_id, self.item_code, self.on_backorder, country_code)
 			self.db_set("medusa_variant_id", medusa_var_id)
 			print(self.name, " exported successfully")
-
-		if self.medusa_id and self.get_doc_before_save():
-			payload.pop("is_giftcard")
-			payload.pop("brand_name")
-			args = frappe._dict({
-				"method": "POST",
-				"url": f"{get_url()[0]}/admin/products/{self.medusa_id}",
-				"headers": get_headers(with_token=True),
-				"payload": json.dumps(payload),
-				"throw_message": f"Error while updating Website Item {self.name} in Medusa"
-			})
-			send_request(args)
 	
 	except frappe.ValidationError as e:
 		if "Product with handle" in str(e) and "already exists" in str(e):
@@ -125,10 +123,11 @@ def export_website_item(self):
 		print(f"Unexpected error while exporting {self.name}: {str(e)}")
 		raise e
 
-def update_website_item(self,method):    
+def update_website_item(self, method):    
+	print("Entered def")
 	item_group = frappe.get_doc("Item Group", self.item_group)
 	product_id = self.medusa_id
-	
+
 	if not item_group.medusa_id:
 		export_item_group(item_group)
 
@@ -137,43 +136,37 @@ def update_website_item(self,method):
 		country_of_origin = frappe.get_value("Country", {"name": origin_country}, "code")
 	country_code = country_of_origin.upper() if origin_country else None
 	
+	specifications = []
+	if self.website_specifications:
+		for spec in self.website_specifications:
+			specifications.append({
+				"label": spec.label,
+				"description": spec.description
+			})
+	
 	payload = {
 		"title": self.web_item_name,
+		"item_code": self.item_code,
 		"discountable": False,
-		"is_giftcard": False,
 		"collection_id": item_group.medusa_id,
 		"description": self.web_long_description,
 		"status": "published" if self.published else "draft",
 		"brand_name": self.brand,
 		"origin_country": country_code,
-		"metadata": {"UOM": self.stock_uom} 
+		"metadata": {"UOM": self.stock_uom},
+		"specifications": specifications
 	}
-
+	print("Okay till this")
 	try:
-		if get_url()[1] and not self.medusa_id:
-			args = frappe._dict({
-				"method": "POST",
-				"url": f"{get_url()[0]}/admin/products/{product_id}",
-				"headers": get_headers(with_token=True),
-				"payload": json.dumps(payload),
-				"throw_message": f"Error while exporting Website Item {self.name} to Medusa"
-			})
-			self.db_set("medusa_id", send_request(args).get("product").get("id"))
-			medusa_var_id = create_medusa_variant(self.medusa_id, self.item_code, self.on_backorder, country_code)
-			self.db_set("medusa_variant_id", medusa_var_id)
-			print(self.name, " exported successfully")
-
-		if self.medusa_id and self.get_doc_before_save():
-			payload.pop("is_giftcard")
-			payload.pop("brand_name")
-			args = frappe._dict({
-				"method": "POST",
-				"url": f"{get_url()[0]}/admin/products/{self.medusa_id}",
-				"headers": get_headers(with_token=True),
-				"payload": json.dumps(payload),
-				"throw_message": f"Error while updating Website Item {self.name} in Medusa"
-			})
-			send_request(args)
+		args = frappe._dict({
+			"method": "POST",
+			"url": f"{get_url()[0]}/admin/products/{product_id}",
+			"headers": get_headers(with_token=True),
+			"payload": json.dumps(payload),
+			"throw_message": f"Error while updating Website Item {self.name} in Medusa"
+		})
+		send_request(args)
+		print(product_id, " updated successfully")
 	
 	except frappe.ValidationError as e:
 		if "Product with handle" in str(e) and "already exists" in str(e):
@@ -181,7 +174,7 @@ def update_website_item(self,method):
 		else:
 			raise e
 	except Exception as e:
-		print(f"Unexpected error while exporting {self.name}: {str(e)}")
+		print(f"Unexpected error while updating {self.name}: {str(e)}")
 		raise e
 
 def create_medusa_variant(product_id, item_code, backorder = False, country_code = None):	
@@ -765,17 +758,35 @@ def namecheck(self):
 def export_all_website_item():
 	print("Exporting all website items to Medusa...")
 	doctype = "Website Item"
+	method = ""
 	record = frappe.get_all(doctype)  # frappe.get_all(doctype, limit = 5)
 	for r in record:
 		doc = frappe.get_doc(doctype, r)
 		if doc.published and not doc.medusa_id:
 			try:
 				print("Beginning to export: ", doc.name)
-				export_website_item(doc)
+				export_website_item(doc, method)
 			except frappe.ValidationError as e:
 				print(f"Skipping {doc.name} due to error: {str(e)}")
 			except Exception as e:
 				print(f"Unexpected error while exporting {doc.name}: {str(e)}")
+				raise e
+
+def update_all_website_item():
+	print("Updating all website items")
+	doctype = "Website Item"
+	method = ""
+	record = frappe.get_all(doctype)  # frappe.get_all(doctype, limit = 5)
+	for r in record:
+		doc = frappe.get_doc(doctype, r)
+		if doc.medusa_id:
+			try:
+				print("Beginning to update: ", doc.name)
+				update_website_item(doc, method)
+			except frappe.ValidationError as e:
+				print(f"Skipping {doc.name} due to error: {str(e)}")
+			except Exception as e:
+				print(f"Unexpected error while updating {doc.name}: {str(e)}")
 				raise e
 
 def export_all_item_groups():
