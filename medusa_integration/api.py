@@ -124,7 +124,6 @@ def export_website_item(self, method):
 		raise e
 
 def update_website_item(self, method):    
-	print("Entered def")
 	item_group = frappe.get_doc("Item Group", self.item_group)
 	product_id = self.medusa_id
 
@@ -139,10 +138,11 @@ def update_website_item(self, method):
 	specifications = []
 	if self.website_specifications:
 		for spec in self.website_specifications:
-			specifications.append({
-				"label": spec.label,
-				"description": spec.description
-			})
+			if spec.label and spec.description:
+				specifications.append({
+					"label": spec.label,
+					"description": spec.description
+				})
 	
 	payload = {
 		"title": self.web_item_name,
@@ -156,7 +156,6 @@ def update_website_item(self, method):
 		"metadata": {"UOM": self.stock_uom},
 		"specifications": specifications
 	}
-	print("Okay till this")
 	try:
 		args = frappe._dict({
 			"method": "POST",
@@ -773,7 +772,6 @@ def export_all_website_item():
 				raise e
 
 def update_all_website_item():
-	print("Updating all website items")
 	doctype = "Website Item"
 	method = ""
 	record = frappe.get_all(doctype)  # frappe.get_all(doctype, limit = 5)
