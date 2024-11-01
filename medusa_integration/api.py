@@ -6,10 +6,6 @@ from medusa_integration.constants import get_headers, get_url
 from medusa_integration.utils import send_request
 import datetime
 
-# @frappe.whitelist()
-# def greet(name=None):
-#     return f"Hello, {name}"
-
 # @frappe.whitelist(allow_guest=True)
 # def create_customer():
 #     data = json.loads(frappe.request.data)
@@ -25,6 +21,32 @@ import datetime
 #     })
 #     customer.insert(ignore_permissions=True)
 #     return {"message": _("Customer created successfully"), "customer_id": customer.name}
+
+@frappe.whitelist(allow_guest=True)
+def create_lead():
+    data = json.loads(frappe.request.data)
+    lead = frappe.get_doc({
+        "doctype": "Lead",
+        "medusa_id": data.get("id"),
+        "first_name": data.get("first_name"),
+        "last_name": data.get("last_name"),
+        "email_id": data.get("email"),
+        "mobile_no": data.get("mobile"),
+        "phone": data.get("phone"),
+        "lead_source": "Alfarsi Website",
+        "status": "Lead",
+        "company_name": data.get("organization_name"),
+        "custom_address_line1": data.get("address_line_1"),
+        "custom_address_line2": data.get("address_line_2"),
+        "city": data.get("city"),
+        "state": data.get("state"),
+        "country": data.get("country"),
+        "custom_pincode": data.get("pin_code"),
+        "t_c_acceptance": data.get("t_c_acceptance"),
+        "offers_agreement": data.get("offers_agreement"),
+    })
+    lead.insert(ignore_permissions=True)
+    return {"message": _("Lead created successfully"), "Lead ID": lead.name}
 
 def export_item(self):
 	item_group = frappe.get_doc("Item Group", self.item_group)
