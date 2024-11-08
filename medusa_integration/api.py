@@ -24,94 +24,94 @@ from datetime import datetime, timedelta
 
 @frappe.whitelist(allow_guest=True)
 def create_lead():
-    data = json.loads(frappe.request.data)
-    lead = frappe.get_doc({
-        "doctype": "Lead",
-        "medusa_id": data.get("id"),
-        "first_name": data.get("first_name"),
-        "last_name": data.get("last_name"),
-        "email_id": data.get("email"),
-        "mobile_no": data.get("mobile"),
-        "phone": data.get("phone"),
-        "source": "Alfarsi Website",
-        "status": "Lead",
-        "company_name": data.get("organization_name"),
-        "custom_address_line1": data.get("address_line_1"),
-        "custom_address_line2": data.get("address_line_2"),
-        "city": data.get("city"),
-        "state": data.get("state"),
-        "country": data.get("country"),
-        "custom_pincode": data.get("pin_code"),
-        "t_c_acceptance": data.get("t_c_acceptance"),
-        "offers_agreement": data.get("offers_agreement"),
-    })
-    lead.insert(ignore_permissions=True)
-    return {"message": _("Lead created successfully"), "Lead ID": lead.name}
+	data = json.loads(frappe.request.data)
+	lead = frappe.get_doc({
+		"doctype": "Lead",
+		"medusa_id": data.get("id"),
+		"first_name": data.get("first_name"),
+		"last_name": data.get("last_name"),
+		"email_id": data.get("email"),
+		"mobile_no": data.get("mobile"),
+		"phone": data.get("phone"),
+		"source": "Alfarsi Website",
+		"status": "Lead",
+		"company_name": data.get("organization_name"),
+		"custom_address_line1": data.get("address_line_1"),
+		"custom_address_line2": data.get("address_line_2"),
+		"city": data.get("city"),
+		"state": data.get("state"),
+		"country": data.get("country"),
+		"custom_pincode": data.get("pin_code"),
+		"t_c_acceptance": data.get("t_c_acceptance"),
+		"offers_agreement": data.get("offers_agreement"),
+	})
+	lead.insert(ignore_permissions=True)
+	return {"message": _("Lead created successfully"), "Lead ID": lead.name}
 
 @frappe.whitelist(allow_guest=True)
 def create_opportunity():
-    data = json.loads(frappe.request.data)
-    medusa_id = data.get("customer_id")
-    form = data.get("form")
+	data = json.loads(frappe.request.data)
+	medusa_id = data.get("customer_id")
+	form = data.get("form")
 
-    lead = frappe.get_value("Lead", {"medusa_id": medusa_id}, "name")
+	lead = frappe.get_value("Lead", {"medusa_id": medusa_id}, "name")
 
-    opportunity_type = "Sales" if form == "Setup Clinic" else "Support"
-    sales_stage = "Prospecting" if form == "Setup Clinic" else "Needs Analysis"
-    expected_closing = datetime.today() + timedelta(days=30)
+	opportunity_type = "Sales" if form == "Setup Clinic" else "Support"
+	sales_stage = "Prospecting" if form == "Setup Clinic" else "Needs Analysis"
+	expected_closing = datetime.today() + timedelta(days=30)
 
-    opportunity = frappe.get_doc({
-        "doctype": "Opportunity",
-        "opportunity_type": opportunity_type,
-        "sales_stage": sales_stage,
-        "opportunity_from": "Lead",
-        "source": "Advertisement",
-        "expected_closing": expected_closing.date(),
-        "party_name": lead,
-        "status": "Open",
-    })
+	opportunity = frappe.get_doc({
+		"doctype": "Opportunity",
+		"opportunity_type": opportunity_type,
+		"sales_stage": sales_stage,
+		"opportunity_from": "Lead",
+		"source": "Advertisement",
+		"expected_closing": expected_closing.date(),
+		"party_name": lead,
+		"status": "Open",
+	})
 
-    opportunity.insert(ignore_permissions=True)
-    return {"message": _("Opportunity created successfully"), "Opportunity ID": opportunity.name}
+	opportunity.insert(ignore_permissions=True)
+	return {"message": _("Opportunity created successfully"), "Opportunity ID": opportunity.name}
 
 @frappe.whitelist(allow_guest=True)
 def create_quotation():
-    data = json.loads(frappe.request.data)
-    medusa_id = data.get("customer_id")
-    items = data.get("items", [])
-    valid_till = datetime.today() + timedelta(days=30)
+	data = json.loads(frappe.request.data)
+	medusa_id = data.get("customer_id")
+	items = data.get("items", [])
+	valid_till = datetime.today() + timedelta(days=30)
 
-    lead = frappe.get_value("Lead", {"medusa_id": medusa_id}, "name")
-    print(lead)
-    
-    quote = frappe.get_doc({
-        "doctype": "Quotation",
-        "order_type": "Shopping Cart",
-        "quotation_to": "Lead",
-        "party_name": lead,
-        "valid_till": valid_till.date(),
-        "items": []
-    })
+	lead = frappe.get_value("Lead", {"medusa_id": medusa_id}, "name")
+	print(lead)
+	
+	quote = frappe.get_doc({
+		"doctype": "Quotation",
+		"order_type": "Shopping Cart",
+		"quotation_to": "Lead",
+		"party_name": lead,
+		"valid_till": valid_till.date(),
+		"items": []
+	})
 
-    for item in items:
-        variant_id = item.get("variant_id")
-        quantity = item.get("quantity", 1)
+	for item in items:
+		variant_id = item.get("variant_id")
+		quantity = item.get("quantity", 1)
 
-        # Get the item code from ERPNext linked to the variant_id
-        item_code = frappe.get_value("Website Item", {"medusa_variant_id": variant_id}, "item_code")
-        if not item_code:
-            return {"error": _("Item not found for variant ID: {}").format(variant_id)}
+		# Get the item code from ERPNext linked to the variant_id
+		item_code = frappe.get_value("Website Item", {"medusa_variant_id": variant_id}, "item_code")
+		if not item_code:
+			return {"error": _("Item not found for variant ID: {}").format(variant_id)}
 
-        # Add item to the quotation
-        quote.append("items", {
-            "item_code": item_code,
-            "qty": quantity,
-            "rate": frappe.get_value("Item Price", {"item_code": item_code}, "price_list_rate") or 0,
-            "description": frappe.get_value("Item", item_code, "description") or "No description available"
-        })
+		# Add item to the quotation
+		quote.append("items", {
+			"item_code": item_code,
+			"qty": quantity,
+			"rate": frappe.get_value("Item Price", {"item_code": item_code}, "price_list_rate") or 0,
+			"description": frappe.get_value("Item", item_code, "description") or "No description available"
+		})
 
-    quote.insert(ignore_permissions=True)
-    return {"message": _("Quotation created successfully"), "Quotation ID": quote.name}
+	quote.insert(ignore_permissions=True)
+	return {"message": _("Quotation created successfully"), "Quotation ID": quote.name}
 
 def export_item(self):
 	item_group = frappe.get_doc("Item Group", self.item_group)
