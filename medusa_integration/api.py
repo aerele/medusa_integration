@@ -4,7 +4,7 @@ import json
 from frappe import _
 from medusa_integration.constants import get_headers, get_url
 from medusa_integration.utils import send_request
-import datetime
+from datetime import datetime, timedelta
 
 # @frappe.whitelist(allow_guest=True)
 # def create_customer():
@@ -33,7 +33,7 @@ def create_lead():
         "email_id": data.get("email"),
         "mobile_no": data.get("mobile"),
         "phone": data.get("phone"),
-        "lead_source": "Alfarsi Website",
+        "source": "Alfarsi Website",
         "status": "Lead",
         "company_name": data.get("organization_name"),
         "custom_address_line1": data.get("address_line_1"),
@@ -47,6 +47,32 @@ def create_lead():
     })
     lead.insert(ignore_permissions=True)
     return {"message": _("Lead created successfully"), "Lead ID": lead.name}
+
+@frappe.whitelist(allow_guest=True)
+def create_opportunity():
+    data = json.loads(frappe.request.data)
+    medusa_id = data.get("customer_id")
+    form = data.get("form")
+
+    lead = frappe.get_value("Lead", {"medusa_id": medusa_id}, "name")
+
+    opportunity_type = "Sales" if form == "Setup Clinic" else "Support"
+    sales_stage = "Prospecting" if form == "Setup Clinic" else "Needs Analysis"
+    expected_closing = datetime.today() + timedelta(days=30)
+
+    opportunity = frappe.get_doc({
+        "doctype": "Opportunity",
+        "opportunity_type": opportunity_type,
+        "sales_stage": sales_stage,
+        "opportunity_from": "Lead",
+        "source": "Advertisement",
+        "expected_closing": expected_closing.date(),
+        "party_name": lead,
+        "status": "Open",
+    })
+
+    opportunity.insert(ignore_permissions=True)
+    return {"message": _("Opportunity created successfully"), "Opportunity ID": opportunity.name}
 
 def export_item(self):
 	item_group = frappe.get_doc("Item Group", self.item_group)
