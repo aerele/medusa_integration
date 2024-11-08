@@ -78,24 +78,37 @@ def create_opportunity():
 def create_quotation():
     data = json.loads(frappe.request.data)
     medusa_id = data.get("customer_id")
-    form = data.get("form")
+    items = data.get("items", [])
+    valid_till = datetime.today() + timedelta(days=30)
 
     lead = frappe.get_value("Lead", {"medusa_id": medusa_id}, "name")
-
-    opportunity_type = "Sales" if form == "Setup Clinic" else "Support"
-    sales_stage = "Prospecting" if form == "Setup Clinic" else "Needs Analysis"
-    expected_closing = datetime.today() + timedelta(days=30)
-
+    print(lead)
+    
     quote = frappe.get_doc({
-        "doctype": "Opportunity",
-        "opportunity_type": opportunity_type,
-        "sales_stage": sales_stage,
-        "opportunity_from": "Lead",
-        "source": "Advertisement",
-        "expected_closing": expected_closing.date(),
+        "doctype": "Quotation",
+        "order_type": "Shopping Cart",
+        "quotation_to": "Lead",
         "party_name": lead,
-        "status": "Open",
+        "valid_till": valid_till.date(),
+        "items": []
     })
+
+    for item in items:
+        variant_id = item.get("variant_id")
+        quantity = item.get("quantity", 1)
+
+        # Get the item code from ERPNext linked to the variant_id
+        item_code = frappe.get_value("Website Item", {"medusa_variant_id": variant_id}, "item_code")
+        if not item_code:
+            return {"error": _("Item not found for variant ID: {}").format(variant_id)}
+
+        # Add item to the quotation
+        quote.append("items", {
+            "item_code": item_code,
+            "qty": quantity,
+            "rate": frappe.get_value("Item Price", {"item_code": item_code}, "price_list_rate") or 0,
+            "description": frappe.get_value("Item", item_code, "description") or "No description available"
+        })
 
     quote.insert(ignore_permissions=True)
     return {"message": _("Quotation created successfully"), "Quotation ID": quote.name}
