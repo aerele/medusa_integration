@@ -74,6 +74,32 @@ def create_opportunity():
     opportunity.insert(ignore_permissions=True)
     return {"message": _("Opportunity created successfully"), "Opportunity ID": opportunity.name}
 
+@frappe.whitelist(allow_guest=True)
+def create_quotation():
+    data = json.loads(frappe.request.data)
+    medusa_id = data.get("customer_id")
+    form = data.get("form")
+
+    lead = frappe.get_value("Lead", {"medusa_id": medusa_id}, "name")
+
+    opportunity_type = "Sales" if form == "Setup Clinic" else "Support"
+    sales_stage = "Prospecting" if form == "Setup Clinic" else "Needs Analysis"
+    expected_closing = datetime.today() + timedelta(days=30)
+
+    quote = frappe.get_doc({
+        "doctype": "Opportunity",
+        "opportunity_type": opportunity_type,
+        "sales_stage": sales_stage,
+        "opportunity_from": "Lead",
+        "source": "Advertisement",
+        "expected_closing": expected_closing.date(),
+        "party_name": lead,
+        "status": "Open",
+    })
+
+    quote.insert(ignore_permissions=True)
+    return {"message": _("Quotation created successfully"), "Quotation ID": quote.name}
+
 def export_item(self):
 	item_group = frappe.get_doc("Item Group", self.item_group)
 
