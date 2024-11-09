@@ -1,7 +1,6 @@
 import requests
 import frappe
 import json
-from frappe import _
 from medusa_integration.constants import get_headers, get_url
 from medusa_integration.utils import send_request
 from datetime import datetime, timedelta
@@ -20,7 +19,7 @@ from datetime import datetime, timedelta
 #         "offers_agreement": data.get("offers_agreement"),
 #     })
 #     customer.insert(ignore_permissions=True)
-#     return {"message": _("Customer created successfully"), "customer_id": customer.name}
+#     return {"message": ("Customer created successfully"), "customer_id": customer.name}
 
 @frappe.whitelist(allow_guest=True)
 def create_lead():
@@ -46,7 +45,7 @@ def create_lead():
 		"offers_agreement": data.get("offers_agreement"),
 	})
 	lead.insert(ignore_permissions=True)
-	return {"message": _("Lead created successfully"), "Lead ID": lead.name}
+	return {"message": ("Lead created successfully"), "Lead ID": lead.name}
 
 @frappe.whitelist(allow_guest=True)
 def create_opportunity():
@@ -72,7 +71,7 @@ def create_opportunity():
 	})
 
 	opportunity.insert(ignore_permissions=True)
-	return {"message": _("Opportunity created successfully"), "Opportunity ID": opportunity.name}
+	return {"message": ("Opportunity created successfully"), "Opportunity ID": opportunity.name}
 
 @frappe.whitelist(allow_guest=True)
 def create_quotation():
@@ -92,16 +91,16 @@ def create_quotation():
 		"items": [],
 		"taxes": []
 	})
+	tax_summary = {}
 
 	for item in items:
 		variant_id = item.get("variant_id")
 		quantity = item.get("quantity", 1)
 
 		item_code = frappe.get_value("Website Item", {"medusa_variant_id": variant_id}, "item_code")
-		rate = frappe.get_value("Item Price", {"item_code": item_code}, "price_list_rate")
-		print("rate: ", rate)
+		# rate = frappe.get_value("Item Price", {"item_code": item_code}, "price_list_rate")
 		if not item_code:
-			return {"error": _("Item not found for variant ID: {}").format(variant_id)}
+			return {"error": ("Item not found for variant ID: {}").format(variant_id)}
 
 		quote.append("items", {
 			"item_code": item_code,
@@ -112,20 +111,34 @@ def create_quotation():
 		
 		item_doc = frappe.get_doc("Item", item_code)
 		item_taxes = item_doc.taxes or []
-		print("Item taxes: ", item_taxes)
+		
 		for tax in item_taxes:
 			tax_template = tax.item_tax_template
 			tax_template_doc = frappe.get_doc("Item Tax Template", tax_template)
 			for template_tax in tax_template_doc.taxes:
-				quote.append("taxes", {
-					"charge_type": "On Net Total",
-					"account_head": template_tax.tax_type,
-					# "rate": 2, #tax.tax_rate,
-					"description": "test" #tax.account_head
-				})
+				account_head = template_tax.tax_type
+
+				item_rate = frappe.get_value("Item Price", {"item_code": item_code}, "price_list_rate") or 0
+				taxable_amount = item_rate * quantity
+
+				if account_head not in tax_summary:
+					tax_summary[account_head] = {
+						"amount": 0,
+						"description": account_head
+					}
+				tax_summary[account_head]["amount"] += taxable_amount
+
+	for account_head, tax_info in tax_summary.items():
+		tax_amount = (tax_info["rate"] / 100) * tax_info["amount"]
+		if tax_amount > 0:
+			quote.append("taxes", {
+				"charge_type": "On Net Total",
+				"account_head": account_head,
+				# "description": tax_info["description"]
+			})
 
 	quote.insert(ignore_permissions=True)
-	return {"message": _("Quotation created successfully"), "Quotation ID": quote.name}
+	return {"message": ("Quotation created successfully"), "Quotation ID": quote.name}
 
 def export_item(self):
 	item_group = frappe.get_doc("Item Group", self.item_group)
