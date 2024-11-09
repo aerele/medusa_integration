@@ -91,22 +91,20 @@ def create_quotation():
 		"items": [],
 		"taxes": []
 	})
-	tax_summary = {}
-
+	
+	tax_summary = set()
+	
 	for item in items:
 		variant_id = item.get("variant_id")
 		quantity = item.get("quantity", 1)
 
 		item_code = frappe.get_value("Website Item", {"medusa_variant_id": variant_id}, "item_code")
-		# rate = frappe.get_value("Item Price", {"item_code": item_code}, "price_list_rate")
 		if not item_code:
 			return {"error": ("Item not found for variant ID: {}").format(variant_id)}
 
 		quote.append("items", {
 			"item_code": item_code,
 			"qty": quantity,
-			# "rate": frappe.get_value("Item Price", {"item_code": item_code}, "price_list_rate") or 0,
-			"description": frappe.get_value("Item", item_code, "description") or "No description available"
 		})
 		
 		item_doc = frappe.get_doc("Item", item_code)
@@ -114,28 +112,17 @@ def create_quotation():
 		
 		for tax in item_taxes:
 			tax_template = tax.item_tax_template
-			tax_template_doc = frappe.get_doc("Item Tax Template", tax_template)
-			for template_tax in tax_template_doc.taxes:
-				account_head = template_tax.tax_type
-
-				item_rate = frappe.get_value("Item Price", {"item_code": item_code}, "price_list_rate") or 0
-				taxable_amount = item_rate * quantity
-
-				if account_head not in tax_summary:
-					tax_summary[account_head] = {
-						"amount": 0,
-						"description": account_head
-					}
-				tax_summary[account_head]["amount"] += taxable_amount
-
-	for account_head, tax_info in tax_summary.items():
-		tax_amount = (tax_info["rate"] / 100) * tax_info["amount"]
-		if tax_amount > 0:
-			quote.append("taxes", {
-				"charge_type": "On Net Total",
-				"account_head": account_head,
-				# "description": tax_info["description"]
-			})
+			if tax_template:
+				tax_template_doc = frappe.get_doc("Item Tax Template", tax_template)
+				for template_tax in tax_template_doc.taxes:
+					account_head = template_tax.tax_type
+					if account_head not in tax_summary:
+						tax_summary.add(account_head)
+						quote.append("taxes", {
+							"charge_type": "On Net Total",
+							"account_head": account_head,
+							"description": account_head
+						})
 
 	quote.insert(ignore_permissions=True)
 	return {"message": ("Quotation created successfully"), "Quotation ID": quote.name}
