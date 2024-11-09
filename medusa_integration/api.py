@@ -82,33 +82,47 @@ def create_quotation():
 	valid_till = datetime.today() + timedelta(days=30)
 
 	lead = frappe.get_value("Lead", {"medusa_id": medusa_id}, "name")
-	print(lead)
-	
+
 	quote = frappe.get_doc({
 		"doctype": "Quotation",
 		"order_type": "Shopping Cart",
 		"quotation_to": "Lead",
 		"party_name": lead,
 		"valid_till": valid_till.date(),
-		"items": []
+		"items": [],
+		"taxes": []
 	})
 
 	for item in items:
 		variant_id = item.get("variant_id")
 		quantity = item.get("quantity", 1)
 
-		# Get the item code from ERPNext linked to the variant_id
 		item_code = frappe.get_value("Website Item", {"medusa_variant_id": variant_id}, "item_code")
+		rate = frappe.get_value("Item Price", {"item_code": item_code}, "price_list_rate")
+		print("rate: ", rate)
 		if not item_code:
 			return {"error": _("Item not found for variant ID: {}").format(variant_id)}
 
-		# Add item to the quotation
 		quote.append("items", {
 			"item_code": item_code,
 			"qty": quantity,
-			"rate": frappe.get_value("Item Price", {"item_code": item_code}, "price_list_rate") or 0,
+			# "rate": frappe.get_value("Item Price", {"item_code": item_code}, "price_list_rate") or 0,
 			"description": frappe.get_value("Item", item_code, "description") or "No description available"
 		})
+		
+		item_doc = frappe.get_doc("Item", item_code)
+		item_taxes = item_doc.taxes or []
+		print("Item taxes: ", item_taxes)
+		for tax in item_taxes:
+			tax_template = tax.item_tax_template
+			tax_template_doc = frappe.get_doc("Item Tax Template", tax_template)
+			for template_tax in tax_template_doc.taxes:
+				quote.append("taxes", {
+					"charge_type": "On Net Total",
+					"account_head": template_tax.tax_type,
+					# "rate": 2, #tax.tax_rate,
+					"description": "test" #tax.account_head
+				})
 
 	quote.insert(ignore_permissions=True)
 	return {"message": _("Quotation created successfully"), "Quotation ID": quote.name}
