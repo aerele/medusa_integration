@@ -954,3 +954,73 @@ def clear_all_brand_image_id(): #For brand
 		frappe.db.set_value("File", image.name, {"medusa_id": ""})
 
 	frappe.db.commit()
+
+def export_quotation(self, method):
+	quotation = frappe.get_doc("Quotation", self)
+	lead = frappe.get_value("Lead", {"name": quotation.party_name}, "medusa_id")
+	print("call 3")
+
+	payload = {
+		"customer_id": lead,
+		"draft_order_id": quotation.medusa_draft_order_id,
+		"erp_status": "Received",
+		"erp_items": [],
+		"erp_total_quantity": quotation.total_qty,
+		"erp_total": quotation.total,
+		"erp_net_total": quotation.net_total or 0,
+		"erp_tax": [],
+		"erp_total_taxes": quotation.total_taxes_and_charges or 0,
+		"avail_delivery": quotation.get("delivery_available", False),
+		"erp_delivery_charges": quotation.get("erp_delivery_charges", 2),
+		"erp_grand_total": quotation.grand_total or 0,
+		"erp_rounding_adjustments": quotation.rounding_adjustment or 0,
+		"erp_discount_on": quotation.apply_discount_on,
+		"erp_discount_percentage": quotation.additional_discount_percentage or 0,
+		"erp_discount_amount": quotation.discount_amount or 0,
+		"tax_breakup": quotation.other_charges_calculation or "",
+	}
+
+	for item in quotation.items:
+		payload["erp_items"].append({
+			"item_name": item.item_name,
+			"price": item.rate,
+			"quantity": item.qty,
+			"amount": item.amount
+		})
+
+	for tax in quotation.taxes:
+		payload["erp_tax"].append({
+			"account_head": tax.account_head,
+			"tax_rate": tax.rate or 0,
+			"tax_amount": tax.tax_amount or 0
+		})
+
+	try:
+		if quotation.medusa_quotation_id and quotation.medusa_draft_order_id:
+			args = frappe._dict({
+				"method": "POST",
+				"url": f"{get_url()[0]}/store/quotation-update?quot_id={quotation.medusa_quotation_id}",
+				"headers": get_headers(with_token=True),
+				"payload": json.dumps(payload),
+				"throw_message": f"Error while exporting Quotation {quotation.name} to Medusa"
+			})
+			response = send_request(args)
+
+			if response.message == "Quotation updated successfully":
+				print(f"Quotation {quotation.name} exported to Medusa successfully")
+			else:
+				print(f"Error: Quotation export failed for {quotation.name}: {response.get('error')}")
+	   
+	except Exception as e:
+			print(f"Error exporting Quotation {quotation.name}: {str(e)}")
+			raise e
+
+def export_quotation_on_update(doc, method):
+	print("Function Called")
+	if doc.workflow_state == "Ready for Customer Review":
+		print("call 2")
+		try:
+			export_quotation(doc.name, "")
+		except Exception as e:
+			frappe.log_error(f"Failed to export Quotation {doc.name}: {str(e)}", "Quotation Export Error")
+			print(f"Error exporting Quotation {doc.name}: {str(e)}")

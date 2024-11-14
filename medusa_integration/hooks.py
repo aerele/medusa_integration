@@ -143,6 +143,9 @@ doc_events = {
  	# "Brand": {
 	# 	"validate": "medusa_integration.api.export_brand"
 	# },
+	"Quotation": {
+        "on_update": "medusa_integration.api.export_quotation_on_update"
+    },
 	# "File": {
 	# 	"after_insert": "medusa_integration.api.file_validation_wrapper"
 	# }
