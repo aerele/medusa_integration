@@ -84,9 +84,12 @@ def create_quotation():
 
 	quote = frappe.get_doc({
 		"doctype": "Quotation",
+		"title": "Unapproved Lead",
 		"order_type": "Shopping Cart",
 		"quotation_to": "Lead",
 		"party_name": lead,
+		"medusa_draft_order_id": data.get("draft_order_id"),
+		"medusa_quotation_id": data.get("quotation_id"),
 		"valid_till": valid_till.date(),
 		"items": [],
 		"taxes": []
@@ -124,8 +127,62 @@ def create_quotation():
 							"description": account_head
 						})
 
-	quote.insert(ignore_permissions=True)
+	quote.insert(ignore_permissions=True)	
+	quote.title = "Unapproved Lead"
+	quote.save(ignore_permissions=True)
 	return {"message": ("Quotation created successfully"), "Quotation ID": quote.name}
+
+@frappe.whitelist(allow_guest=True)
+def update_quotation(): # For customer approval or rejection
+	data = json.loads(frappe.request.data)
+	quotation_id = data.get("quotation_id")
+	approval = data.get("approval")
+	# items = data.get("items", [])
+
+	try:
+		quote = frappe.get_doc("Quotation", quotation_id)
+	except frappe.DoesNotExistError:
+		return {"error": "Quotation not found for ID: {}".format(quotation_id)}
+
+	quote.workflow_state = "Approved" if approval == True else "Rejected"
+
+	# quote.items = []
+	# quote.taxes = []
+
+	# tax_summary = set()
+
+	# for item in items:
+	# 	variant_id = item.get("variant_id")
+	# 	quantity = item.get("quantity", 1)
+
+	# 	item_code = frappe.get_value("Website Item", {"medusa_variant_id": variant_id}, "item_code")
+	# 	if not item_code:
+	# 		return {"error": "Item not found for variant ID: {}".format(variant_id)}
+
+	# 	quote.append("items", {
+	# 		"item_code": item_code,
+	# 		"qty": quantity,
+	# 	})
+
+	# 	item_doc = frappe.get_doc("Item", item_code)
+	# 	item_taxes = item_doc.taxes or []
+
+	# 	for tax in item_taxes:
+	# 		tax_template = tax.item_tax_template
+	# 		if tax_template:
+	# 			tax_template_doc = frappe.get_doc("Item Tax Template", tax_template)
+	# 			for template_tax in tax_template_doc.taxes:
+	# 				account_head = template_tax.tax_type
+	# 				if account_head not in tax_summary:
+	# 					tax_summary.add(account_head)
+	# 					quote.append("taxes", {
+	# 						"charge_type": "On Net Total",
+	# 						"account_head": account_head,
+	# 						"description": account_head
+	# 					})
+
+	quote.save(ignore_permissions=True)
+	return {"message": "Quotation updated successfully", "Quotation ID": quote.name}
 
 def export_item(self):
 	item_group = frappe.get_doc("Item Group", self.item_group)
@@ -958,7 +1015,6 @@ def clear_all_brand_image_id(): #For brand
 def export_quotation(self, method):
 	quotation = frappe.get_doc("Quotation", self)
 	lead = frappe.get_value("Lead", {"name": quotation.party_name}, "medusa_id")
-	print("call 3")
 
 	payload = {
 		"customer_id": lead,
@@ -981,8 +1037,9 @@ def export_quotation(self, method):
 	}
 
 	for item in quotation.items:
+		web_item_name = frappe.get_value("Website Item", {"item_name": item.item_name}, "web_item_name")
 		payload["erp_items"].append({
-			"item_name": item.item_name,
+			"item": web_item_name,
 			"price": item.rate,
 			"quantity": item.qty,
 			"amount": item.amount
@@ -1016,9 +1073,8 @@ def export_quotation(self, method):
 			raise e
 
 def export_quotation_on_update(doc, method):
-	print("Function Called")
-	if doc.workflow_state == "Ready for Customer Review":
-		print("call 2")
+	source = frappe.get_value("Lead", {"name": doc.party_name}, "source")
+	if doc.workflow_state == "Ready for Customer Review" and source == "Alfarsi Website":
 		try:
 			export_quotation(doc.name, "")
 		except Exception as e:
