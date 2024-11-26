@@ -5,6 +5,7 @@ import json
 from medusa_integration.constants import get_headers, get_url
 from medusa_integration.utils import send_request
 from datetime import datetime, timedelta
+from alfarsi_erpnext.alfarsi_erpnext.customer import fetch_standard_price
 
 # @frappe.whitelist(allow_guest=True)
 # def create_customer():
@@ -104,7 +105,7 @@ def create_quotation():
 
 		item_code = frappe.get_value("Website Item", {"medusa_variant_id": variant_id}, "item_code")
 		if not item_code:
-			return {"error": ("Item not found for variant ID: {}").format(variant_id)}
+			return {"error": "Item not found for variant ID: {}".format(variant_id)}
 
 		quote.append("items", {
 			"item_code": item_code,
@@ -128,75 +129,28 @@ def create_quotation():
 							"description": account_head
 						})
 
-	quote.insert(ignore_permissions=True)	
-	quote.title = "Unapproved Lead"
-	quote.save(ignore_permissions=True)
-	return {"message": ("Quotation created successfully"), "Quotation ID": quote.name}
+	quote.insert(ignore_permissions=True)
 
-# @frappe.whitelist(allow_guest=True)
-# def create_sales_order():
-# 	data = json.loads(frappe.request.data)
-# 	# medusa_id = data.get("customer_id")
-# 	items = data.get("items", [])
-# 	delivery_date = datetime.today() + timedelta(days=7)
+	serialized_items = json.dumps([item.as_dict() for item in quote.items])
 
-# 	# customer = frappe.get_value("Customer", {"medusa_id": medusa_id}, "name")
-# 	customer = "Precision Dental Clinic"
-# 	if not customer:
-# 		return {"error": "Customer not found for provided medusa_id."}
+	try:
+		prices = fetch_standard_price(
+			items=serialized_items,
+			price_list=quote.selling_price_list,
+			party=quote.party_name,
+			quotation_to=quote.quotation_to
+		)
 
-# 	sales_order = frappe.get_doc({
-# 		"doctype": "Sales Order",
-# 		# "title": "Unapproved Sales Order",
-# 		"customer": "Precision Dental Clinic", #customer,
-# 		"delivery_date": "20-11-2024", # delivery_date.date(),
-# 		"order_type": "Sales",
-# 		# "medusa_draft_order_id": data.get("draft_order_id"),
-# 		# "medusa_sales_order_id": data.get("order_id"),
-# 		"items": []
-# 		# "taxes": []
-# 	})
+		for item in quote.items:
+			item_code = item.item_code
+			item.standard_price = prices.get(item_code, 0)
+			item.rate = prices.get(f"{item_code}-negotiated", 0)
 
-# 	# tax_summary = set()
+		quote.save(ignore_permissions=True)
+	except Exception as e:
+		return {"error": f"Failed to fetch and update standard prices: {str(e)}"}
 
-# 	# for item in items:
-# 	#     item_name = item.get("item")
-# 	#     price = item.get("price", 0)
-# 	#     quantity = item.get("quantity", 1)
-# 	#     amount = item.get("amount", 0)
-
-# 	#     item_code = frappe.get_value("Item", {"item_name": item_name}, "item_code")
-# 	#     if not item_code:
-# 	#         return {"error": ("Item not found for item name: {}").format(item_name)}
-# 	#     print ("1#################")
-
-# 	sales_order.append("items", {
-# 		"item_code": 3020036,
-# 		"qty": 2.0,
-# 		"rate": 3.5,
-# 		"amount": 7.0
-# 	})
-# 	print ("2@@@@@@@@@@@@@@@@@@@@@@@@@@")
-
-# 		# item_doc = frappe.get_doc("Item", item_code)
-# 		# item_taxes = item_doc.taxes or []
-
-# 		# for tax in item_taxes:
-# 		#     tax_template = tax.item_tax_template
-# 		#     if tax_template:
-# 		#         tax_template_doc = frappe.get_doc("Item Tax Template", tax_template)
-# 		#         for template_tax in tax_template_doc.taxes:
-# 		#             account_head = template_tax.tax_type
-# 		#             if account_head not in tax_summary:
-# 		#                 tax_summary.add(account_head)
-# 		#                 sales_order.append("taxes", {
-# 		#                     "charge_type": "On Net Total",
-# 		#                     "account_head": account_head,
-# 		#                     "description": account_head
-# 		#                 })
-
-# 	sales_order.insert(ignore_permissions=True)
-# 	return {"message": "Sales Order created successfully", "Sales Order ID": sales_order.name}
+	return {"message": "Quotation created successfully", "Quotation ID": quote.name}
 
 @frappe.whitelist(allow_guest=True)
 def create_sales_order():
@@ -263,7 +217,6 @@ def update_quotation(): # Function to receive quotation updates
 		quote.submit()
 		if quote.quotation_to == "Customer":
 			try:
-				# Create Sales Order from the Quotation
 				sales_order = frappe.get_doc({
 					"doctype": "Sales Order",
 					"quotation_id": quotation_id,
