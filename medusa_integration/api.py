@@ -201,53 +201,40 @@ def create_quotation():
 @frappe.whitelist(allow_guest=True)
 def create_sales_order():
 	try:
-		# data = json.loads(frappe.request.data)
-		# items = data.get("items", [])
+		data = json.loads(frappe.request.data)
+		items = data.get("items", [])
 		delivery_date = datetime.today() + timedelta(days=7)
 
-		customer = "C01039"
+		customer = data.get("customer")
 
-		company = "AL FARSI MEDICAL SUPPLIES"
-		
-		# Handle Title
-		title = "Precision Dental Clinic"
+		company = data.get("company")
 
 		sales_order = frappe.new_doc("Sales Order")
 		sales_order.update(
 			{
-			# "transaction_date": "26-11-2024",
 			"customer": customer,
-			# "delivery_date": delivery_date.strftime("%Y-%m-%d"),
 			"delivery_date": delivery_date,
 			"order_type": "Sales",
-			"selling_price_list": "Standard Selling",
-			"set_warehouse": "Al Khuwair  - AFMS",
-			# "transaction_date": datetime.today().strftime("%Y-%m-%d"),
 			"company": company,
 			"workflow_state": "Draft",
 			"items": [],
-			"title": title,
-			"conversion_rate": 1.0,
-			"plc_conversion_rate": 1.0,
-			"currency": "OMR",
-			"grand_total": 7
+			"conversion_rate": 1.0
 		})
 
-		item_code = "3020036"
+		for item in items:
+			item_code = item.get("item_code")
+			qty = item.get("qty")
+			rate = item.get("rate")
+			amount = rate * qty
 
-		rate = 3.5
-		qty = 2.0
-		amount = rate * qty
-
-		sales_order.append("items", {
-			"item_code": item_code,
-			"qty": qty,
-			"rate": rate,
-			"base_net_rate": rate,
-			"amount": amount,
-			"uom": "Pack",
-			"conversion_factor": 1.0,
-		})
+			sales_order.append("items", {
+				"item_code": item_code,
+				"qty": qty,
+				"rate": rate,
+				"base_net_rate": rate,
+				"amount": amount,
+				"conversion_factor": 1.0,
+			})
 
 		sales_order.insert(ignore_permissions=True)
 
