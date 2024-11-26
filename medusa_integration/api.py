@@ -1,5 +1,6 @@
 import requests
 import frappe
+from frappe.utils import now_datetime, add_days, getdate, nowdate
 import json
 from medusa_integration.constants import get_headers, get_url
 from medusa_integration.utils import send_request
@@ -132,8 +133,181 @@ def create_quotation():
 	quote.save(ignore_permissions=True)
 	return {"message": ("Quotation created successfully"), "Quotation ID": quote.name}
 
+# @frappe.whitelist(allow_guest=True)
+# def create_sales_order():
+# 	data = json.loads(frappe.request.data)
+# 	# medusa_id = data.get("customer_id")
+# 	items = data.get("items", [])
+# 	delivery_date = datetime.today() + timedelta(days=7)
+
+# 	# customer = frappe.get_value("Customer", {"medusa_id": medusa_id}, "name")
+# 	customer = "Precision Dental Clinic"
+# 	if not customer:
+# 		return {"error": "Customer not found for provided medusa_id."}
+
+# 	sales_order = frappe.get_doc({
+# 		"doctype": "Sales Order",
+# 		# "title": "Unapproved Sales Order",
+# 		"customer": "Precision Dental Clinic", #customer,
+# 		"delivery_date": "20-11-2024", # delivery_date.date(),
+# 		"order_type": "Sales",
+# 		# "medusa_draft_order_id": data.get("draft_order_id"),
+# 		# "medusa_sales_order_id": data.get("order_id"),
+# 		"items": []
+# 		# "taxes": []
+# 	})
+
+# 	# tax_summary = set()
+
+# 	# for item in items:
+# 	#     item_name = item.get("item")
+# 	#     price = item.get("price", 0)
+# 	#     quantity = item.get("quantity", 1)
+# 	#     amount = item.get("amount", 0)
+
+# 	#     item_code = frappe.get_value("Item", {"item_name": item_name}, "item_code")
+# 	#     if not item_code:
+# 	#         return {"error": ("Item not found for item name: {}").format(item_name)}
+# 	#     print ("1#################")
+
+# 	sales_order.append("items", {
+# 		"item_code": 3020036,
+# 		"qty": 2.0,
+# 		"rate": 3.5,
+# 		"amount": 7.0
+# 	})
+# 	print ("2@@@@@@@@@@@@@@@@@@@@@@@@@@")
+
+# 		# item_doc = frappe.get_doc("Item", item_code)
+# 		# item_taxes = item_doc.taxes or []
+
+# 		# for tax in item_taxes:
+# 		#     tax_template = tax.item_tax_template
+# 		#     if tax_template:
+# 		#         tax_template_doc = frappe.get_doc("Item Tax Template", tax_template)
+# 		#         for template_tax in tax_template_doc.taxes:
+# 		#             account_head = template_tax.tax_type
+# 		#             if account_head not in tax_summary:
+# 		#                 tax_summary.add(account_head)
+# 		#                 sales_order.append("taxes", {
+# 		#                     "charge_type": "On Net Total",
+# 		#                     "account_head": account_head,
+# 		#                     "description": account_head
+# 		#                 })
+
+# 	sales_order.insert(ignore_permissions=True)
+# 	return {"message": "Sales Order created successfully", "Sales Order ID": sales_order.name}
+
 @frappe.whitelist(allow_guest=True)
-def update_quotation(): # For customer approval or rejection
+def create_sales_order():
+	try:
+		data = json.loads(frappe.request.data)
+		items = data.get("items", [])
+		delivery_date = datetime.today() + timedelta(days=7)
+		print("###############1111111")
+		print(type(delivery_date))
+
+		customer = "C01039"
+		if not customer:
+			frappe.log_error("Customer not found for provided medusa_id.")
+			return {"error": "Customer not found for provided medusa_id."}
+
+		company = "AL FARSI MEDICAL SUPPLIES"
+		if not frappe.db.exists("Company", company):
+			frappe.log_error("Company not found")
+			return {"error": "Specified company not found"}
+
+		print("###############222222222222222")
+		
+		# Handle Title
+		title = "Precision Dental Clinic"
+		if len(title) > 140:
+			title = title[:140]  # Truncate to 140 characters
+		frappe.log_error(f"Truncated Title: {title} (Length: {len(title)})", "Title Debug")
+		print("###############33333333333333333333")
+
+		sales_order = frappe.new_doc("Sales Order")
+		sales_order.update(
+			{
+			"transaction_date": "25-11-2024",
+			"customer": customer,
+			# "delivery_date": delivery_date.strftime("%Y-%m-%d"),
+			"delivery_date": "30-11-2024",
+			"order_type": "Sales",
+			"selling_price_list": "Standard Selling",
+			"set_warehouse": "Al Khuwair  - AFMS",
+			# "transaction_date": datetime.today().strftime("%Y-%m-%d"),
+			"company": company,
+			"workflow_state": "Draft",
+			"items": [],
+			"title": title,
+			"conversion_rate": 1.0,
+			"plc_conversion_rate": 1.0,
+			"currency": "OMR",
+			"grand_total": 7
+		})
+		print("###############44444444444444444444")
+
+		item_code = "3020036"
+		if not frappe.db.exists("Item", item_code):
+			frappe.log_error(f"Item {item_code} not found")
+			return {"error": f"Item {item_code} not found"}
+
+		print("###############55555555555555555555555555555")
+
+		rate = 3.5
+		qty = 2.0
+		amount = rate * qty
+		print(amount, rate)
+
+		frappe.log_error(f"Rate: {rate}, Qty: {qty}, Amount: {amount}", "Numeric Field Debug")
+
+		if rate is None or qty is None or amount is None:
+			return {"error": "One of the numeric fields is None"}
+
+		print("###############6666666666666666666")
+
+		sales_order.append("items", {
+			"item_code": item_code,
+			"qty": qty,
+			"rate": rate,
+			"base_net_rate": rate,
+			"amount": amount,
+			"uom": "Pack",
+			"conversion_factor": 1.0,
+		})
+		sales_order.run_method("set_missing_values")
+		sales_order.save()
+		print("###############7777777777777777777777777777777")
+		# frappe.log_error(sales_order.as_dict(), "Sales Order Before Insert")
+		print(sales_order.as_dict())
+		print(sales_order)
+		print("###############8888888888888888888888")
+
+		sales_order.insert(ignore_permissions=True, ignore_mandatory=True)
+		print("###################(((((((((())))))))))")
+
+		return {"message": "Sales Order created successfully", "Sales Order ID": sales_order.name}
+
+	except Exception as e:
+		frappe.log_error(frappe.get_traceback(), "Sales Order Creation Error")
+		return {"error": str(e)}
+
+@frappe.whitelist()
+def create_so():
+	so = frappe.new_doc("Sales Order")
+	so.update({
+		"customer": "C01039",
+		"due_date": "2024-11-30",
+	})
+	so.append("items"
+			   , {"item_code": "3020036", "qty": 1, "rate": 3.5, "base_net_rate": 3.5, "uom": "Pack", "delivery_date": getdate()})
+	so.save()
+	return so
+
+
+@frappe.whitelist(allow_guest=True)
+def update_quotation(): # Function to receive quotation updates
 	data = json.loads(frappe.request.data)
 	quotation_id = data.get("quotation_id")
 	approval = data.get("approval")
@@ -145,6 +319,7 @@ def update_quotation(): # For customer approval or rejection
 		return {"error": "Quotation not found for ID: {}".format(quotation_id)}
 
 	quote.workflow_state = "Approved" if approval == True else "Rejected"
+	quote.order_type = "Sales"
 
 	# quote.items = []
 	# quote.taxes = []
