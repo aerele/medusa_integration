@@ -203,7 +203,7 @@ def create_sales_order():
 	try:
 		data = json.loads(frappe.request.data)
 		items = data.get("items", [])
-		delivery_date = datetime.today() + timedelta(days=7)
+		delivery_date = datetime.today() + timedelta(days=1)
 
 		customer = data.get("customer")
 
@@ -256,8 +256,34 @@ def update_quotation(): # Function to receive quotation updates
 	except frappe.DoesNotExistError:
 		return {"error": "Quotation not found for ID: {}".format(quotation_id)}
 
-	quote.workflow_state = "Approved" if approval == True else "Rejected"
-	quote.order_type = "Sales"
+	if approval == True:
+		quote.status = "Open"
+		quote.workflow_state = "Approved"
+		quote.order_type = "Sales"
+		quote.submit()
+		if quote.quotation_to == "Customer":
+			try:
+				# Create Sales Order from the Quotation
+				sales_order = frappe.get_doc({
+					"doctype": "Sales Order",
+					"quotation_id": quotation_id,
+					"customer": quote.party_name,
+					"delivery_date": frappe.utils.add_days(frappe.utils.nowdate(), 1),
+					"items": [{
+						"item_code": item.item_code,
+						"qty": item.qty,
+						"rate": item.rate,
+						"base_net_rate": item.rate,
+						"amount": item.amount,
+						"warehouse": item.warehouse
+					} for item in quote.items]
+				})
+				sales_order.flags.ignore_permissions = True
+				sales_order.insert()
+				sales_order.submit()
+			except Exception as e:
+				return {"error": "Failed to create Sales Order: {}".format(str(e))}
+
 
 	# quote.items = []
 	# quote.taxes = []
