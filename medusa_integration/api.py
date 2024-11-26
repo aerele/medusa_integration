@@ -201,38 +201,24 @@ def create_quotation():
 @frappe.whitelist(allow_guest=True)
 def create_sales_order():
 	try:
-		data = json.loads(frappe.request.data)
-		items = data.get("items", [])
+		# data = json.loads(frappe.request.data)
+		# items = data.get("items", [])
 		delivery_date = datetime.today() + timedelta(days=7)
-		print("###############1111111")
-		print(type(delivery_date))
 
 		customer = "C01039"
-		if not customer:
-			frappe.log_error("Customer not found for provided medusa_id.")
-			return {"error": "Customer not found for provided medusa_id."}
 
 		company = "AL FARSI MEDICAL SUPPLIES"
-		if not frappe.db.exists("Company", company):
-			frappe.log_error("Company not found")
-			return {"error": "Specified company not found"}
-
-		print("###############222222222222222")
 		
 		# Handle Title
 		title = "Precision Dental Clinic"
-		if len(title) > 140:
-			title = title[:140]  # Truncate to 140 characters
-		frappe.log_error(f"Truncated Title: {title} (Length: {len(title)})", "Title Debug")
-		print("###############33333333333333333333")
 
 		sales_order = frappe.new_doc("Sales Order")
 		sales_order.update(
 			{
-			"transaction_date": "25-11-2024",
+			# "transaction_date": "26-11-2024",
 			"customer": customer,
 			# "delivery_date": delivery_date.strftime("%Y-%m-%d"),
-			"delivery_date": "30-11-2024",
+			"delivery_date": delivery_date,
 			"order_type": "Sales",
 			"selling_price_list": "Standard Selling",
 			"set_warehouse": "Al Khuwair  - AFMS",
@@ -246,26 +232,12 @@ def create_sales_order():
 			"currency": "OMR",
 			"grand_total": 7
 		})
-		print("###############44444444444444444444")
 
 		item_code = "3020036"
-		if not frappe.db.exists("Item", item_code):
-			frappe.log_error(f"Item {item_code} not found")
-			return {"error": f"Item {item_code} not found"}
-
-		print("###############55555555555555555555555555555")
 
 		rate = 3.5
 		qty = 2.0
 		amount = rate * qty
-		print(amount, rate)
-
-		frappe.log_error(f"Rate: {rate}, Qty: {qty}, Amount: {amount}", "Numeric Field Debug")
-
-		if rate is None or qty is None or amount is None:
-			return {"error": "One of the numeric fields is None"}
-
-		print("###############6666666666666666666")
 
 		sales_order.append("items", {
 			"item_code": item_code,
@@ -276,35 +248,14 @@ def create_sales_order():
 			"uom": "Pack",
 			"conversion_factor": 1.0,
 		})
-		sales_order.run_method("set_missing_values")
-		sales_order.save()
-		print("###############7777777777777777777777777777777")
-		# frappe.log_error(sales_order.as_dict(), "Sales Order Before Insert")
-		print(sales_order.as_dict())
-		print(sales_order)
-		print("###############8888888888888888888888")
 
-		sales_order.insert(ignore_permissions=True, ignore_mandatory=True)
-		print("###################(((((((((())))))))))")
+		sales_order.insert(ignore_permissions=True)
 
 		return {"message": "Sales Order created successfully", "Sales Order ID": sales_order.name}
 
 	except Exception as e:
 		frappe.log_error(frappe.get_traceback(), "Sales Order Creation Error")
 		return {"error": str(e)}
-
-@frappe.whitelist()
-def create_so():
-	so = frappe.new_doc("Sales Order")
-	so.update({
-		"customer": "C01039",
-		"due_date": "2024-11-30",
-	})
-	so.append("items"
-			   , {"item_code": "3020036", "qty": 1, "rate": 3.5, "base_net_rate": 3.5, "uom": "Pack", "delivery_date": getdate()})
-	so.save()
-	return so
-
 
 @frappe.whitelist(allow_guest=True)
 def update_quotation(): # Function to receive quotation updates
