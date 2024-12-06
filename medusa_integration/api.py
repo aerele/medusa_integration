@@ -199,25 +199,75 @@ def create_sales_order():
 		return {"error": str(e)}
 
 @frappe.whitelist(allow_guest=True)
-def update_quotation(): # Function to receive quotation updates
+def update_quotation():
 	data = json.loads(frappe.request.data)
 	quotation_id = data.get("quotation_id")
 	approval = data.get("approval")
-	# items = data.get("items", [])
+	custom_is_quotation_required = data.get("is_quotation_required")
+	custom_location_and_contact_no = data.get("location_and_contact_no")
+	items = data.get("items", [])
+	unapproved_items = data.get("unapproved_items", [])
 
 	try:
 		quote = frappe.get_doc("Quotation", quotation_id)
 	except frappe.DoesNotExistError:
 		return {"error": "Quotation not found for ID: {}".format(quotation_id)}
+	
+	quote.status = "Open"
+	quote.workflow_state = "Approved"
+	quote.order_type = "Sales"
 
-	if approval == True:
+	tax_summary = set()
+
+	if items:
+		quote.items = []
+		quote.taxes = []
+		for item in items:
+			variant_id = item.get("variant_id")
+			item_code = frappe.get_value("Website Item", {"medusa_variant_id": variant_id}, "item_code")
+			if not item_code:
+				return {"error": "Item not found for variant ID: {}".format(variant_id)}
+
+			quote.append("items", {
+				"item_code": item_code,
+				"qty": item.get("quantity"),
+			})
+
+			item_doc = frappe.get_doc("Item", item_code)
+			item_taxes = item_doc.taxes or []
+			for tax in item_taxes:
+				tax_template = tax.item_tax_template
+				if tax_template:
+					tax_template_doc = frappe.get_doc("Item Tax Template", tax_template)
+					for template_tax in tax_template_doc.taxes:
+						account_head = template_tax.tax_type
+						if account_head not in tax_summary:
+							tax_summary.add(account_head)
+							quote.append("taxes", {
+								"charge_type": "On Net Total",
+								"account_head": account_head,
+								"description": account_head
+							})
+
+	if unapproved_items:
+		quote.unapproved_items = []
+		for item in unapproved_items:
+			variant_id = item.get("variant_id")
+			item_details = frappe.get_value("Website Item", {"medusa_variant_id": variant_id}, ["item_code", "stock_uom"], as_dict=True)
+			quote.append("unapproved_items", {
+					"item_code": item_details["item_code"],
+					"qty": item.get("quantity"),
+					"uom": item_details["stock_uom"]
+				})
+
+	if approval == "Test":
 		quote.status = "Open"
 		quote.workflow_state = "Approved"
 		quote.order_type = "Sales"
 		quote.submit()
 		if quote.quotation_to == "Customer":
 			try:
-				sales_order = frappe.get_doc({
+				sales_order_data = frappe.get_doc({
 					"doctype": "Sales Order",
 					"quotation_id": quotation_id,
 					"customer": quote.party_name,
@@ -231,49 +281,58 @@ def update_quotation(): # Function to receive quotation updates
 						"warehouse": item.warehouse
 					} for item in quote.items]
 				})
+
+				if custom_is_quotation_required:
+					sales_order_data["custom_is_quotation_required"] = custom_is_quotation_required
+					sales_order_data["custom_location_and_contact_no"] = custom_location_and_contact_no
+				
+				sales_order = frappe.get_doc(sales_order_data)
 				sales_order.flags.ignore_permissions = True
 				sales_order.insert()
 				sales_order.submit()
 			except Exception as e:
 				return {"error": "Failed to create Sales Order: {}".format(str(e))}
 
-
-	# quote.items = []
-	# quote.taxes = []
-
-	# tax_summary = set()
-
-	# for item in items:
-	# 	variant_id = item.get("variant_id")
-	# 	quantity = item.get("quantity", 1)
-
-	# 	item_code = frappe.get_value("Website Item", {"medusa_variant_id": variant_id}, "item_code")
-	# 	if not item_code:
-	# 		return {"error": "Item not found for variant ID: {}".format(variant_id)}
-
-	# 	quote.append("items", {
-	# 		"item_code": item_code,
-	# 		"qty": quantity,
-	# 	})
-
-	# 	item_doc = frappe.get_doc("Item", item_code)
-	# 	item_taxes = item_doc.taxes or []
-
-	# 	for tax in item_taxes:
-	# 		tax_template = tax.item_tax_template
-	# 		if tax_template:
-	# 			tax_template_doc = frappe.get_doc("Item Tax Template", tax_template)
-	# 			for template_tax in tax_template_doc.taxes:
-	# 				account_head = template_tax.tax_type
-	# 				if account_head not in tax_summary:
-	# 					tax_summary.add(account_head)
-	# 					quote.append("taxes", {
-	# 						"charge_type": "On Net Total",
-	# 						"account_head": account_head,
-	# 						"description": account_head
-	# 					})
-
 	quote.save(ignore_permissions=True)
+
+	def serialize_items(items):
+		return json.dumps([
+			{k: (v.isoformat() if isinstance(v, datetime) else v) for k, v in item.as_dict().items()}
+			for item in items
+		])
+
+	serialized_items = serialize_items(quote.items)
+	serialized_unapproved_items = serialize_items(quote.unapproved_items)
+
+	try:
+		prices = fetch_standard_price(
+			items=serialized_items,
+			price_list=quote.selling_price_list,
+			party=quote.party_name,
+			quotation_to=quote.quotation_to
+		)
+
+		unapproved_prices = fetch_standard_price(
+			items=serialized_unapproved_items,
+			price_list=quote.selling_price_list,
+			party=quote.party_name,
+			quotation_to=quote.quotation_to
+		)
+
+		for item in quote.items:
+			item_code = item.item_code
+			item.standard_price = prices.get(item_code, 0)
+			item.rate = prices.get(f"{item_code}-negotiated", 0)
+
+		for item in quote.unapproved_items:
+			item_code = item.item_code
+			item.standard_price = unapproved_prices.get(item_code, 0)
+			item.rate = unapproved_prices.get(f"{item_code}-negotiated", 0)
+
+		quote.save(ignore_permissions=True)
+	except Exception as e:
+		return {"error": f"Failed to fetch and update standard prices: {str(e)}"}
+
 	return {"message": "Quotation updated successfully", "Quotation ID": quote.name}
 
 def export_item(self):
