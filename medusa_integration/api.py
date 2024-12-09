@@ -82,17 +82,18 @@ def create_quotation():
 	items = data.get("items", [])
 	valid_till = datetime.today() + timedelta(days=30)
 
-	lead = frappe.get_value("Lead", {"medusa_id": medusa_id}, "name")
+	lead = frappe.get_value("Customer", {"medusa_id": medusa_id}, "name") #Need to update
 
 	quote = frappe.get_doc({
 		"doctype": "Quotation",
-		"title": "Unapproved Lead",
+		"title": "Unapproved Lead", #Need to update
 		"order_type": "Shopping Cart",
-		"quotation_to": "Lead",
+		"quotation_to": "Customer", #Need to update
 		"party_name": lead,
 		"medusa_draft_order_id": data.get("draft_order_id"),
 		"medusa_quotation_id": data.get("quotation_id"),
 		"valid_till": valid_till.date(),
+		"from_ecommerce": 1,
 		"items": [],
 		"taxes": []
 	})
@@ -213,13 +214,13 @@ def update_quotation():
 	except frappe.DoesNotExistError:
 		return {"error": "Quotation not found for ID: {}".format(quotation_id)}
 	
-	quote.status = "Open"
-	quote.workflow_state = "Approved"
-	quote.order_type = "Sales"
+	if approval == "Partially approved":
+		quote.status = "Open"
+		quote.workflow_state = "Approved" #Need to update
+		quote.order_type = "Sales"
 
-	tax_summary = set()
+		tax_summary = set()
 
-	if items:
 		quote.items = []
 		quote.taxes = []
 		for item in items:
@@ -231,6 +232,8 @@ def update_quotation():
 			quote.append("items", {
 				"item_code": item_code,
 				"qty": item.get("quantity"),
+				"rate": item.get("rate"),
+				"amount": item.get("amount")
 			})
 
 			item_doc = frappe.get_doc("Item", item_code)
@@ -249,89 +252,43 @@ def update_quotation():
 								"description": account_head
 							})
 
-	if unapproved_items:
 		quote.unapproved_items = []
 		for item in unapproved_items:
 			variant_id = item.get("variant_id")
 			item_details = frappe.get_value("Website Item", {"medusa_variant_id": variant_id}, ["item_code", "stock_uom"], as_dict=True)
 			quote.append("unapproved_items", {
-					"item_code": item_details["item_code"],
-					"qty": item.get("quantity"),
-					"uom": item_details["stock_uom"]
-				})
+				"item_code": item_details["item_code"],
+				"qty": item.get("quantity"),
+				"uom": item_details["stock_uom"],
+				"rate": item.get("rate"),
+				"amount": item.get("amount")
+			})
 
-	if approval == "Test":
+	if approval == "Approved":
 		quote.status = "Open"
 		quote.workflow_state = "Approved"
 		quote.order_type = "Sales"
 		quote.submit()
 		if quote.quotation_to == "Customer":
 			try:
-				sales_order_data = frappe.get_doc({
-					"doctype": "Sales Order",
-					"quotation_id": quotation_id,
-					"customer": quote.party_name,
-					"delivery_date": frappe.utils.add_days(frappe.utils.nowdate(), 1),
-					"items": [{
-						"item_code": item.item_code,
-						"qty": item.qty,
-						"rate": item.rate,
-						"base_net_rate": item.rate,
-						"amount": item.amount,
-						"warehouse": item.warehouse
-					} for item in quote.items]
-				})
+				sales_order = frappe.call(
+				"erpnext.selling.doctype.quotation.quotation.make_sales_order",
+				source_name=quotation_id
+				)
 
+				sales_order.delivery_date = frappe.utils.add_days(frappe.utils.nowdate(), 1)
 				if custom_is_quotation_required:
-					sales_order_data["custom_is_quotation_required"] = custom_is_quotation_required
-					sales_order_data["custom_location_and_contact_no"] = custom_location_and_contact_no
+					sales_order.custom_is_quotation_required = custom_is_quotation_required
+					sales_order.custom_location_and_contact_no = custom_location_and_contact_no
 				
-				sales_order = frappe.get_doc(sales_order_data)
 				sales_order.flags.ignore_permissions = True
 				sales_order.insert()
 				sales_order.submit()
 			except Exception as e:
 				return {"error": "Failed to create Sales Order: {}".format(str(e))}
+		quote.reload()
 
 	quote.save(ignore_permissions=True)
-
-	def serialize_items(items):
-		return json.dumps([
-			{k: (v.isoformat() if isinstance(v, datetime) else v) for k, v in item.as_dict().items()}
-			for item in items
-		])
-
-	serialized_items = serialize_items(quote.items)
-	serialized_unapproved_items = serialize_items(quote.unapproved_items)
-
-	try:
-		prices = fetch_standard_price(
-			items=serialized_items,
-			price_list=quote.selling_price_list,
-			party=quote.party_name,
-			quotation_to=quote.quotation_to
-		)
-
-		unapproved_prices = fetch_standard_price(
-			items=serialized_unapproved_items,
-			price_list=quote.selling_price_list,
-			party=quote.party_name,
-			quotation_to=quote.quotation_to
-		)
-
-		for item in quote.items:
-			item_code = item.item_code
-			item.standard_price = prices.get(item_code, 0)
-			item.rate = prices.get(f"{item_code}-negotiated", 0)
-
-		for item in quote.unapproved_items:
-			item_code = item.item_code
-			item.standard_price = unapproved_prices.get(item_code, 0)
-			item.rate = unapproved_prices.get(f"{item_code}-negotiated", 0)
-
-		quote.save(ignore_permissions=True)
-	except Exception as e:
-		return {"error": f"Failed to fetch and update standard prices: {str(e)}"}
 
 	return {"message": "Quotation updated successfully", "Quotation ID": quote.name}
 
