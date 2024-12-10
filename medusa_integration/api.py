@@ -202,9 +202,10 @@ def create_sales_order():
 @frappe.whitelist(allow_guest=True)
 def update_quotation():
 	data = json.loads(frappe.request.data)
-	quotation_id = data.get("quotation_id")
+	medusa_quotation_id = data.get("quotation_id")
+	quotation_id = frappe.get_value("Quotation", {"medusa_quotation_id": medusa_quotation_id}, "name")
 	approval = data.get("approval")
-	custom_is_quotation_required = data.get("is_quotation_required")
+	custom_is_courier_required = data.get("is_courier_required")
 	custom_location_and_contact_no = data.get("location_and_contact_no")
 	items = data.get("items", [])
 	unapproved_items = data.get("unapproved_items", [])
@@ -277,8 +278,8 @@ def update_quotation():
 				)
 
 				sales_order.delivery_date = frappe.utils.add_days(frappe.utils.nowdate(), 1)
-				if custom_is_quotation_required:
-					sales_order.custom_is_quotation_required = custom_is_quotation_required
+				if custom_is_courier_required:
+					sales_order.custom_is_courier_required = custom_is_courier_required
 					sales_order.custom_location_and_contact_no = custom_location_and_contact_no
 				
 				sales_order.flags.ignore_permissions = True
@@ -351,7 +352,7 @@ def export_website_item(self, method):
 				"label": spec.label,
 				"description": spec.description
 			})
-	
+	#need to update ranking
 	payload = {
 		"title": self.web_item_name,
 		"item_code": self.item_code,
@@ -1122,13 +1123,15 @@ def clear_all_brand_image_id(): #For brand
 
 def export_quotation(self, method):
 	quotation = frappe.get_doc("Quotation", self)
-	lead = frappe.get_value("Lead", {"name": quotation.party_name}, "medusa_id")
+	# lead = frappe.get_value("Lead", {"name": quotation.party_name}, "medusa_id") #Need to update
+	lead = "cus_01JEN21R04B3DK7DRFS2AVY8BR"
 
 	payload = {
 		"customer_id": lead,
 		"draft_order_id": quotation.medusa_draft_order_id,
 		"erp_status": "Received",
 		"erp_items": [],
+		"erp_unaccepted_items": [],
 		"erp_total_quantity": quotation.total_qty,
 		"erp_total": quotation.total,
 		"erp_net_total": quotation.net_total or 0,
@@ -1152,6 +1155,15 @@ def export_quotation(self, method):
 			"quantity": item.qty,
 			"amount": item.amount
 		})
+	
+	if quotation.unapproved_items:
+		for item in quotation.unapproved_items:
+			web_item_name = frappe.get_value("Website Item", {"item_name": item.item_name}, "web_item_name")
+			payload["erp_unaccepted_items"].append({
+				"item": web_item_name,
+				"price": item.rate,
+				"quantity": item.qty
+			})
 
 	for tax in quotation.taxes:
 		payload["erp_tax"].append({
@@ -1182,9 +1194,11 @@ def export_quotation(self, method):
 
 def export_quotation_on_update(doc, method):
 	source = frappe.get_value("Lead", {"name": doc.party_name}, "source")
-	if doc.workflow_state == "Ready for Customer Review" and source == "Alfarsi Website":
+	# if doc.workflow_state == "Ready for Customer Review" and source == "Alfarsi Website":
+	if doc.workflow_state == "Ready for Customer Review" and doc.from_ecommerce == 1:
 		try:
 			export_quotation(doc.name, "")
+			print("Entered #################")
 		except Exception as e:
 			frappe.log_error(f"Failed to export Quotation {doc.name}: {str(e)}", "Quotation Export Error")
 			print(f"Error exporting Quotation {doc.name}: {str(e)}")
