@@ -1,6 +1,5 @@
 import requests
 import frappe
-from frappe.utils import now_datetime, add_days, getdate, nowdate
 import json
 from medusa_integration.constants import get_headers, get_url
 from medusa_integration.utils import send_request
@@ -1122,9 +1121,12 @@ def clear_all_brand_image_id(): #For brand
 	frappe.db.commit()
 
 def export_quotation(self, method):
+	from erpnext.controllers.taxes_and_totals import get_itemised_tax_breakup_data
 	quotation = frappe.get_doc("Quotation", self)
 	# lead = frappe.get_value("Lead", {"name": quotation.party_name}, "medusa_id") #Need to update
 	lead = "cus_01JEN21R04B3DK7DRFS2AVY8BR"
+
+	tax_breakup = get_itemised_tax_breakup_data(quotation)
 
 	payload = {
 		"customer_id": lead,
@@ -1144,7 +1146,7 @@ def export_quotation(self, method):
 		"erp_discount_on": quotation.apply_discount_on,
 		"erp_discount_percentage": quotation.additional_discount_percentage or 0,
 		"erp_discount_amount": quotation.discount_amount or 0,
-		"tax_breakup": quotation.other_charges_calculation or "",
+		"tax_breakup": tax_breakup,
 	}
 
 	for item in quotation.items:
@@ -1193,7 +1195,7 @@ def export_quotation(self, method):
 			raise e
 
 def export_quotation_on_update(doc, method):
-	source = frappe.get_value("Lead", {"name": doc.party_name}, "source")
+	# source = frappe.get_value("Lead", {"name": doc.party_name}, "source")
 	# if doc.workflow_state == "Ready for Customer Review" and source == "Alfarsi Website":
 	if doc.workflow_state == "Ready for Customer Review" and doc.from_ecommerce == 1:
 		try:
