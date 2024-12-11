@@ -287,6 +287,12 @@ def update_quotation():
 			except Exception as e:
 				return {"error": "Failed to create Sales Order: {}".format(str(e))}
 		quote.reload()
+	
+	if approval == "Rejected":
+		quote.status = "Open" #need to change
+		quote.workflow_state = "Approved" #need to change
+		# quote.order_type = "Sales"
+		quote.submit()
 
 	quote.save(ignore_permissions=True)
 
