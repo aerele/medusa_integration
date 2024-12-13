@@ -1156,9 +1156,9 @@ def export_quotation(self, method):
 	}
 
 	for item in quotation.items:
-		web_item_name = frappe.get_value("Website Item", {"item_name": item.item_name}, "web_item_name")
+		variant_id = frappe.get_value("Website Item", {"item_name": item.item_name}, "medusa_variant_id")
 		payload["erp_items"].append({
-			"item": web_item_name,
+			"item": variant_id,
 			"price": item.rate,
 			"quantity": item.qty,
 			"amount": item.amount
@@ -1166,9 +1166,9 @@ def export_quotation(self, method):
 	
 	if quotation.unapproved_items:
 		for item in quotation.unapproved_items:
-			web_item_name = frappe.get_value("Website Item", {"item_name": item.item_name}, "web_item_name")
+			variant_id = frappe.get_value("Website Item", {"item_name": item.item_name}, "medusa_variant_id")
 			payload["erp_unaccepted_items"].append({
-				"item": web_item_name,
+				"item": variant_id,
 				"price": item.rate,
 				"quantity": item.qty
 			})
@@ -1206,7 +1206,7 @@ def export_quotation_on_update(doc, method):
 	if doc.workflow_state == "Ready for Customer Review" and doc.from_ecommerce == 1:
 		try:
 			export_quotation(doc.name, "")
-			print("Entered #################")
+			frappe.msgprint("Quotation details updated in Medusa site successfully")
 		except Exception as e:
 			frappe.log_error(f"Failed to export Quotation {doc.name}: {str(e)}", "Quotation Export Error")
 			print(f"Error exporting Quotation {doc.name}: {str(e)}")
