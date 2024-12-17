@@ -1223,10 +1223,24 @@ def export_sales_order(self, method):
 	# 	frappe.throw(f"Medusa Customer ID not found for Customer: {sales_order.customer}")
 	customer_id = "cus_01JEN21R04B3DK7DRFS2AVY8BR"
 
+	payment_status = "Unpaid"
+	
+	sales_invoice_name = frappe.db.sql("""
+		SELECT DISTINCT sii.parent 
+		FROM `tabSales Invoice Item` sii
+		JOIN `tabSales Invoice` si ON sii.parent = si.name
+		WHERE sii.sales_order = %s AND si.docstatus = 1
+		LIMIT 1
+	""", (sales_order.name), as_dict=True)
+
+	if sales_invoice_name:
+		invoice_status = frappe.get_value("Sales Invoice", sales_invoice_name[0].parent, "status")
+		payment_status = invoice_status if invoice_status else "Unpaid"
+
 	payload = {
 		"customer_id": customer_id,
-		"order_status": sales_order.workflow_state or "Dummy",
-		"payment_status":  "Dummy",
+		"order_status": "Pending" if sales_order.state == "Draft" else sales_order.state,
+		"payment_status":  payment_status,
 	}
 
 	try:
