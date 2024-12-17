@@ -146,6 +146,9 @@ doc_events = {
 	"Quotation": {
         "on_update": "medusa_integration.api.export_quotation_on_update"
     },
+	"Sales Order": {
+        "on_update": "medusa_integration.api.export_sales_order_on_update"
+    },
 	# "File": {
 	# 	"after_insert": "medusa_integration.api.file_validation_wrapper"
 	# }

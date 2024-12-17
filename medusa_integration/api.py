@@ -171,6 +171,7 @@ def create_sales_order():
 			"order_type": "Sales",
 			"company": company,
 			"workflow_state": "Draft",
+			"from_ecommerce": 1,
 			"items": [],
 			"conversion_rate": 1.0
 		})
@@ -208,6 +209,7 @@ def update_quotation():
 	custom_location_and_contact_no = data.get("location_and_contact_no")
 	items = data.get("items", [])
 	unapproved_items = data.get("unapproved_items", [])
+	medusa_order_id = data.get("order_id")
 
 	try:
 		quote = frappe.get_doc("Quotation", quotation_id)
@@ -268,6 +270,7 @@ def update_quotation():
 		quote.status = "Open"
 		quote.workflow_state = "Approved"
 		quote.order_type = "Sales"
+		quote.medusa_order_id = medusa_order_id,
 		quote.submit()
 		if quote.quotation_to == "Customer":
 			try:
@@ -1210,3 +1213,46 @@ def export_quotation_on_update(doc, method):
 		except Exception as e:
 			frappe.log_error(f"Failed to export Quotation {doc.name}: {str(e)}", "Quotation Export Error")
 			print(f"Error exporting Quotation {doc.name}: {str(e)}")
+
+@frappe.whitelist(allow_guest=True)
+def export_sales_order(self, method):
+	sales_order = frappe.get_doc("Sales Order", self)
+
+	# customer_id = frappe.get_value("Customer", {"name": sales_order.customer}, "medusa_id") #Need to update
+	# if not customer_id:
+	# 	frappe.throw(f"Medusa Customer ID not found for Customer: {sales_order.customer}")
+	customer_id = "cus_01JEN21R04B3DK7DRFS2AVY8BR"
+
+	payload = {
+		"customer_id": customer_id,
+		"order_status": sales_order.workflow_state or "Dummy",
+		"payment_status":  "Dummy",
+	}
+
+	try:
+		if sales_order.medusa_order_id:
+			args = frappe._dict({
+				"method": "POST",
+				"url": f"{get_url()[0]}/store/order-update?order_id={sales_order.medusa_order_id}",
+				"headers": get_headers(with_token=True),
+				"payload": json.dumps(payload),
+				"throw_message": f"Error while exporting Sales Order {sales_order.name} to Medusa"
+			})
+			response = send_request(args)
+
+			if response.message == "Order updated successfully":
+				print(f"Sales Order {sales_order.name} exported to Medusa successfully")
+			else:
+					print(f"Error: Sales Order export failed for {sales_order.name}: {response.get('error')}")
+	except Exception as e:
+		print(f"Error exporting Sales Order {sales_order.name}: {str(e)}")
+		raise e
+
+def export_sales_order_on_update(doc, method):
+	if doc.from_ecommerce == 1:
+		try:
+			export_sales_order(doc.name, "")
+			frappe.msgprint("Order details updated in Medusa site successfully")
+		except Exception as e:
+			frappe.log_error(f"Failed to export Sales Order {doc.name}: {str(e)}", "Sales Order Export Error")
+			print(f"Error exporting Sales Order {doc.name}: {str(e)}")
