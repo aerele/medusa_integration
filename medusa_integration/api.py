@@ -1142,14 +1142,19 @@ def clear_all_brand_image_id(): #For brand
 
 def export_quotation(self, method):
 	from erpnext.controllers.taxes_and_totals import get_itemised_tax_breakup_data
+
 	quotation = frappe.get_doc("Quotation", self)
-	# lead = frappe.get_value("Lead", {"name": quotation.party_name}, "medusa_id") #Need to update
+
+	medusa_id = frappe.get_value("Customer", {"name": quotation.party_name}, "medusa_id")
+	if not medusa_id:
+		medusa_id = frappe.get_value("Lead", {"name": quotation.party_name}, "medusa_id")
 	lead = "cus_01JEN21R04B3DK7DRFS2AVY8BR"
 
 	tax_breakup = get_itemised_tax_breakup_data(quotation)
 
 	payload = {
-		"customer_id": lead,
+		# "customer_id": medusa_id,
+		"customer_id": lead, #Need to remove
 		"draft_order_id": quotation.medusa_draft_order_id,
 		"erp_status": "Received",
 		"erp_items": [],
