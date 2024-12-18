@@ -734,6 +734,29 @@ def create_medusa_customer(self, method):
 		})
 		self.db_set("medusa_id", send_request(args).get("customer").get("id"))
 
+@frappe.whitelist(allow_guest=True)
+def fetch_all_customers(name=None):
+	base_query = """
+		SELECT 
+			name, customer_name, email_id, mobile_no
+		FROM 
+			`tabCustomer`
+		WHERE 
+			medusa_id IS NULL
+	"""
+
+	if name:
+		name_parts = name.split()
+		conditions = " AND ".join([f"customer_name LIKE '%{part}%'" for part in name_parts])
+		base_query += f" AND ({conditions})"
+
+	customers = frappe.db.sql(base_query, as_dict=True)
+
+	if not customers:
+		return {"message": "No relevant customers found."}
+
+	return customers
+
 def file_validation_wrapper(self):
 	namecheck(self)
 	
