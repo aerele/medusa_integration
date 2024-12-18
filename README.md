@@ -9,3 +9,4 @@ The **ERPNext Medusa Integration** app connects ERPNext with **Medusa**, a headl
 - Sync products between ERPNext and Medusa
 - Sync orders from Medusa to ERPNext for processing
 - Sync inventory updates between platforms
+- Sync customer details between platforms
