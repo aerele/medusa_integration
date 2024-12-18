@@ -34,7 +34,7 @@ def create_lead():
 		"mobile_no": data.get("mobile"),
 		"phone": data.get("phone"),
 		"source": "Alfarsi Website",
-		"status": "Lead",
+		"status": "Lead", #Need to update: Existing customer
 		"company_name": data.get("organization_name"),
 		"custom_address_line1": data.get("address_line_1"),
 		"custom_address_line2": data.get("address_line_2"),
@@ -81,14 +81,25 @@ def create_quotation():
 	items = data.get("items", [])
 	valid_till = datetime.today() + timedelta(days=30)
 
-	lead = frappe.get_value("Customer", {"medusa_id": medusa_id}, "name") #Need to update
+	customer = frappe.get_value("Customer", {"medusa_id": medusa_id}, "name")
+	if customer:
+		party_name = customer
+		quotation_to = "Customer"
+		title = customer
+	else:
+		lead = frappe.get_value("Lead", {"medusa_id": medusa_id}, "name")
+		if not lead:
+			frappe.throw(f"Lead or Customer with medusa_id {medusa_id} not found.")
+		party_name = lead
+		quotation_to = "Lead"
+		title = "Unapproved Lead"
 
 	quote = frappe.get_doc({
 		"doctype": "Quotation",
-		"title": "Unapproved Lead", #Need to update
+		"title": title,
 		"order_type": "Shopping Cart",
-		"quotation_to": "Customer", #Need to update
-		"party_name": lead,
+		"quotation_to": quotation_to,
+		"party_name": party_name,
 		"medusa_draft_order_id": data.get("draft_order_id"),
 		"medusa_quotation_id": data.get("quotation_id"),
 		"valid_till": valid_till.date(),
