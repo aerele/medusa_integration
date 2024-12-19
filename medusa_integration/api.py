@@ -335,6 +335,45 @@ def update_quotation():
 
 	return {"message": "Quotation updated successfully", "Quotation ID": quote.name}
 
+@frappe.whitelist(allow_guest=True)
+def update_address():
+	try:
+		data = frappe._dict(json.loads(frappe.request.data))
+		customer_id = data.get("customer_id")
+
+		if not customer_id:
+			return {"error": "Customer ID is required."}
+
+		address_id = frappe.db.get_value(
+			"Dynamic Link",
+			{
+				"link_name": customer_id,
+				"link_doctype": "Customer",
+				"parenttype": "Address"
+			},
+			"parent"
+		)
+
+		if not address_id:
+			return {"error": f"No address found for customer ID '{customer_id}'"}
+
+		address_doc = frappe.get_doc("Address", address_id)
+
+		fields_to_update = ["address_line1", "address_line2", "city", "state", "country", "pincode"]
+		for field in fields_to_update:
+			if data.get(field) is not None:
+				setattr(address_doc, field, data.get(field))
+
+		address_doc.save(ignore_permissions=True)
+
+		return ("Address updated successfully")
+
+	except frappe.DoesNotExistError:
+		return {"error": f"Customer with ID '{customer_id}' or their address does not exist."}
+	except Exception as e:
+		frappe.log_error(frappe.get_traceback(), "Update Address Error")
+		return {"error": str(e)}
+
 def export_item(self):
 	item_group = frappe.get_doc("Item Group", self.item_group)
 
@@ -781,47 +820,46 @@ def fetch_all_customers(name=None):
 	return customers
 
 # @frappe.whitelist(allow_guest=True)
-# def fetch_all_customers(name=None, email=None, mobile=None):
-# 	"""
-# 	Fetch all customers without medusa_id and optionally filter by a user's name, email, or mobile number.
-# 	"""
+# def fetch_all_customers(name=None):
 # 	base_query = """
-# 		SELECT 
-# 			name, customer_name, email_id, mobile_no
+# 		SELECT DISTINCT
+# 			c.name AS customer_id,
+# 			c.customer_name,
+# 			c.email_id,
+# 			c.mobile_no,
+# 			a.name AS address_id,
+# 			a.address_line1,
+# 			a.address_line2,
+# 			a.city,
+# 			a.state,
+# 			a.country,
+# 			a.pincode
 # 		FROM 
-# 			`tabCustomer`
+# 			`tabCustomer` c
+# 		LEFT JOIN 
+# 			`tabDynamic Link` dl ON c.name = dl.link_name AND dl.link_doctype = 'Customer'
+# 		LEFT JOIN 
+# 			`tabAddress` a ON dl.parent = a.name
 # 		WHERE 
-# 			medusa_id IS NULL
+# 			c.medusa_id IS NULL
 # 	"""
 
-# 	# Build dynamic conditions for name
 # 	if name:
 # 		name_parts = name.split()
-# 		name_conditions = " AND ".join([f"customer_name LIKE '%{part}%'" for part in name_parts])
-# 		base_query += f" AND ({name_conditions})"
+# 		conditions = " AND ".join([f"c.customer_name LIKE '%{part}%'" for part in name_parts])
+# 		base_query += f" AND ({conditions})"
 
-# 	# Fetch initial results based on name
+# 	base_query += """
+# 		GROUP BY c.name
+# 		ORDER BY a.name IS NULL, c.name
+# 	"""
+
 # 	customers = frappe.db.sql(base_query, as_dict=True)
 
 # 	if not customers:
-# 		return {"message": "No relevant customers found."}
+# 		return "No relevant customers found"
 
-# 	# Further refine results by email or mobile number
-# 	if email or mobile:
-# 		refined_customers = []
-# 		for customer in customers:
-# 			# Check if email or mobile matches
-# 			if (email and email.lower() in (customer.get("email_id") or "").lower()) or \
-# 			   (mobile and mobile in (customer.get("mobile_no") or "")):
-# 				refined_customers.append(customer)
-
-# 		if refined_customers:
-# 			return (refined_customers)
-# 		else:
-# 			return ("No customers found matching the provided email or mobile number.")
-
-# 	# If no email or mobile filtering is applied, return all name-matched customers
-# 	return (customers)
+# 	return customers
 
 def file_validation_wrapper(self):
 	namecheck(self)
