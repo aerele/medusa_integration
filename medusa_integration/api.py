@@ -34,7 +34,7 @@ def create_lead():
 		"mobile_no": data.get("mobile"),
 		"phone": data.get("phone"),
 		"source": "Alfarsi Website",
-		"status": "Lead", #Need to update: Existing customer
+		"status": "Lead",
 		"company_name": data.get("organization_name"),
 		"custom_address_line1": data.get("address_line_1"),
 		"custom_address_line2": data.get("address_line_2"),
@@ -47,6 +47,29 @@ def create_lead():
 	})
 	lead.insert(ignore_permissions=True)
 	return {"message": ("Lead created successfully"), "Lead ID": lead.name}
+
+@frappe.whitelist(allow_guest=True)
+def update_existing_customer():
+	try:
+		data = json.loads(frappe.request.data)
+		customer_id = data.get("erp_customer_id")
+		
+		customer = frappe.get_doc("Customer", customer_id)
+		
+		customer.medusa_id = data.get("id")
+		customer.email_id = data.get("email_id")
+		customer.mobile_no = data.get("mobile_no")
+		customer.t_c_acceptance = data.get("t_c_acceptance")
+		customer.offers_agreement = data.get("offers_agreement")
+		
+		customer.save(ignore_permissions=True)
+		
+		return ("Customer updated successfully")
+	except frappe.DoesNotExistError:
+		return {"error": f"Customer with ID '{customer_id}' does not exist."}
+	except Exception as e:
+		frappe.log_error(frappe.get_traceback(), "Update Existing Customer Error")
+		return {"error": str(e)}
 
 @frappe.whitelist(allow_guest=True)
 def create_opportunity():
@@ -753,9 +776,52 @@ def fetch_all_customers(name=None):
 	customers = frappe.db.sql(base_query, as_dict=True)
 
 	if not customers:
-		return {"message": "No relevant customers found."}
+		return ("No relevant customers found")
 
 	return customers
+
+# @frappe.whitelist(allow_guest=True)
+# def fetch_all_customers(name=None, email=None, mobile=None):
+# 	"""
+# 	Fetch all customers without medusa_id and optionally filter by a user's name, email, or mobile number.
+# 	"""
+# 	base_query = """
+# 		SELECT 
+# 			name, customer_name, email_id, mobile_no
+# 		FROM 
+# 			`tabCustomer`
+# 		WHERE 
+# 			medusa_id IS NULL
+# 	"""
+
+# 	# Build dynamic conditions for name
+# 	if name:
+# 		name_parts = name.split()
+# 		name_conditions = " AND ".join([f"customer_name LIKE '%{part}%'" for part in name_parts])
+# 		base_query += f" AND ({name_conditions})"
+
+# 	# Fetch initial results based on name
+# 	customers = frappe.db.sql(base_query, as_dict=True)
+
+# 	if not customers:
+# 		return {"message": "No relevant customers found."}
+
+# 	# Further refine results by email or mobile number
+# 	if email or mobile:
+# 		refined_customers = []
+# 		for customer in customers:
+# 			# Check if email or mobile matches
+# 			if (email and email.lower() in (customer.get("email_id") or "").lower()) or \
+# 			   (mobile and mobile in (customer.get("mobile_no") or "")):
+# 				refined_customers.append(customer)
+
+# 		if refined_customers:
+# 			return (refined_customers)
+# 		else:
+# 			return ("No customers found matching the provided email or mobile number.")
+
+# 	# If no email or mobile filtering is applied, return all name-matched customers
+# 	return (customers)
 
 def file_validation_wrapper(self):
 	namecheck(self)
