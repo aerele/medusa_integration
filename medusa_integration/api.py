@@ -104,11 +104,11 @@ def create_quotation():
 	items = data.get("items", [])
 	valid_till = datetime.today() + timedelta(days=30)
 
-	customer = frappe.get_value("Customer", {"medusa_id": medusa_id}, "name")
-	if customer:
-		party_name = customer
+	customer_details = frappe.get_value("Customer", {"medusa_id": medusa_id}, ["name", "customer_name"], as_dict=True)
+	if customer_details:
+		party_name = customer_details.name
 		quotation_to = "Customer"
-		title = customer
+		title = customer_details.customer_name
 	else:
 		lead = frappe.get_value("Lead", {"medusa_id": medusa_id}, "name")
 		if not lead:
@@ -165,7 +165,12 @@ def create_quotation():
 
 	quote.insert(ignore_permissions=True)
 
-	serialized_items = json.dumps([item.as_dict() for item in quote.items])
+	serialized_items = json.dumps(
+	[ 
+		{k: (v.isoformat() if isinstance(v, datetime) else v) for k, v in item.as_dict().items()} 
+		for item in quote.items
+	]
+)
 
 	try:
 		prices = fetch_standard_price(
