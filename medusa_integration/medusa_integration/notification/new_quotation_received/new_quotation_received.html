@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+        }
+        h3 {
+            color: #333;
+        }
+        p {
+            font-size: 14px;
+            color: #555;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        ul li {
+            font-size: 14px;
+            margin: 5px 0;
+        }
+        a {
+            color: #007BFF;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <h3>New Quotation Request</h3>
+
+    <p>Hello,</p>
+
+    <p>A new quotation request has been received from the e-commerce site. Click the link below to view it:</p>
+
+    <p><a href="http://alfarsi-live:8003/app/quotation/{{ doc.name }}" target="_blank">View Quotation</a></p>
+
+    <p>Thanks,</p>
+    <p>Your Team</p>
+
+    <hr>
+    <h4>Quotation Details</h4>
+    <ul>
+        <li><strong>Quotation ID:</strong> {{ doc.name }}</li>
+        <li><strong>Requested by:</strong> {{ doc.customer }}</li>
+    </ul>
+</body>
+</html>
