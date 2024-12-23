@@ -31,22 +31,22 @@
     </style>
 </head>
 <body>
-    <h3>New Quotation Request</h3>
+    <h3>Quotation status update</h3>
 
     <p>Hello,</p>
 
-    <p>A new quotation request has been received from the e-commerce site. Click the link below to view it:</p>
+    <p>The quotation status has been updated by the customer from the e-commerce site. Click the link below to view it:</p>
 
     <p><a href="http://alfarsi-live:8003/app/quotation/{{ doc.name }}" target="_blank">View Quotation</a></p>
 
-    <p>Thanks,</p>
-    <p>Your Team</p>
+    <p>Thanks</p>
 
     <hr>
     <h4>Quotation Details</h4>
     <ul>
         <li><strong>Quotation ID:</strong> {{ doc.name }}</li>
-        <li><strong>Requested by:</strong> {{ doc.customer }}</li>
+        <li><strong>Updated by:</strong> {{ doc.customer }}</li>
+        <li><strong>Status:</strong> {{ doc.workflow_state }}</li>
     </ul>
 </body>
 </html>
