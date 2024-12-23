@@ -175,6 +175,12 @@ doc_events = {
 # 	],
 # }
 
+scheduler_events = {
+    "cron": {
+        "* * * * *": ["medusa_integration.api.send_quotation_emails",],
+    }
+}
+
 # Testing
 # -------
 

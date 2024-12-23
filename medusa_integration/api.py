@@ -1418,3 +1418,21 @@ def export_sales_order_on_update(doc, method):
 		except Exception as e:
 			frappe.log_error(f"Failed to export Sales Order {doc.name}: {str(e)}", "Sales Order Export Error")
 			print(f"Error exporting Sales Order {doc.name}: {str(e)}")
+
+def send_quotation_emails():
+	email_queue = frappe.get_all(
+		"Email Queue",
+		filters={
+			"status": "Not Sent",
+			"reference_doctype": "Quotation" #Need to update. Add sender email filter
+		},
+		pluck="name"
+	)
+
+	for email in email_queue:
+		try:
+			from frappe.email.doctype.email_queue.email_queue import send_now
+			send_now(email)
+
+		except Exception as e:
+			frappe.log_error(message=str(e), title="Quotation Email Sending Failed")
