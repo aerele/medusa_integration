@@ -1441,13 +1441,23 @@ def send_quotation_emails():
 def get_website_items():
 	from frappe import _
 	try:
+		# Fetching the descendants of 'DENTAL' from Item Group
+		dental_item_groups = frappe.db.get_descendants("Item Group", "DENTAL")
+		
+		# Adding the 'DENTAL' group itself to the list of valid groups
+		dental_item_groups.append("DENTAL")
+		
+		# Fetching website items that belong to these groups
 		website_items = frappe.get_all(
 			"Website Item",
 			fields=["medusa_id"],
-			filters={"medusa_id": ["not in", [""]]},
+			filters={
+				"medusa_id": ["not in", [""]],
+				"item_group": ["in", dental_item_groups],
+			},
 			order_by="item_name"
 		)
-		return (website_items)
+		return website_items
 	except Exception as e:
 		frappe.log_error(message=str(e), title=_("Fetch Website Items Failed"))
 		return {"status": "error", "message": str(e)}
