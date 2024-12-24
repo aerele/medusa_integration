@@ -1460,14 +1460,14 @@ def get_website_items(item_group: str):
 			order_by="name"
 		)
 
-		# Extract the item group names
+		# Extract the item group names with handles
 		all_item_group_names_with_handles = [
-            {
-                "title": group["name"],
-                "handle": re.sub(r"[^a-z0-9]+", "-", group["name"].lower()).strip("-")  # Handle generation
-            }
-            for group in all_item_groups
-        ]
+			{
+				"title": group["name"],
+				"handle": re.sub(r"[^a-z0-9]+", "-", group["name"].lower()).strip("-")  # Handle generation
+			}
+			for group in all_item_groups
+		]
 
 		# Fetch immediate descendants of the given item group (direct children)
 		immediate_descendants = frappe.get_all(
@@ -1477,14 +1477,14 @@ def get_website_items(item_group: str):
 			order_by="name"
 		)
 
-		# Extract immediate descendants
+		# Extract immediate descendants with handles
 		immediate_descendant_names_with_handles = [
-            {
-                "title": group["name"],
-                "handle": re.sub(r"[^a-z0-9]+", "-", group["name"].lower()).strip("-")  # Handle generation
-            }
-            for group in immediate_descendants
-        ]
+			{
+				"title": group["name"],
+				"handle": re.sub(r"[^a-z0-9]+", "-", group["name"].lower()).strip("-")  # Handle generation
+			}
+			for group in immediate_descendants
+		]
 
 		# Fetch website items belonging to the descendant item groups
 		website_items = frappe.get_all(
@@ -1497,14 +1497,30 @@ def get_website_items(item_group: str):
 			order_by="item_name"
 		)
 
-		# Return both lists and the website items
+		# Fetch distinct brands from the website items
+		distinct_brands = frappe.get_all(
+			"Website Item",
+			fields=["brand"],
+			filters={
+				"medusa_id": ["not in", [""]],
+				"brand": ["not in", [""]],
+				"item_group": ["in", descendant_groups],
+			},
+			group_by="brand",
+			order_by="brand"
+		)
+
+		# Extract distinct brand names (without handles)
+		distinct_brand_names = [brand["brand"] for brand in distinct_brands]
+
+		# Return the response with distinct brands, item groups, and website items
 		return {
 			"distinct_parent_item_groups": immediate_descendant_names_with_handles,
 			"distinct_collection_titles": all_item_group_names_with_handles,
+			"distinct_brands": distinct_brand_names,
 			"paginatedProducts": website_items
 		}
 
 	except Exception as e:
 		frappe.log_error(message=str(e), title=_("Fetch Website Items Failed"))
 		return {"status": "error", "message": str(e)}
-
