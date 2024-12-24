@@ -1440,6 +1440,7 @@ def send_quotation_emails():
 @frappe.whitelist(allow_guest=True)
 def get_website_items(item_group: str):
 	from frappe import _
+	import re
 	try:
 		# Validate that the item_group exists
 		if not frappe.db.exists("Item Group", item_group):
@@ -1460,7 +1461,13 @@ def get_website_items(item_group: str):
 		)
 
 		# Extract the item group names
-		all_item_group_names = [group["name"] for group in all_item_groups]
+		all_item_group_names_with_handles = [
+            {
+                "title": group["name"],
+                "handle": re.sub(r"[^a-z0-9]+", "-", group["name"].lower()).strip("-")  # Handle generation
+            }
+            for group in all_item_groups
+        ]
 
 		# Fetch immediate descendants of the given item group (direct children)
 		immediate_descendants = frappe.get_all(
@@ -1471,12 +1478,18 @@ def get_website_items(item_group: str):
 		)
 
 		# Extract immediate descendants
-		immediate_descendant_names = [group["name"] for group in immediate_descendants]
+		immediate_descendant_names_with_handles = [
+            {
+                "title": group["name"],
+                "handle": re.sub(r"[^a-z0-9]+", "-", group["name"].lower()).strip("-")  # Handle generation
+            }
+            for group in immediate_descendants
+        ]
 
 		# Fetch website items belonging to the descendant item groups
 		website_items = frappe.get_all(
 			"Website Item",
-			fields=["medusa_id", "item_group"],
+			fields=["medusa_id", "item_group", "brand"],
 			filters={
 				"medusa_id": ["not in", [""]],
 				"item_group": ["in", descendant_groups],
@@ -1486,9 +1499,9 @@ def get_website_items(item_group: str):
 
 		# Return both lists and the website items
 		return {
-			"immediate_descendants": immediate_descendant_names,
-			"all_item_groups": all_item_group_names,
-			"website_items": website_items
+			"distinct_parent_item_groups": immediate_descendant_names_with_handles,
+			"distinct_collection_titles": all_item_group_names_with_handles,
+			"paginatedProducts": website_items
 		}
 
 	except Exception as e:
