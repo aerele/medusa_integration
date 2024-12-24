@@ -1436,3 +1436,18 @@ def send_quotation_emails():
 
 		except Exception as e:
 			frappe.log_error(message=str(e), title="Quotation Email Sending Failed")
+
+@frappe.whitelist(allow_guest=True)
+def get_website_items():
+	from frappe import _
+	try:
+		website_items = frappe.get_all(
+			"Website Item",
+			fields=["medusa_id"],
+			filters={"medusa_id": ["not in", [""]]},
+			order_by="item_name"
+		)
+		return (website_items)
+	except Exception as e:
+		frappe.log_error(message=str(e), title=_("Fetch Website Items Failed"))
+		return {"status": "error", "message": str(e)}
