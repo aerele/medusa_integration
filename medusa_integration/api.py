@@ -1438,86 +1438,112 @@ def send_quotation_emails():
 			frappe.log_error(message=str(e), title="Quotation Email Sending Failed")
 
 @frappe.whitelist(allow_guest=True)
-def get_website_items(item_group: str):
+def get_website_items(item_group: str = None, collection_title: str = None, brand: str = None):
 	from frappe import _
 	import re
+
 	try:
-		# Validate that the item_group exists
-		if not frappe.db.exists("Item Group", item_group):
+		# Validate that the item_group exists if provided
+		if item_group and not frappe.db.exists("Item Group", item_group):
 			return {"status": "error", "message": f"Item Group '{item_group}' does not exist."}
 
-		# Fetch all descendants of the given item group
-		descendant_groups = frappe.db.get_descendants("Item Group", item_group)
+		# Initialize filters for website items
+		filters = {"medusa_id": ["not in", [""]]}
+		distinct_parent_item_groups = []
+		distinct_collection_titles = []
+		distinct_brands = []
 
-		# Include the given item group itself in the list
-		descendant_groups.append(item_group)
+		# Step 1: Fetch distinct item groups (before applying any filter)
+		if item_group:
+			descendant_groups = frappe.db.get_descendants("Item Group", item_group)
+			descendant_groups.append(item_group)
+			immediate_descendants = frappe.get_all(
+				"Item Group",
+				fields=["name"],
+				filters={"parent_item_group": item_group},
+				order_by="name"
+			)
+			distinct_parent_item_groups = [
+				{
+					"title": group["name"],
+					"handle": re.sub(r"[^a-z0-9]+", "-", group["name"].lower()).strip("-")
+				}
+				for group in immediate_descendants
+			]
 
-		# Fetch distinct, sorted item group names
-		all_item_groups = frappe.get_all(
-			"Item Group",
-			fields=["name"],
-			filters={"name": ["in", descendant_groups]},
-			order_by="name"
-		)
+		# Apply item_group filter
+		if item_group:
+			filters["item_group"] = ["in", descendant_groups]
 
-		# Extract the item group names with handles
-		all_item_group_names_with_handles = [
-			{
-				"title": group["name"],
-				"handle": re.sub(r"[^a-z0-9]+", "-", group["name"].lower()).strip("-")  # Handle generation
-			}
-			for group in all_item_groups
-		]
+		# Step 2: Fetch distinct collection titles (after applying item_group filter)
+		if collection_title:
+			collection_descendants = frappe.db.get_descendants("Item Group", collection_title)
+			collection_descendants.append(collection_title)
+			distinct_collection_titles = frappe.get_all(
+				"Item Group",
+				fields=["name"],
+				filters={"name": ["in", collection_descendants]},
+				order_by="name"
+			)
+			distinct_collection_titles = [
+				{
+					"title": group["name"],
+					"handle": re.sub(r"[^a-z0-9]+", "-", group["name"].lower()).strip("-")
+				}
+				for group in distinct_collection_titles
+			]
+			distinct_brands = frappe.get_all(
+				"Website Item",
+				fields=["brand"],
+				filters={"item_group": ["in", collection_descendants]},
+				group_by="brand",
+				order_by="brand"
+			)
+			distinct_brands = [brand["brand"] for brand in distinct_brands if brand["brand"] not in [None, ""]]
+		else:
+			distinct_collection_titles = frappe.get_all(
+				"Item Group",
+				fields=["name"],
+				filters={"name": ["in", descendant_groups]},
+				order_by="name"
+			)
+			distinct_collection_titles = [
+				{
+					"title": group["name"],
+					"handle": re.sub(r"[^a-z0-9]+", "-", group["name"].lower()).strip("-")
+				}
+				for group in distinct_collection_titles
+			]
+			distinct_brands = frappe.get_all(
+				"Website Item",
+				fields=["brand"],
+				filters={"item_group": ["in", descendant_groups]},
+				group_by="brand",
+				order_by="brand"
+			)
+			distinct_brands = [brand["brand"] for brand in distinct_brands if brand["brand"] not in [None, ""]]
 
-		# Fetch immediate descendants of the given item group (direct children)
-		immediate_descendants = frappe.get_all(
-			"Item Group",
-			fields=["name"],
-			filters={"parent_item_group": item_group},
-			order_by="name"
-		)
+		# Apply collection_title filter
+		if collection_title:
+			filters["item_group"] = ["in", collection_descendants]
 
-		# Extract immediate descendants with handles
-		immediate_descendant_names_with_handles = [
-			{
-				"title": group["name"],
-				"handle": re.sub(r"[^a-z0-9]+", "-", group["name"].lower()).strip("-")  # Handle generation
-			}
-			for group in immediate_descendants
-		]
+		# Apply brand filter
+		if brand:
+			filters["brand"] = brand
 
-		# Fetch website items belonging to the descendant item groups
+		# Step 4: Fetch website items (after applying all filters)
 		website_items = frappe.get_all(
 			"Website Item",
 			fields=["medusa_id", "item_group", "brand"],
-			filters={
-				"medusa_id": ["not in", [""]],
-				"item_group": ["in", descendant_groups],
-			},
+			filters=filters,
 			order_by="item_name"
 		)
 
-		# Fetch distinct brands from the website items
-		distinct_brands = frappe.get_all(
-			"Website Item",
-			fields=["brand"],
-			filters={
-				"medusa_id": ["not in", [""]],
-				"brand": ["not in", [""]],
-				"item_group": ["in", descendant_groups],
-			},
-			group_by="brand",
-			order_by="brand"
-		)
-
-		# Extract distinct brand names (without handles)
-		distinct_brand_names = [brand["brand"] for brand in distinct_brands]
-
-		# Return the response with distinct brands, item groups, and website items
+		# Return the response with distinct values and filtered website items
 		return {
-			"distinct_parent_item_groups": immediate_descendant_names_with_handles,
-			"distinct_collection_titles": all_item_group_names_with_handles,
-			"distinct_brands": distinct_brand_names,
+			"distinct_parent_item_groups": distinct_parent_item_groups,
+			"distinct_collection_titles": distinct_collection_titles,
+			"distinct_brands": distinct_brands,
 			"paginatedProducts": website_items
 		}
 
