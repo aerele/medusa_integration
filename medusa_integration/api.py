@@ -1438,12 +1438,21 @@ def send_quotation_emails():
 			frappe.log_error(message=str(e), title="Quotation Email Sending Failed")
 
 @frappe.whitelist(allow_guest=True)
-def get_website_items(item_group: str = None, collection_title: str = None, brand: str = None, page: int = 1):
+def get_website_items():
 	from frappe import _
 	import re
 	import math
 
 	try:
+		data = frappe.request.get_json()
+		if not data:
+			return {"status": "error", "message": "Invalid request body."}
+
+		item_group = data.get("item_group")
+		collection_title = data.get("collection_title")
+		brand = data.get("brand")
+		page = data.get("page", 1)
+
 		if item_group and not frappe.db.exists("Item Group", item_group):
 			return {"status": "error", "message": f"Item Group '{item_group}' does not exist."}
 
@@ -1539,7 +1548,7 @@ def get_website_items(item_group: str = None, collection_title: str = None, bran
 		total_pages = math.ceil(total_products / page_size)
 
 		# Apply pagination (limit and offset)
-		offset = (page - 1) * page_size
+		offset = (int(page) - 1) * page_size
 		website_items = frappe.get_all(
 			"Website Item",
 			fields=["medusa_id", "item_group", "brand"],
@@ -1551,9 +1560,10 @@ def get_website_items(item_group: str = None, collection_title: str = None, bran
 
 		# Return the response with distinct values, pagination details, and filtered website items
 		return {
-			"total_products": total_products,
+			"product_count": total_products,
 			"total_pages": total_pages,
-			"current_page": page,
+			"current_page": int(page),
+			"items_in_page": len(website_items),
 			"distinct_parent_item_groups": distinct_parent_item_groups,
 			"distinct_collection_titles": distinct_collection_titles,
 			"distinct_brands": distinct_brands,
