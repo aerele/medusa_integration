@@ -1447,21 +1447,51 @@ def get_website_items(item_group: str):
 
 		# Fetch all descendants of the given item group
 		descendant_groups = frappe.db.get_descendants("Item Group", item_group)
-		
+
 		# Include the given item group itself in the list
 		descendant_groups.append(item_group)
 
-		# Fetch website items belonging to these groups
+		# Fetch distinct, sorted item group names
+		all_item_groups = frappe.get_all(
+			"Item Group",
+			fields=["name"],
+			filters={"name": ["in", descendant_groups]},
+			order_by="name"
+		)
+
+		# Extract the item group names
+		all_item_group_names = [group["name"] for group in all_item_groups]
+
+		# Fetch immediate descendants of the given item group (direct children)
+		immediate_descendants = frappe.get_all(
+			"Item Group",
+			fields=["name"],
+			filters={"parent_item_group": item_group},
+			order_by="name"
+		)
+
+		# Extract immediate descendants
+		immediate_descendant_names = [group["name"] for group in immediate_descendants]
+
+		# Fetch website items belonging to the descendant item groups
 		website_items = frappe.get_all(
 			"Website Item",
-			fields=["medusa_id"],
+			fields=["medusa_id", "item_group"],
 			filters={
 				"medusa_id": ["not in", [""]],
 				"item_group": ["in", descendant_groups],
 			},
 			order_by="item_name"
 		)
-		return website_items
+
+		# Return both lists and the website items
+		return {
+			"immediate_descendants": immediate_descendant_names,
+			"all_item_groups": all_item_group_names,
+			"website_items": website_items
+		}
+
 	except Exception as e:
 		frappe.log_error(message=str(e), title=_("Fetch Website Items Failed"))
 		return {"status": "error", "message": str(e)}
+
