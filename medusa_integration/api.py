@@ -1438,22 +1438,26 @@ def send_quotation_emails():
 			frappe.log_error(message=str(e), title="Quotation Email Sending Failed")
 
 @frappe.whitelist(allow_guest=True)
-def get_website_items():
+def get_website_items(item_group: str):
 	from frappe import _
 	try:
-		# Fetching the descendants of 'DENTAL' from Item Group
-		dental_item_groups = frappe.db.get_descendants("Item Group", "DENTAL")
+		# Validate that the item_group exists
+		if not frappe.db.exists("Item Group", item_group):
+			return {"status": "error", "message": f"Item Group '{item_group}' does not exist."}
+
+		# Fetch all descendants of the given item group
+		descendant_groups = frappe.db.get_descendants("Item Group", item_group)
 		
-		# Adding the 'DENTAL' group itself to the list of valid groups
-		dental_item_groups.append("DENTAL")
-		
-		# Fetching website items that belong to these groups
+		# Include the given item group itself in the list
+		descendant_groups.append(item_group)
+
+		# Fetch website items belonging to these groups
 		website_items = frappe.get_all(
 			"Website Item",
 			fields=["medusa_id"],
 			filters={
 				"medusa_id": ["not in", [""]],
-				"item_group": ["in", dental_item_groups],
+				"item_group": ["in", descendant_groups],
 			},
 			order_by="item_name"
 		)
