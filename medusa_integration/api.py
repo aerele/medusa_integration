@@ -1449,7 +1449,7 @@ def get_website_items():
 			return {"status": "error", "message": "Invalid request body."}
 
 		url = data.get("url")
-		collection_title = data.get("collection_title")
+		collection_titles = data.get("collection_title")
 		brand = data.get("brand")
 		page = data.get("page", 1)
 
@@ -1488,11 +1488,19 @@ def get_website_items():
 		# Apply item_group filter
 		if item_group:
 			filters["item_group"] = ["in", descendant_groups]
+		
+		if collection_titles:  # If collection_titles is provided
+			if not isinstance(collection_titles, list):
+				collection_titles = [collection_titles]  # Ensure it's a list
+			
+			collection_descendants = []
+			for title in collection_titles:
+				descendants = frappe.db.get_descendants("Item Group", title)
+				collection_descendants.extend(descendants)
+				collection_descendants.append(title)
 
-		# Step 2: Fetch distinct collection titles (after applying item_group filter)
-		if collection_title:
-			collection_descendants = frappe.db.get_descendants("Item Group", collection_title)
-			collection_descendants.append(collection_title)
+			collection_descendants = list(set(collection_descendants))  # Remove duplicates
+
 			distinct_collection_titles = frappe.get_all(
 				"Item Group",
 				fields=["name"],
@@ -1538,7 +1546,7 @@ def get_website_items():
 			distinct_brands = [brand["brand"] for brand in distinct_brands if brand["brand"] not in [None, ""]]
 
 		# Apply collection_title filter
-		if collection_title:
+		if collection_titles:
 			filters["item_group"] = ["in", collection_descendants]
 
 		# Apply brand filter
