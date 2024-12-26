@@ -1503,6 +1503,14 @@ def get_website_items():
 		if item_group:
 			filters["item_group"] = ["in", descendant_groups]
 		
+		distinct_collection_titles = frappe.get_all(
+				"Item Group",
+				fields=["name"],
+				filters={"name": ["in", descendant_groups]},
+				order_by="name"
+			)
+		distinct_collection_titles = [group["name"] for group in distinct_collection_titles]
+		
 		if collection_titles:  # If collection_titles is provided
 			if not isinstance(collection_titles, list):
 				collection_titles = [collection_titles]  # Ensure it's a list
@@ -1515,19 +1523,6 @@ def get_website_items():
 
 			collection_descendants = list(set(collection_descendants))  # Remove duplicates
 
-			distinct_collection_titles = frappe.get_all(
-				"Item Group",
-				fields=["name"],
-				filters={"name": ["in", collection_descendants]},
-				order_by="name"
-			)
-			distinct_collection_titles = [
-				{
-					"title": group["name"],
-					"handle": re.sub(r"[^a-z0-9]+", "-", group["name"].lower()).strip("-")
-				}
-				for group in distinct_collection_titles
-			]
 			distinct_brands = frappe.get_all(
 				"Website Item",
 				fields=["brand"],
@@ -1537,19 +1532,6 @@ def get_website_items():
 			)
 			distinct_brands = [brand["brand"] for brand in distinct_brands if brand["brand"] not in [None, ""]]
 		else:
-			distinct_collection_titles = frappe.get_all(
-				"Item Group",
-				fields=["name"],
-				filters={"name": ["in", descendant_groups]},
-				order_by="name"
-			)
-			distinct_collection_titles = [
-				{
-					"title": group["name"],
-					"handle": re.sub(r"[^a-z0-9]+", "-", group["name"].lower()).strip("-")
-				}
-				for group in distinct_collection_titles
-			]
 			distinct_brands = frappe.get_all(
 				"Website Item",
 				fields=["brand"],
