@@ -1479,6 +1479,7 @@ def get_website_items():
 				filters={"parent_item_group": item_group},
 				order_by="name"
 			)
+
 			distinct_parent_item_groups = [
 				{
 					"title": group["name"],
@@ -1487,16 +1488,16 @@ def get_website_items():
 				for group in immediate_descendants
 			]
 
+			distinct_collection_titles = frappe.get_all(
+					"Item Group",
+					fields=["name"],
+					filters={"name": ["in", descendant_groups]},
+					order_by="name"
+				)
+			distinct_collection_titles = [group["name"] for group in distinct_collection_titles]
+
 		if item_group:
 			filters["item_group"] = ["in", descendant_groups]
-		
-		distinct_collection_titles = frappe.get_all(
-				"Item Group",
-				fields=["name"],
-				filters={"name": ["in", descendant_groups]},
-				order_by="name"
-			)
-		distinct_collection_titles = [group["name"] for group in distinct_collection_titles]
 		
 		if collection_titles:
 			if not isinstance(collection_titles, list):
@@ -1536,6 +1537,15 @@ def get_website_items():
 				brands = [brands]
 			filters["brand"] = ["in", brands]
 		
+		if brands and not collection_titles:
+			distinct_collection_titles = frappe.get_all(
+				"Website Item",
+				fields=["distinct item_group"],
+				filters={"item_group": ["in", descendant_groups], "brand": ["in", brands]},
+				order_by="item_group"
+			)
+			distinct_collection_titles = [group["item_group"] for group in distinct_collection_titles if group["item_group"]]
+
 		if availability:
 			filters["custom_in_stock"] = ["=", 1]
 
