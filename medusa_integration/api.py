@@ -1450,13 +1450,15 @@ def get_website_items():
 
 		url = data.get("url")
 		collection_titles = data.get("collection_title")
-		brand = data.get("brand")
+		brands = data.get("brand")
 		page = data.get("page", 1)
 
 		last_part = url.strip("/").split("/")[-1].replace("-", "%")
+		print(last_part)
 
 		# Fetch the most suitable item group by matching the last part of the URL
 		item_group = frappe.db.get_value("Item Group", {"name": ["like", f"%{last_part}%"]}, "name")
+		print(item_group)
 
 		if not item_group:
 			return {"status": "error", "message": f"No matching item group found for the URL: {url}"}
@@ -1550,8 +1552,10 @@ def get_website_items():
 			filters["item_group"] = ["in", collection_descendants]
 
 		# Apply brand filter
-		if brand:
-			filters["brand"] = brand
+		if brands:  # If brands is provided
+			if not isinstance(brands, list):
+				brands = [brands]  # Ensure it's a list
+			filters["brand"] = ["in", brands]
 
 		# Step 4: Fetch total number of website items (for pagination)
 		total_products = frappe.db.count("Website Item", filters=filters)
