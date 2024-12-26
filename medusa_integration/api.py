@@ -1457,14 +1457,21 @@ def get_website_items():
 		print(last_part)
 
 		# Fetch the most suitable item group by matching the last part of the URL
-		item_group = frappe.db.get_value("Item Group", {"name": ["like", f"%{last_part}%"]}, "name")
+		if "%" in last_part:
+			# Apply the 'LIKE' condition
+			item_group = frappe.db.get_value("Item Group", {"name": ["like", f"%{last_part}%"]}, "name")
+		else:
+			# Apply the 'equals' condition
+			item_group = frappe.db.get_value("Item Group", {"name": last_part}, "name")
+
 		print(item_group)
 
 		if not item_group:
 			return {"status": "error", "message": f"No matching item group found for the URL: {url}"}
 
 		# Initialize filters for website items
-		filters = {"medusa_id": ["not in", [""]]}
+		# filters = {"medusa_id": ["not in", [""]]}
+		filters = {}
 		distinct_parent_item_groups = []
 		distinct_collection_titles = []
 		distinct_brands = []
@@ -1472,6 +1479,9 @@ def get_website_items():
 		# Step 1: Fetch distinct item groups (before applying any filter)
 		if item_group:
 			descendant_groups = frappe.db.get_descendants("Item Group", item_group)
+			print(len(descendant_groups))
+			descendant_groups.sort()
+			print(descendant_groups)
 			descendant_groups.append(item_group)
 			immediate_descendants = frappe.get_all(
 				"Item Group",
@@ -1563,6 +1573,7 @@ def get_website_items():
 		# Calculate total pages
 		page_size = 20
 		total_pages = math.ceil(total_products / page_size)
+		# print(filters	)
 
 		# Apply pagination (limit and offset)
 		offset = (int(page) - 1) * page_size
