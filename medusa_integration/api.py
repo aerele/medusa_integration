@@ -1587,12 +1587,25 @@ def get_website_items():
 
 		website_items = frappe.get_all(
 			"Website Item",
-			fields=["medusa_id", "item_name", "item_group", "brand"],
+			fields=["medusa_id", "short_description", "web_item_name", "item_group", "brand"],
 			filters=filters,
 			order_by=order_by,
 			start=offset,
 			page_length=page_size
 		)
+
+		modified_items = []
+		for item in website_items:
+			item_group_medusa_id = frappe.db.get_value("Item Group", item["item_group"], "medusa_id")
+			modified_items.append({
+				"id": item["medusa_id"],
+				"title": item["web_item_name"],
+				"brand_name": item["brand"],
+				"description": item["short_description"],
+				"collection_id": item_group_medusa_id,
+				"collection_title": item["item_group"],
+				"rating": 0
+			})
 
 		# Return the response with distinct values, pagination details, and filtered website items
 		return {
@@ -1603,7 +1616,7 @@ def get_website_items():
 			"distinct_parent_item_groups": distinct_parent_item_groups,
 			"distinct_collection_titles": distinct_collection_titles,
 			"distinct_brands": distinct_brands,
-			"paginatedProducts": website_items,
+			"paginatedProducts": modified_items,
 		}
 
 	except Exception as e:
