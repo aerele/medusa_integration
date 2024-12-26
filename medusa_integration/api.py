@@ -1452,6 +1452,7 @@ def get_website_items():
 		collection_titles = data.get("collection_title")
 		brands = data.get("brand")
 		page = data.get("page", 1)
+		availability = data.get("availability")
 
 		last_part = url.strip("/").split("/")[-1].replace("-", "%")
 		print(last_part)
@@ -1566,6 +1567,9 @@ def get_website_items():
 			if not isinstance(brands, list):
 				brands = [brands]  # Ensure it's a list
 			filters["brand"] = ["in", brands]
+		
+		if availability:
+			filters["custom_in_stock"] = ["=", 1]
 
 		# Step 4: Fetch total number of website items (for pagination)
 		total_products = frappe.db.count("Website Item", filters=filters)
