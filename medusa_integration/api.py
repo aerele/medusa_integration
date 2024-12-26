@@ -1453,6 +1453,7 @@ def get_website_items():
 		brands = data.get("brand")
 		page = data.get("page", 1)
 		availability = data.get("availability")
+		sort_order = data.get("sort_order", "asc").lower()
 
 		last_part = url.strip("/").split("/")[-1].replace("-", "%")
 		print(last_part)
@@ -1581,11 +1582,14 @@ def get_website_items():
 
 		# Apply pagination (limit and offset)
 		offset = (int(page) - 1) * page_size
+		print(sort_order)
+		order_by = "item_name asc" if sort_order == "asc" else "item_name desc"
+
 		website_items = frappe.get_all(
 			"Website Item",
-			fields=["medusa_id", "item_group", "brand"],
+			fields=["medusa_id", "item_name", "item_group", "brand"],
 			filters=filters,
-			order_by="item_name",
+			order_by=order_by,
 			start=offset,
 			page_length=page_size
 		)
