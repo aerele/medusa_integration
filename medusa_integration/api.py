@@ -1587,16 +1587,24 @@ def get_website_items():
 
 		website_items = frappe.get_all(
 			"Website Item",
-			fields=["medusa_id", "short_description", "web_item_name", "item_group", "brand"],
+			fields=["name", "medusa_id", "short_description", "web_item_name", "item_group", "brand"],
 			filters=filters,
 			order_by=order_by,
 			start=offset,
 			page_length=page_size
 		)
 
+		base_url = "http://alfarsi-live:8003"
 		modified_items = []
 		for item in website_items:
 			item_group_medusa_id = frappe.db.get_value("Item Group", item["item_group"], "medusa_id")
+			image_url = frappe.db.get_value(
+				"File", 
+				{"attached_to_doctype": "Website Item", "attached_to_name": item["name"]}, 
+				"file_url"
+			)
+			thumbnail = f"{base_url}{image_url}" if image_url else None
+
 			modified_items.append({
 				"id": item["medusa_id"],
 				"title": item["web_item_name"],
@@ -1604,6 +1612,7 @@ def get_website_items():
 				"description": item["short_description"],
 				"collection_id": item_group_medusa_id,
 				"collection_title": item["item_group"],
+				"thumbnail": thumbnail,
 				"rating": 0
 			})
 
