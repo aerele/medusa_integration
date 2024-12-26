@@ -1448,13 +1448,18 @@ def get_website_items():
 		if not data:
 			return {"status": "error", "message": "Invalid request body."}
 
-		item_group = data.get("item_group")
+		url = data.get("url")
 		collection_title = data.get("collection_title")
 		brand = data.get("brand")
 		page = data.get("page", 1)
 
-		if item_group and not frappe.db.exists("Item Group", item_group):
-			return {"status": "error", "message": f"Item Group '{item_group}' does not exist."}
+		last_part = url.strip("/").split("/")[-1].replace("-", "%")
+
+		# Fetch the most suitable item group by matching the last part of the URL
+		item_group = frappe.db.get_value("Item Group", {"name": ["like", f"%{last_part}%"]}, "name")
+
+		if not item_group:
+			return {"status": "error", "message": f"No matching item group found for the URL: {url}"}
 
 		# Initialize filters for website items
 		filters = {"medusa_id": ["not in", [""]]}
