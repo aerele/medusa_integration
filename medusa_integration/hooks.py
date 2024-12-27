@@ -137,9 +137,9 @@ doc_events = {
 	# "Customer": {
 	# 	"validate": "medusa_integration.api.create_medusa_customer"
 	# },
-	"Website Item": {
-		"validate": "medusa_integration.api.export_website_item"
-	},
+	# "Website Item": {
+	# 	"validate": "medusa_integration.api.export_website_item"
+	# },
  	# "Brand": {
 	# 	"validate": "medusa_integration.api.export_brand"
 	# },

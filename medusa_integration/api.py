@@ -1606,7 +1606,8 @@ def get_website_items():
 @frappe.whitelist(allow_guest=True)
 def add_review_to_website_item(item_code, customer_id, customer_name, review, rating, date):
 	try:
-		website_item = frappe.get_doc("Website Item", item_code)
+		web_item_code = frappe.db.get_value("Website Item", { "medusa_id": item_code}, "name")
+		website_item = frappe.get_doc("Website Item", web_item_code)
 		rating = max(1, rating)
 		
 		website_item.append("custom_review", {
