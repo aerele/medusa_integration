@@ -1602,3 +1602,32 @@ def get_website_items():
 	except Exception as e:
 		frappe.log_error(message=str(e), title=_("Fetch Website Items Failed"))
 		return {"status": "error", "message": str(e)}
+
+@frappe.whitelist(allow_guest=True)
+def add_review_to_website_item(item_code, customer_id, customer_name, review, rating, date):
+	try:
+		website_item = frappe.get_doc("Website Item", item_code)
+		rating = max(1, rating)
+		
+		website_item.append("custom_review", {
+			"medusa_id": customer_id,
+			"name1": customer_name,
+			"review": review,
+			"rating": rating / 5,
+			"date": date
+		})
+
+		reviews = website_item.get("custom_review")
+		total_ratings = sum([r.rating * 5 for r in reviews])
+		total_reviews = len(reviews)
+		overall_rating = total_ratings / total_reviews if total_reviews > 0 else 0
+		website_item.custom_overall_rating = overall_rating
+
+		website_item.save(ignore_permissions=True)
+		frappe.db.commit()
+
+		return ("Review added successfully")
+
+	except Exception as e:
+		frappe.log_error(message=frappe.get_traceback(with_context=1), title="Add Review to Website Item")
+		return {"status": "error", "message": str(e)}
