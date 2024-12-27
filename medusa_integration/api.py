@@ -1610,13 +1610,25 @@ def add_review_to_website_item(item_code, customer_id, customer_name, review, ra
 		website_item = frappe.get_doc("Website Item", web_item_code)
 		rating = max(1, rating)
 		
-		website_item.append("custom_review", {
-			"medusa_id": customer_id,
-			"name1": customer_name,
-			"review": review,
-			"rating": rating / 5,
-			"date": date
-		})
+		existing_review = None
+		for r in website_item.custom_review:
+			if r.medusa_id == customer_id:
+				existing_review = r
+				break
+
+		if existing_review:
+			existing_review.name1 = customer_name
+			existing_review.review = review
+			existing_review.rating = rating / 5
+			existing_review.date = date
+		else:
+			website_item.append("custom_review", {
+				"medusa_id": customer_id,
+				"name1": customer_name,
+				"review": review,
+				"rating": rating / 5,
+				"date": date
+			})
 
 		reviews = website_item.get("custom_review")
 		total_ratings = sum([r.rating * 5 for r in reviews])
@@ -1627,7 +1639,7 @@ def add_review_to_website_item(item_code, customer_id, customer_name, review, ra
 		website_item.save(ignore_permissions=True)
 		frappe.db.commit()
 
-		return ("Review added successfully")
+		return ("Review updated successfully" if existing_review else "Review added successfully")
 
 	except Exception as e:
 		frappe.log_error(message=frappe.get_traceback(with_context=1), title="Add Review to Website Item")
