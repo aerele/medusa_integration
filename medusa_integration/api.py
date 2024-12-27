@@ -1559,7 +1559,7 @@ def get_website_items():
 
 		website_items = frappe.get_all(
 			"Website Item",
-			fields=["name", "medusa_id", "short_description", "web_item_name", "item_group", "brand"],
+			fields=["name", "medusa_id", "short_description", "web_item_name", "item_group", "brand", "custom_overall_rating"],
 			filters=filters,
 			order_by=order_by,
 			start=offset,
@@ -1585,7 +1585,7 @@ def get_website_items():
 				"collection_id": item_group_medusa_id,
 				"collection_title": item["item_group"],
 				"thumbnail": thumbnail,
-				"rating": 0
+				"rating": item["custom_overall_rating"]
 			})
 
 		return {
