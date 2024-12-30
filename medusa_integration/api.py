@@ -1518,20 +1518,21 @@ def get_website_items():
 		distinct_collection_titles = []
 		distinct_brands = []
 
-		immediate_descendants = frappe.get_all(
-			"Item Group",
-			fields=["name"],
-			filters={"parent_item_group": item_group},
-			order_by="name"
-		)
+		if not (item_group == "Products" and brands and not collection_titles):
+			immediate_descendants = frappe.get_all(
+				"Item Group",
+				fields=["name"],
+				filters={"parent_item_group": item_group},
+				order_by="name"
+			)
 
-		distinct_parent_item_groups = [
-			{
-				"title": group["name"],
-				"handle": re.sub(r"[^a-z0-9]+", "-", group["name"].lower()).strip("-")
-			}
-			for group in immediate_descendants
-		]
+			distinct_parent_item_groups = [
+				{
+					"title": group["name"],
+					"handle": re.sub(r"[^a-z0-9]+", "-", group["name"].lower()).strip("-")
+				}
+				for group in immediate_descendants
+			]
 
 		distinct_collection_titles = frappe.get_all(
 				"Item Group",
