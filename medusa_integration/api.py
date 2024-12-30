@@ -1451,9 +1451,11 @@ def get_website_items():
 		url = data.get("url")
 		collection_titles = data.get("collection_title")
 		brands = data.get("brand")
+		homepage = data.get("homepage", 0)
 		page = data.get("page", 1)
 		availability = data.get("availability")
 		sort_order = data.get("sort_order", "asc").lower()
+		page_size = 20
 
 		last_part = url.strip("/").split("/")[-1].replace("-", "%")
 
@@ -1466,6 +1468,52 @@ def get_website_items():
 			return {"status": "error", "message": f"No matching item group found for the URL: {url}"}
 
 		filters = {}
+		if homepage == 1:
+			descendant_groups = frappe.db.get_descendants("Item Group", item_group)
+			descendant_groups.append(item_group)
+			filters["item_group"] = ["in", descendant_groups]
+
+			total_products = frappe.db.count("Website Item", filters=filters)
+
+			offset = (int(page) - 1) * page_size
+			order_by = "item_name asc" if sort_order == "asc" else "item_name desc"
+
+			website_items = frappe.get_all(
+				"Website Item",
+				fields=["name", "medusa_id", "short_description", "web_item_name", "item_group", "brand", "custom_overall_rating"],
+				filters=filters,
+				order_by=order_by,
+				start=offset,
+				page_length=page_size
+			)
+
+			base_url = "http://alfarsi-live:8003"
+			modified_items = []
+			for item in website_items:
+				item_group_medusa_id = frappe.db.get_value("Item Group", item["item_group"], "medusa_id")
+				image_url = frappe.db.get_value(
+					"File", 
+					{"attached_to_doctype": "Website Item", "attached_to_name": item["name"]}, 
+					"file_url"
+				)
+				thumbnail = f"{base_url}{image_url}" if image_url else None
+
+				modified_items.append({
+					"id": item["medusa_id"],
+					"title": item["web_item_name"],
+					"brand_name": item["brand"],
+					"description": item["short_description"],
+					"collection_id": item_group_medusa_id,
+					"collection_title": item["item_group"],
+					"thumbnail": thumbnail,
+					"rating": item["custom_overall_rating"]
+				})
+
+			return {
+				"product_count": total_products,
+				"paginatedProducts": modified_items,
+			}
+		
 		distinct_parent_item_groups = []
 		distinct_collection_titles = []
 		distinct_brands = []
@@ -1551,7 +1599,6 @@ def get_website_items():
 
 		total_products = frappe.db.count("Website Item", filters=filters)
 
-		page_size = 20
 		total_pages = math.ceil(total_products / page_size)
 
 		offset = (int(page) - 1) * page_size
