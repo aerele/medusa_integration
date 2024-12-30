@@ -1443,167 +1443,8 @@ def get_website_items():
 	import re
 	import math
 
-	try:
-		data = frappe.request.get_json()
-		if not data:
-			return {"status": "error", "message": "Invalid request body."}
-
-		url = data.get("url")
-		collection_titles = data.get("collection_title")
-		brands = data.get("brand")
-		homepage = data.get("homepage", 0)
-		page = data.get("page", 1)
-		availability = data.get("availability")
-		sort_order = data.get("sort_order", "asc").lower()
-		page_size = 20
-
-		last_part = url.strip("/").split("/")[-1].replace("-", "%")
-
-		if "%" in last_part:
-			item_group = frappe.db.get_value("Item Group", {"name": ["like", f"%{last_part}%"]}, "name")
-		else:
-			item_group = frappe.db.get_value("Item Group", {"name": last_part}, "name")
-
-		if not item_group:
-			return {"status": "error", "message": f"No matching item group found for the URL: {url}"}
-
-		filters = {}
-		if homepage == 1:
-			descendant_groups = frappe.db.get_descendants("Item Group", item_group)
-			descendant_groups.append(item_group)
-			filters["item_group"] = ["in", descendant_groups]
-
-			total_products = frappe.db.count("Website Item", filters=filters)
-
-			offset = (int(page) - 1) * page_size
-			order_by = "item_name asc" if sort_order == "asc" else "item_name desc"
-
-			website_items = frappe.get_all(
-				"Website Item",
-				fields=["name", "medusa_id", "short_description", "web_item_name", "item_group", "brand", "custom_overall_rating"],
-				filters=filters,
-				order_by=order_by,
-				start=offset,
-				page_length=page_size
-			)
-
-			base_url = "http://alfarsi-live:8003"
-			modified_items = []
-			for item in website_items:
-				item_group_medusa_id = frappe.db.get_value("Item Group", item["item_group"], "medusa_id")
-				image_url = frappe.db.get_value(
-					"File", 
-					{"attached_to_doctype": "Website Item", "attached_to_name": item["name"]}, 
-					"file_url"
-				)
-				thumbnail = f"{base_url}{image_url}" if image_url else None
-
-				modified_items.append({
-					"id": item["medusa_id"],
-					"title": item["web_item_name"],
-					"brand_name": item["brand"],
-					"description": item["short_description"],
-					"collection_id": item_group_medusa_id,
-					"collection_title": item["item_group"],
-					"thumbnail": thumbnail,
-					"rating": item["custom_overall_rating"]
-				})
-
-			return {
-				"product_count": total_products,
-				"paginatedProducts": modified_items,
-			}
-		
-		distinct_parent_item_groups = []
-		distinct_collection_titles = []
-		distinct_brands = []
-
-		if item_group:
-			descendant_groups = frappe.db.get_descendants("Item Group", item_group)
-			descendant_groups.append(item_group)
-			immediate_descendants = frappe.get_all(
-				"Item Group",
-				fields=["name"],
-				filters={"parent_item_group": item_group},
-				order_by="name"
-			)
-
-			distinct_parent_item_groups = [
-				{
-					"title": group["name"],
-					"handle": re.sub(r"[^a-z0-9]+", "-", group["name"].lower()).strip("-")
-				}
-				for group in immediate_descendants
-			]
-
-			distinct_collection_titles = frappe.get_all(
-					"Item Group",
-					fields=["name"],
-					filters={"name": ["in", descendant_groups]},
-					order_by="name"
-				)
-			distinct_collection_titles = [group["name"] for group in distinct_collection_titles]
-
-		if item_group:
-			filters["item_group"] = ["in", descendant_groups]
-		
-		if collection_titles:
-			if not isinstance(collection_titles, list):
-				collection_titles = [collection_titles]
-			
-			collection_descendants = []
-			for title in collection_titles:
-				descendants = frappe.db.get_descendants("Item Group", title)
-				collection_descendants.extend(descendants)
-				collection_descendants.append(title)
-
-			collection_descendants = list(set(collection_descendants))
-
-			distinct_brands = frappe.get_all(
-				"Website Item",
-				fields=["brand"],
-				filters={"item_group": ["in", collection_descendants]},
-				group_by="brand",
-				order_by="brand"
-			)
-			distinct_brands = [brand["brand"] for brand in distinct_brands if brand["brand"] not in [None, ""]]
-		else:
-			distinct_brands = frappe.get_all(
-				"Website Item",
-				fields=["brand"],
-				filters={"item_group": ["in", descendant_groups]},
-				group_by="brand",
-				order_by="brand"
-			)
-			distinct_brands = [brand["brand"] for brand in distinct_brands if brand["brand"] not in [None, ""]]
-
-		if collection_titles:
-			filters["item_group"] = ["in", collection_descendants]
-
-		if brands:
-			if not isinstance(brands, list):
-				brands = [brands]
-			filters["brand"] = ["in", brands]
-		
-		if brands and not collection_titles:
-			distinct_collection_titles = frappe.get_all(
-				"Website Item",
-				fields=["distinct item_group"],
-				filters={"item_group": ["in", descendant_groups], "brand": ["in", brands]},
-				order_by="item_group"
-			)
-			distinct_collection_titles = [group["item_group"] for group in distinct_collection_titles if group["item_group"]]
-
-		if availability:
-			filters["custom_in_stock"] = ["=", 1]
-
-		total_products = frappe.db.count("Website Item", filters=filters)
-
-		total_pages = math.ceil(total_products / page_size)
-
-		offset = (int(page) - 1) * page_size
-		order_by = "item_name asc" if sort_order == "asc" else "item_name desc"
-
+	def fetch_items(filters, order_by, offset, page_size):
+		"""Fetch paginated website items with filters and sorting."""
 		website_items = frappe.get_all(
 			"Website Item",
 			fields=["name", "medusa_id", "short_description", "web_item_name", "item_group", "brand", "custom_overall_rating"],
@@ -1634,12 +1475,128 @@ def get_website_items():
 				"thumbnail": thumbnail,
 				"rating": item["custom_overall_rating"]
 			})
+		return modified_items
+
+	try:
+		data = frappe.request.get_json()
+
+		url = data.get("url")
+		collection_titles = data.get("collection_title")
+		brands = data.get("brand")
+		homepage = data.get("homepage", 0)
+		page = data.get("page", 1)
+		availability = data.get("availability")
+		sort_order = data.get("sort_order", "asc").lower()
+		page_size = 20
+		offset = (int(page) - 1) * page_size
+		order_by = "item_name asc" if sort_order == "asc" else "item_name desc"
+
+		last_part = url.strip("/").split("/")[-1].replace("-", "%")
+
+		item_group = frappe.db.get_value(
+			"Item Group", 
+			{"name": ["like", f"%{last_part}%"]} if "%" in last_part else {"name": last_part}, 
+			"name"
+		)
+
+		if not item_group:
+			return {"status": "error", "message": f"No matching item group found for the URL: {url}"}
+		
+		descendant_groups = frappe.db.get_descendants("Item Group", item_group)
+		descendant_groups.append(item_group)
+
+		filters = {"item_group": ["in", descendant_groups]}
+		
+		if homepage == 1:
+			modified_items = fetch_items(filters, order_by, offset, page_size)
+			total_products = frappe.db.count("Website Item", filters=filters)
+			return {
+				"paginatedProducts": modified_items,
+			}
+		
+		distinct_parent_item_groups = []
+		distinct_collection_titles = []
+		distinct_brands = []
+
+		immediate_descendants = frappe.get_all(
+			"Item Group",
+			fields=["name"],
+			filters={"parent_item_group": item_group},
+			order_by="name"
+		)
+
+		distinct_parent_item_groups = [
+			{
+				"title": group["name"],
+				"handle": re.sub(r"[^a-z0-9]+", "-", group["name"].lower()).strip("-")
+			}
+			for group in immediate_descendants
+		]
+
+		distinct_collection_titles = frappe.get_all(
+				"Item Group",
+				fields=["name"],
+				filters={"name": ["in", descendant_groups]},
+				order_by="name"
+			)
+		distinct_collection_titles = [group["name"] for group in distinct_collection_titles]
+		
+		if collection_titles:
+			if not isinstance(collection_titles, list):
+				collection_titles = [collection_titles]
+			
+			collection_descendants = []
+			for title in collection_titles:
+				descendants = frappe.db.get_descendants("Item Group", title)
+				collection_descendants.extend(descendants)
+				collection_descendants.append(title)
+
+			filters["item_group"] = ["in", list(set(collection_descendants))]
+
+			distinct_brands = frappe.get_all(
+				"Website Item",
+				fields=["brand"],
+				filters={"item_group": ["in", collection_descendants]},
+				group_by="brand",
+				order_by="brand"
+			)
+		else:
+			distinct_brands = frappe.get_all(
+				"Website Item",
+				fields=["brand"],
+				filters={"item_group": ["in", descendant_groups]},
+				group_by="brand",
+				order_by="brand"
+			)
+
+		distinct_brands = [brand["brand"] for brand in distinct_brands if brand["brand"] not in [None, ""]]
+
+		if brands:
+			if not isinstance(brands, list):
+				brands = [brands]
+			filters["brand"] = ["in", brands]
+		
+		if brands and not collection_titles:
+			distinct_collection_titles = frappe.get_all(
+				"Website Item",
+				fields=["distinct item_group"],
+				filters={"item_group": ["in", descendant_groups], "brand": ["in", brands]},
+				order_by="item_group"
+			)
+			distinct_collection_titles = [group["item_group"] for group in distinct_collection_titles if group["item_group"]]
+
+		if availability:
+			filters["custom_in_stock"] = ["=", 1]
+
+		total_products = frappe.db.count("Website Item", filters=filters)
+
+		modified_items = fetch_items(filters, order_by, offset, page_size)
 
 		return {
 			"product_count": total_products,
-			"total_pages": total_pages,
+			"total_pages": math.ceil(total_products / page_size),
 			"current_page": int(page),
-			"items_in_page": len(website_items),
+			"items_in_page": len(modified_items),
 			"distinct_parent_item_groups": distinct_parent_item_groups,
 			"distinct_collection_titles": distinct_collection_titles,
 			"distinct_brands": distinct_brands,
