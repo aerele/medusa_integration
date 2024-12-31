@@ -1648,6 +1648,8 @@ def add_review_to_website_item(item_code, customer_id, customer_name=None, revie
 				existing_review.rating = rating / 5
 			if date:
 				existing_review.date = date
+			existing_review.likes = 0
+			existing_review.dislikes = 0
 		else:
 			website_item.append("custom_review", {
 				"medusa_id": customer_id,
