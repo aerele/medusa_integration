@@ -1609,12 +1609,28 @@ def get_website_items():
 		return {"status": "error", "message": str(e)}
 
 @frappe.whitelist(allow_guest=True)
-def add_review_to_website_item(item_code, customer_id, customer_name, review, rating, date):
+def add_review_to_website_item(item_code, customer_id, customer_name=None, review=None, review_id=0, rating=0, date=None, likes=0, dislikes=0):
 	try:
 		web_item_code = frappe.db.get_value("Website Item", { "medusa_id": item_code}, "name")
 		website_item = frappe.get_doc("Website Item", web_item_code)
-		rating = max(1, rating)
+
+		if likes or dislikes:
+			like_dislike_review = None
+			for r in website_item.custom_review:
+				if r.review_id == str(review_id):
+					like_dislike_review = r
+					break
+			
+			if likes:
+				like_dislike_review.likes = likes
+			if dislikes:
+				like_dislike_review.dislikes = dislikes
+			website_item.save(ignore_permissions=True)
+			frappe.db.commit()
+
+			return {"status": "success", "message": "Likes and dislikes updated successfully"}
 		
+		rating = max(1, rating)
 		existing_review = None
 		for r in website_item.custom_review:
 			if r.medusa_id == customer_id:
@@ -1622,17 +1638,26 @@ def add_review_to_website_item(item_code, customer_id, customer_name, review, ra
 				break
 
 		if existing_review:
-			existing_review.name1 = customer_name
-			existing_review.review = review
-			existing_review.rating = rating / 5
-			existing_review.date = date
+			if customer_name:
+				existing_review.name1 = customer_name
+			if review:
+				existing_review.review = review
+			if review_id:
+				existing_review.review_id = review_id
+			if rating:
+				existing_review.rating = rating / 5
+			if date:
+				existing_review.date = date
 		else:
 			website_item.append("custom_review", {
 				"medusa_id": customer_id,
 				"name1": customer_name,
 				"review": review,
+				"review_id": review_id,
 				"rating": rating / 5,
-				"date": date
+				"date": date,
+				"likes": likes,
+				"dislikes": dislikes
 			})
 
 		reviews = website_item.get("custom_review")
