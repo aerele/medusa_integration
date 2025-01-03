@@ -478,7 +478,11 @@ def export_website_item(self, method):
 		print(f"Unexpected error while exporting {self.name}: {str(e)}")
 		raise e
 
-def update_website_item(self, method):    
+def update_website_item(self, method):
+	if self.custom_skip_update_hook:
+		frappe.db.set_value("Website Item", self.name, "custom_skip_update_hook", 0)
+		return
+
 	item_group = frappe.get_doc("Item Group", self.item_group)
 	product_id = self.medusa_id
 
@@ -532,6 +536,12 @@ def update_website_item(self, method):
 	except Exception as e:
 		print(f"Unexpected error while updating {self.name}: {str(e)}")
 		raise e
+
+def website_item_validate(self, method):
+	if not self.medusa_id:
+		export_website_item(self, method)
+	else:
+		update_website_item(self, method)
 
 def create_medusa_variant(product_id, item_code, backorder = False, country_code = None):	
 	inventory_quantity = frappe.get_list('Bin', filters={'item_code': item_code}, fields='actual_qty', pluck='actual_qty')
@@ -1614,9 +1624,12 @@ def get_website_items():
 
 @frappe.whitelist(allow_guest=True)
 def add_review_to_website_item(item_code, customer_id, customer_name=None, review=None, review_id=0, rating=0, date=None, likes=0, dislikes=0):
+	website_item = None
 	try:
 		web_item_code = frappe.db.get_value("Website Item", { "medusa_id": item_code}, "name")
 		website_item = frappe.get_doc("Website Item", web_item_code)
+
+		frappe.db.set_value("Website Item", website_item.name, "custom_skip_update_hook", 1)
 
 		if likes or dislikes:
 			like_dislike_review = None
@@ -1680,3 +1693,7 @@ def add_review_to_website_item(item_code, customer_id, customer_name=None, revie
 	except Exception as e:
 		frappe.log_error(message=frappe.get_traceback(with_context=1), title="Add Review to Website Item")
 		return {"status": "error", "message": str(e)}
+
+	finally:
+		if website_item:
+			frappe.db.set_value("Website Item", website_item.name, "custom_skip_update_hook", 0)
