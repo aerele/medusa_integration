@@ -438,14 +438,16 @@ def export_website_item(self, method):
 				"label": spec.label,
 				"description": spec.description
 			})
-	#need to update ranking
+
 	payload = {
 		"title": self.web_item_name,
 		"item_code": self.item_code,
 		"discountable": False,
 		"is_giftcard": False,
 		"collection_id": item_group.medusa_id,
+		"short_description": self.short_description,
 		"description": self.web_long_description,
+		"ranking": self.ranking,
 		"status": "published" if self.published else "draft",
 		"brand_name": self.brand,
 		"origin_country": country_code,
@@ -502,7 +504,9 @@ def update_website_item(self, method):
 		"item_code": self.item_code,
 		"discountable": False,
 		"collection_id": item_group.medusa_id,
+		"short_description": self.short_description,
 		"description": self.web_long_description,
+		"ranking": self.ranking,
 		"status": "published" if self.published else "draft",
 		"brand_name": self.brand,
 		"origin_country": country_code,
