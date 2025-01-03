@@ -137,18 +137,18 @@ doc_events = {
 	# "Customer": {
 	# 	"validate": "medusa_integration.api.create_medusa_customer"
 	# },
-	# "Website Item": {
-	# 	"validate": "medusa_integration.api.export_website_item"
-	# },
+	"Website Item": {
+	"validate": "medusa_integration.api.website_item_validate"
+	},
  	# "Brand": {
 	# 	"validate": "medusa_integration.api.export_brand"
 	# },
 	"Quotation": {
-        "on_update": "medusa_integration.api.export_quotation_on_update"
-    },
+		"on_update": "medusa_integration.api.export_quotation_on_update"
+	},
 	"Sales Order": {
-        "on_update": "medusa_integration.api.export_sales_order_on_update"
-    },
+		"on_update": "medusa_integration.api.export_sales_order_on_update"
+	},
 	# "File": {
 	# 	"after_insert": "medusa_integration.api.file_validation_wrapper"
 	# }
@@ -176,9 +176,9 @@ doc_events = {
 # }
 
 scheduler_events = {
-    "cron": {
-        "* * * * *": ["medusa_integration.api.send_quotation_emails",],
-    }
+	"cron": {
+		"* * * * *": ["medusa_integration.api.send_quotation_emails",],
+	}
 }
 
 # Testing
