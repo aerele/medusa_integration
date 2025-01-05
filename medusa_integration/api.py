@@ -478,8 +478,9 @@ def export_website_item(self, method):
 		print(f"Unexpected error while exporting {self.name}: {str(e)}")
 		raise e
 
-def update_website_item(self, method):
-	if self.custom_skip_update_hook:
+def update_website_item(self, method, override_skip_update_hook=0):
+	print(123456789999999999999999999)
+	if override_skip_update_hook: # need to change
 		frappe.db.set_value("Website Item", self.name, "custom_skip_update_hook", 0)
 		return
 
@@ -1532,21 +1533,20 @@ def get_website_items():
 		distinct_collection_titles = []
 		distinct_brands = []
 
-		if not (item_group == "Products" and brands and not collection_titles):
-			immediate_descendants = frappe.get_all(
-				"Item Group",
-				fields=["name"],
-				filters={"parent_item_group": item_group},
-				order_by="name"
-			)
+		immediate_descendants = frappe.get_all(
+			"Item Group",
+			fields=["name"],
+			filters={"parent_item_group": item_group},
+			order_by="name"
+		)
 
-			distinct_parent_item_groups = [
-				{
-					"title": group["name"],
-					"handle": re.sub(r"[^a-z0-9]+", "-", group["name"].lower()).strip("-")
-				}
-				for group in immediate_descendants
-			]
+		distinct_parent_item_groups = [
+			{
+				"title": group["name"],
+				"handle": re.sub(r"[^a-z0-9]+", "-", group["name"].lower()).strip("-")
+			}
+			for group in immediate_descendants
+		]
 
 		distinct_collection_titles = frappe.get_all(
 				"Item Group",
