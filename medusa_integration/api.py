@@ -1548,13 +1548,14 @@ def get_website_items():
 			for group in immediate_descendants
 		]
 
-		distinct_collection_titles = frappe.get_all(
-				"Item Group",
-				fields=["name"],
-				filters={"name": ["in", descendant_groups]},
-				order_by="name"
-			)
-		distinct_collection_titles = [group["name"] for group in distinct_collection_titles]
+		distinct_collection_titles = frappe.db.sql("""
+	SELECT item_group AS name, COUNT(*) AS count
+	FROM `tabWebsite Item`
+	WHERE item_group IN %(descendant_groups)s
+	GROUP BY item_group
+	ORDER BY name
+""", {"descendant_groups": tuple(descendant_groups)}, as_dict=True)
+
 		
 		if collection_titles:
 			if not isinstance(collection_titles, list):
@@ -1568,23 +1569,22 @@ def get_website_items():
 
 			filters["item_group"] = ["in", list(set(collection_descendants))]
 
-			distinct_brands = frappe.get_all(
-				"Website Item",
-				fields=["brand"],
-				filters={"item_group": ["in", collection_descendants]},
-				group_by="brand",
-				order_by="brand"
-			)
-		else:
-			distinct_brands = frappe.get_all(
-				"Website Item",
-				fields=["brand"],
-				filters={"item_group": ["in", descendant_groups]},
-				group_by="brand",
-				order_by="brand"
-			)
+			distinct_brands = frappe.db.sql("""
+	SELECT brand AS name, COUNT(*) AS count
+	FROM `tabWebsite Item`
+	WHERE item_group IN %(collection_descendants)s AND brand IS NOT NULL AND brand != ''
+	GROUP BY brand
+	ORDER BY brand
+""", {"collection_descendants": tuple(collection_descendants)}, as_dict=True)
 
-		distinct_brands = [brand["brand"] for brand in distinct_brands if brand["brand"] not in [None, ""]]
+		else:
+			distinct_brands = frappe.db.sql("""
+	SELECT brand AS name, COUNT(*) AS count
+	FROM `tabWebsite Item`
+	WHERE item_group IN %(descendant_groups)s AND brand IS NOT NULL AND brand != ''
+	GROUP BY brand
+	ORDER BY brand
+""", {"descendant_groups": tuple(descendant_groups)}, as_dict=True)
 
 		if brands:
 			if not isinstance(brands, list):
@@ -1592,13 +1592,19 @@ def get_website_items():
 			filters["brand"] = ["in", brands]
 		
 		if brands and not collection_titles:
-			distinct_collection_titles = frappe.get_all(
-				"Website Item",
-				fields=["distinct item_group"],
-				filters={"item_group": ["in", descendant_groups], "brand": ["in", brands]},
-				order_by="item_group"
-			)
-			distinct_collection_titles = [group["item_group"] for group in distinct_collection_titles if group["item_group"]]
+			distinct_collection_titles = frappe.db.sql("""
+	SELECT item_group AS name, COUNT(*) AS count
+	FROM `tabWebsite Item`
+	WHERE item_group IN %(descendant_groups)s
+	{brand_filter}
+	GROUP BY item_group
+	ORDER BY name
+""".format(
+	brand_filter="AND brand IN %(brands)s" if brands else ""
+), {
+	"descendant_groups": tuple(descendant_groups),
+	"brands": tuple(brands) if brands else None
+}, as_dict=True)
 
 		if availability:
 			filters["custom_in_stock"] = ["=", 1]
