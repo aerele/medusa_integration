@@ -1501,10 +1501,9 @@ def get_website_items():
 		homepage = data.get("homepage", 0)
 		page = data.get("page", 1)
 		availability = data.get("availability")
-		sort_order = data.get("sort_order", "asc").lower()
+		sort_order = data.get("sort_order", "asc")
 		page_size = 20
 		offset = (int(page) - 1) * page_size
-		order_by = "item_name asc" if sort_order == "asc" else "item_name desc"
 
 		last_part = url.strip("/").split("/")[-1].replace("-", "%")
 
@@ -1516,6 +1515,13 @@ def get_website_items():
 
 		if not item_group:
 			return {"status": "error", "message": f"No matching item group found for the URL: {url}"}
+		
+		if sort_order == "default":
+			order_by = "ranking desc"
+		elif sort_order == "asc":
+			order_by = "item_name asc"
+		else:
+			order_by = "item_name desc"
 		
 		descendant_groups = frappe.db.get_descendants("Item Group", item_group)
 		descendant_groups.append(item_group)
