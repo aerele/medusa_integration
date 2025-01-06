@@ -496,17 +496,36 @@ def update_website_item(self, method, override_skip_update_hook=0):
 			print(f"Unexpected error while updating {self.name}: {str(e)}")
 			raise e
 	
-	if method == "basic":
-		relevant_item_codes = []
+	def get_recommended_items_data():
+		recommended_items_data = []
 		if self.recommended_items:
 			for recommended_item in self.recommended_items:
-				medusa_id = frappe.get_value("Website Item", {"name": recommended_item.website_item}, "medusa_id")
+				base_url = "http://alfarsi-live:8003"
+				website_item_name = recommended_item.website_item
+				medusa_id = frappe.get_value("Website Item", {"name": website_item_name}, "medusa_id")
+				image_url = frappe.db.get_value(
+					"File", 
+					{"attached_to_doctype": "Website Item", "attached_to_name": website_item_name}, 
+					"file_url"
+				)
+				thumbnail = f"{base_url}{image_url}" if image_url else None
 				if medusa_id:
-					relevant_item_codes.append(medusa_id)
+					item_data = frappe.get_doc("Website Item", website_item_name)
+					recommended_items_data.append({
+						"product_id": medusa_id,
+						"name": item_data.web_item_name,
+						"description": item_data.short_description,
+						"thumbnail": thumbnail,
+						"rating": item_data.custom_overall_rating
+					})
+		return recommended_items_data
+	
+	if method == "basic":
+		recommended_items_data = get_recommended_items_data()
 
 		payload = {
 			"metadata": {
-				"recommended_items": relevant_item_codes
+				"recommended_items": recommended_items_data
 			}
 		}
 
@@ -535,12 +554,13 @@ def update_website_item(self, method, override_skip_update_hook=0):
 					"description": spec.description
 				})
 	
-	relevant_item_codes = []
-	if self.recommended_items:
-		for recommended_item in self.recommended_items:
-			medusa_id = frappe.get_value("Website Item", {"name": recommended_item.website_item}, "medusa_id")
-			if medusa_id:
-				relevant_item_codes.append(medusa_id)
+	# relevant_item_codes = []
+	# if self.recommended_items:
+	# 	for recommended_item in self.recommended_items:
+	# 		medusa_id = frappe.get_value("Website Item", {"name": recommended_item.website_item}, "medusa_id")
+	# 		if medusa_id:
+	# 			relevant_item_codes.append(medusa_id)
+	recommended_items_data = get_recommended_items_data()
 
 	payload = {
 		"title": self.web_item_name,
@@ -555,7 +575,7 @@ def update_website_item(self, method, override_skip_update_hook=0):
 		"origin_country": country_code,
 		"metadata": {
 			"UOM": self.stock_uom,
-			"recommended_items": relevant_item_codes
+			"recommended_items": recommended_items_data
 		},
 		"specifications": specifications
 	}
