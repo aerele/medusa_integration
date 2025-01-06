@@ -1541,14 +1541,13 @@ def get_website_items():
 		distinct_brands = []
 
 		distinct_collection_titles = frappe.db.sql("""
-	SELECT item_group AS name, COUNT(*) AS count
-	FROM `tabWebsite Item`
-	WHERE item_group IN %(descendant_groups)s
-	GROUP BY item_group
-	ORDER BY name
-""", {"descendant_groups": tuple(descendant_groups)}, as_dict=True)
+			SELECT item_group AS name, COUNT(*) AS count
+			FROM `tabWebsite Item`
+			WHERE item_group IN %(descendant_groups)s
+			GROUP BY item_group
+			ORDER BY name
+		""", {"descendant_groups": tuple(descendant_groups)}, as_dict=True)
 
-		
 		if collection_titles:
 			if not isinstance(collection_titles, list):
 				collection_titles = [collection_titles]
@@ -1562,21 +1561,21 @@ def get_website_items():
 			filters["item_group"] = ["in", list(set(collection_descendants))]
 
 			distinct_brands = frappe.db.sql("""
-	SELECT brand AS name, COUNT(*) AS count
-	FROM `tabWebsite Item`
-	WHERE item_group IN %(collection_descendants)s AND brand IS NOT NULL AND brand != ''
-	GROUP BY brand
-	ORDER BY brand
-""", {"collection_descendants": tuple(collection_descendants)}, as_dict=True)
-
+				SELECT brand AS name, COUNT(*) AS count
+				FROM `tabWebsite Item`
+				WHERE item_group IN %(collection_descendants)s AND brand IS NOT NULL AND brand != ''
+				GROUP BY brand
+				ORDER BY brand
+			""", {"collection_descendants": tuple(collection_descendants)}, as_dict=True)
+		
 		else:
 			distinct_brands = frappe.db.sql("""
-	SELECT brand AS name, COUNT(*) AS count
-	FROM `tabWebsite Item`
-	WHERE item_group IN %(descendant_groups)s AND brand IS NOT NULL AND brand != ''
-	GROUP BY brand
-	ORDER BY brand
-""", {"descendant_groups": tuple(descendant_groups)}, as_dict=True)
+				SELECT brand AS name, COUNT(*) AS count
+				FROM `tabWebsite Item`
+				WHERE item_group IN %(descendant_groups)s AND brand IS NOT NULL AND brand != ''
+				GROUP BY brand
+				ORDER BY brand
+			""", {"descendant_groups": tuple(descendant_groups)}, as_dict=True)
 
 		if brands:
 			if not isinstance(brands, list):
@@ -1619,8 +1618,7 @@ def get_website_items():
 				parts = route.strip("/").split("/")
 				if len(parts) > 1:
 					second_part.add(parts[1].replace("-", "%"))
-				
-			print(list(second_part))
+			
 			second_part_list = list(second_part)
 			parent_groups = []
 			for part in second_part_list:
@@ -1631,8 +1629,6 @@ def get_website_items():
 				)
 				if parent_group:
 					parent_groups.append(parent_group)
-
-			print(parent_groups)
 
 			distinct_parent_item_groups = [
 				{
