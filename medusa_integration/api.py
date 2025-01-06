@@ -504,6 +504,13 @@ def update_website_item(self, method, override_skip_update_hook=0):
 					"description": spec.description
 				})
 	
+	relevant_item_codes = []
+	if self.recommended_items:
+		for recommended_item in self.recommended_items:
+			medusa_id = frappe.get_value("Website Item", {"name": recommended_item.website_item}, "medusa_id")
+			if medusa_id:
+				relevant_item_codes.append(medusa_id)
+
 	payload = {
 		"title": self.web_item_name,
 		"item_code": self.item_code,
@@ -515,7 +522,11 @@ def update_website_item(self, method, override_skip_update_hook=0):
 		"status": "published" if self.published else "draft",
 		"brand_name": self.brand,
 		"origin_country": country_code,
-		"metadata": {"UOM": self.stock_uom},
+		"metadata": {
+			"UOM": self.stock_uom,
+			"recommended_items": relevant_item_codes
+		},
+
 		"specifications": specifications
 	}
 	try:
