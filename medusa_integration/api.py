@@ -481,6 +481,21 @@ def export_website_item(self, method):
 def update_website_item(self, method, override_skip_update_hook=0):
 	print(123456789999999999999999999)
 
+	def send_update_request(payload, throw_message):
+		try:
+			args = frappe._dict({
+				"method": "POST",
+				"url": f"{get_url()[0]}/admin/products/{self.medusa_id}",
+				"headers": get_headers(with_token=True),
+				"payload": json.dumps(payload),
+				"throw_message": throw_message
+			})
+			send_request(args)
+			print(self.medusa_id, " updated successfully")
+		except Exception as e:
+			print(f"Unexpected error while updating {self.name}: {str(e)}")
+			raise e
+	
 	if method == "basic":
 		relevant_item_codes = []
 		if self.recommended_items:
@@ -495,21 +510,7 @@ def update_website_item(self, method, override_skip_update_hook=0):
 			}
 		}
 
-		try:
-			args = frappe._dict({
-				"method": "POST",
-				"url": f"{get_url()[0]}/admin/products/{self.medusa_id}",
-				"headers": get_headers(with_token=True),
-				"payload": json.dumps(payload),
-				"throw_message": f"Error while updating recommended items for Website Item {self.name} in Medusa"
-			})
-			send_request(args)
-			print(self.medusa_id, " updated successfully")
-		
-		except Exception as e:
-			print(f"Unexpected error while updating recommended items for {self.name}: {str(e)}")
-			raise e
-
+		send_update_request(payload, f"Error while updating recommended items for Website Item {self.name} in Medusa")
 		return
 	
 	if override_skip_update_hook: # need to change
@@ -517,8 +518,6 @@ def update_website_item(self, method, override_skip_update_hook=0):
 		return
 
 	item_group = frappe.get_doc("Item Group", self.item_group)
-	product_id = self.medusa_id
-
 	if not item_group.medusa_id:
 		export_item_group(item_group)
 
@@ -558,28 +557,9 @@ def update_website_item(self, method, override_skip_update_hook=0):
 			"UOM": self.stock_uom,
 			"recommended_items": relevant_item_codes
 		},
-
 		"specifications": specifications
 	}
-	try:
-		args = frappe._dict({
-			"method": "POST",
-			"url": f"{get_url()[0]}/admin/products/{product_id}",
-			"headers": get_headers(with_token=True),
-			"payload": json.dumps(payload),
-			"throw_message": f"Error while updating Website Item {self.name} in Medusa"
-		})
-		send_request(args)
-		print(product_id, " updated successfully")
-	
-	except frappe.ValidationError as e:
-		if "Product with handle" in str(e) and "already exists" in str(e):
-			print(f"Duplicate error for {self.name}: {str(e)}")
-		else:
-			raise e
-	except Exception as e:
-		print(f"Unexpected error while updating {self.name}: {str(e)}")
-		raise e
+	send_update_request(payload, f"Error while updating Website Item {self.name} in Medusa")
 
 def website_item_validate(self, method):
 	if not self.medusa_id:
