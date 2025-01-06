@@ -420,7 +420,7 @@ def export_item(self):
 		})
 		send_request(args)
 
-def export_website_item(self, method):    
+def export_website_item(self, method):
 	item_group = frappe.get_doc("Item Group", self.item_group)
 
 	if not item_group.medusa_id:
@@ -480,6 +480,38 @@ def export_website_item(self, method):
 
 def update_website_item(self, method, override_skip_update_hook=0):
 	print(123456789999999999999999999)
+
+	if method == "basic":
+		relevant_item_codes = []
+		if self.recommended_items:
+			for recommended_item in self.recommended_items:
+				medusa_id = frappe.get_value("Website Item", {"name": recommended_item.website_item}, "medusa_id")
+				if medusa_id:
+					relevant_item_codes.append(medusa_id)
+
+		payload = {
+			"metadata": {
+				"recommended_items": relevant_item_codes
+			}
+		}
+
+		try:
+			args = frappe._dict({
+				"method": "POST",
+				"url": f"{get_url()[0]}/admin/products/{self.medusa_id}",
+				"headers": get_headers(with_token=True),
+				"payload": json.dumps(payload),
+				"throw_message": f"Error while updating recommended items for Website Item {self.name} in Medusa"
+			})
+			send_request(args)
+			print(self.medusa_id, " updated successfully")
+		
+		except Exception as e:
+			print(f"Unexpected error while updating recommended items for {self.name}: {str(e)}")
+			raise e
+
+		return
+	
 	if override_skip_update_hook: # need to change
 		frappe.db.set_value("Website Item", self.name, "custom_skip_update_hook", 0)
 		return
@@ -1159,10 +1191,11 @@ def export_all_website_item():
 			except Exception as e:
 				print(f"Unexpected error while exporting {doc.name}: {str(e)}")
 				raise e
+	
+	update_all_website_item(method = "basic")
 
-def update_all_website_item():
+def update_all_website_item(method = None):
 	doctype = "Website Item"
-	method = ""
 	record = frappe.get_all(doctype)  # frappe.get_all(doctype, limit = 5)
 	for r in record:
 		doc = frappe.get_doc(doctype, r)
