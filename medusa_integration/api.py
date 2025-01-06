@@ -1584,18 +1584,18 @@ def get_website_items():
 		
 		if brands and not collection_titles:
 			distinct_collection_titles = frappe.db.sql("""
-	SELECT item_group AS name, COUNT(*) AS count
-	FROM `tabWebsite Item`
-	WHERE item_group IN %(descendant_groups)s
-	{brand_filter}
-	GROUP BY item_group
-	ORDER BY name
-""".format(
-	brand_filter="AND brand IN %(brands)s" if brands else ""
-), {
-	"descendant_groups": tuple(descendant_groups),
-	"brands": tuple(brands) if brands else None
-}, as_dict=True)
+				SELECT item_group AS name, COUNT(*) AS count
+				FROM `tabWebsite Item`
+				WHERE item_group IN %(descendant_groups)s
+				{brand_filter}
+				GROUP BY item_group
+				ORDER BY name
+			""".format(
+				brand_filter="AND brand IN %(brands)s" if brands else ""
+			), {
+				"descendant_groups": tuple(descendant_groups),
+				"brands": tuple(brands) if brands else None
+			}, as_dict=True)
 
 		if not (item_group == "Products" and brands and not collection_titles):
 			immediate_descendants = frappe.get_all(
