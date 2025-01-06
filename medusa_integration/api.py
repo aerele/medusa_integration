@@ -1506,6 +1506,7 @@ def get_website_items():
 		offset = (int(page) - 1) * page_size
 
 		last_part = url.strip("/").split("/")[-1].replace("-", "%")
+		second_part = set()
 
 		item_group = frappe.db.get_value(
 			"Item Group", 
@@ -1538,21 +1539,6 @@ def get_website_items():
 		distinct_parent_item_groups = []
 		distinct_collection_titles = []
 		distinct_brands = []
-
-		immediate_descendants = frappe.get_all(
-			"Item Group",
-			fields=["name"],
-			filters={"parent_item_group": item_group},
-			order_by="name"
-		)
-
-		distinct_parent_item_groups = [
-			{
-				"title": group["name"],
-				"handle": re.sub(r"[^a-z0-9]+", "-", group["name"].lower()).strip("-")
-			}
-			for group in immediate_descendants
-		]
 
 		distinct_collection_titles = frappe.db.sql("""
 	SELECT item_group AS name, COUNT(*) AS count
@@ -1611,6 +1597,50 @@ def get_website_items():
 	"descendant_groups": tuple(descendant_groups),
 	"brands": tuple(brands) if brands else None
 }, as_dict=True)
+
+		if not (item_group == "Products" and brands and not collection_titles):
+			immediate_descendants = frappe.get_all(
+				"Item Group",
+				fields=["name"],
+				filters={"parent_item_group": item_group},
+				order_by="name"
+			)
+
+			distinct_parent_item_groups = [
+				{
+					"title": group["name"],
+					"handle": re.sub(r"[^a-z0-9]+", "-", group["name"].lower()).strip("-")
+				}
+				for group in immediate_descendants
+			]
+		else:
+			for collection in distinct_collection_titles:
+				route = frappe.db.get_value("Item Group", {"name": collection.name}, "route")
+				parts = route.strip("/").split("/")
+				if len(parts) > 1:
+					second_part.add(parts[1].replace("-", "%"))
+				
+			print(list(second_part))
+			second_part_list = list(second_part)
+			parent_groups = []
+			for part in second_part_list:
+				parent_group = frappe.db.get_value(
+					"Item Group",
+					{"name": ["like", f"%{part}%"]} if "%" in part else {"name": part}, 
+					"name"
+				)
+				if parent_group:
+					parent_groups.append(parent_group)
+
+			print(parent_groups)
+
+			distinct_parent_item_groups = [
+				{
+					"title": group,
+					"handle": re.sub(r"[^a-z0-9]+", "-", group.lower()).strip("-"),
+				}
+				for group in parent_groups
+			]
 
 		if availability:
 			filters["custom_in_stock"] = ["=", 1]
