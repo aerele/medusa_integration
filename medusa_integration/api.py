@@ -189,7 +189,7 @@ def create_quotation():
 	except Exception as e:
 		return {"error": f"Failed to fetch and update standard prices: {str(e)}"}
 
-	return {"message": "Quotation created successfully", "Quotation ID": quote.name}
+	return {"message": "Quotation created successfully", "quotationId": quote.name}
 
 @frappe.whitelist(allow_guest=True)
 def create_sales_order():
@@ -1416,7 +1416,7 @@ def export_quotation_on_update(doc, method):
 	if doc.workflow_state == "Ready for Customer Review" and doc.from_ecommerce == 1:
 		try:
 			export_quotation(doc.name, "")
-			frappe.msgprint("Quotation details updated in Medusa site successfully")
+			frappe.msgprint("Quotation details updated in e-Commerce site successfully")
 		except Exception as e:
 			frappe.log_error(f"Failed to export Quotation {doc.name}: {str(e)}", "Quotation Export Error")
 			print(f"Error exporting Quotation {doc.name}: {str(e)}")
@@ -1779,3 +1779,23 @@ def add_review_to_website_item(item_code, customer_id, customer_name=None, revie
 	finally:
 		if website_item:
 			frappe.db.set_value("Website Item", website_item.name, "custom_skip_update_hook", 0)
+
+@frappe.whitelist(allow_guest=True)
+def fetch_quotation_pdf_url():
+	data = json.loads(frappe.request.data)
+	quotation_id = data.get("quotation_id")
+	
+	if not frappe.db.exists("Quotation", quotation_id):
+		return {"error": f"Quotation with ID {quotation_id} not found."}
+	
+	try:
+		site_url = frappe.utils.get_url()
+		
+		pdf_url = f"{site_url}/printview?doctype=Quotation&name={quotation_id}&format=Alfarsi%20Quote%20Print&no_letterhead=0&_lang=en"
+
+		# return {"message": "Quotation PDF URL fetched successfully", "pdf_url": pdf_url}
+		return (pdf_url)
+	
+	except Exception as e:
+		frappe.log_error(f"Error generating PDF URL for Quotation {quotation_id}: {str(e)}", "Quotation PDF URL Error")
+		return {"error": f"Failed to generate PDF URL: {str(e)}"}
