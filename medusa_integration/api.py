@@ -1798,3 +1798,23 @@ def fetch_quotation_pdf_url():
 	except Exception as e:
 		frappe.log_error(f"Error generating PDF URL for Quotation {quotation_id}: {str(e)}", "Quotation PDF URL Error")
 		return {"error": f"Failed to generate PDF URL: {str(e)}"}
+
+@frappe.whitelist(allow_guest=True)
+def fetch_relevant_collection_products():
+	data = json.loads(frappe.request.data)
+	item_group = data.get("item_group")
+	print(item_group)
+	
+	route = frappe.db.get_value("Item Group", {"name": item_group}, "route")
+	print(route)
+	parts = route.strip("/").split("/")
+	if len(parts) > 1:
+		second_part = parts[1].replace("-", "%")
+	
+	parent_group = frappe.db.get_value(
+		"Item Group",
+		{"name": ["like", f"%{second_part}%"]} if "%" in second_part else {"name": second_part}, 
+		"name"
+	)
+	if parent_group:
+		return(parent_group)
