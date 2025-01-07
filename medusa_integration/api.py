@@ -1347,7 +1347,7 @@ def export_quotation(self, method):
 		# "customer_id": medusa_id,
 		"customer_id": lead, #Need to remove
 		"draft_order_id": quotation.medusa_draft_order_id,
-		"erp_status": "Received",
+		"erp_status": "Quote received",
 		"erp_items": [],
 		"erp_unaccepted_items": [],
 		"erp_total_quantity": quotation.total_qty,
@@ -1793,7 +1793,6 @@ def fetch_quotation_pdf_url():
 		
 		pdf_url = f"{site_url}/printview?doctype=Quotation&name={quotation_id}&format=Alfarsi%20Quote%20Print&no_letterhead=0&_lang=en"
 
-		# return {"message": "Quotation PDF URL fetched successfully", "pdf_url": pdf_url}
 		return (pdf_url)
 	
 	except Exception as e:
