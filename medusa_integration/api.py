@@ -241,7 +241,7 @@ def update_quotation():
 	
 	if approval == "Partially approved":
 		quote.status = "Open"
-		quote.workflow_state = "Approved" #Need to update
+		quote.workflow_state = "Partially Approved"
 		quote.order_type = "Sales"
 
 		tax_summary = set()
@@ -316,8 +316,8 @@ def update_quotation():
 	
 	if approval == "Rejected":
 		quote.status = "Open" #need to change
-		quote.workflow_state = "Approved" #need to change
-		# quote.order_type = "Sales"
+		quote.workflow_state = "Rejected"
+		quote.order_type = "Sales"
 		quote.submit()
 
 	quote.save(ignore_permissions=True)
