@@ -421,7 +421,7 @@ def export_website_item(self, method):
 		print(f"Unexpected error while exporting {self.name}: {str(e)}")
 		raise e
 
-def update_website_item(self, method, override_skip_update_hook=0):
+def update_website_item(self, method):
 	def send_update_request(payload, throw_message):
 		try:
 			args = frappe._dict({
@@ -437,7 +437,7 @@ def update_website_item(self, method, override_skip_update_hook=0):
 			print(f"Unexpected error while updating {self.name}: {str(e)}")
 			raise e
 		
-	if override_skip_update_hook: # need to change
+	if self.custom_skip_update_hook:
 		frappe.db.set_value("Website Item", self.name, "custom_skip_update_hook", 0)
 		return
 
