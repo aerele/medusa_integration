@@ -479,8 +479,6 @@ def export_website_item(self, method):
 		raise e
 
 def update_website_item(self, method, override_skip_update_hook=0):
-	print(123456789999999999999999999)
-
 	def send_update_request(payload, throw_message):
 		try:
 			args = frappe._dict({
@@ -504,27 +502,6 @@ def update_website_item(self, method, override_skip_update_hook=0):
 				if medusa_id:
 					relevant_item_codes.append(medusa_id)
 		
-		# recommended_items_data = []
-		# if self.recommended_items:
-		# 	for recommended_item in self.recommended_items:
-		# 		base_url = "http://alfarsi-live:8003"
-		# 		website_item_name = recommended_item.website_item
-		# 		medusa_id = frappe.get_value("Website Item", {"name": website_item_name}, "medusa_id")
-		# 		image_url = frappe.db.get_value(
-		# 			"File", 
-		# 			{"attached_to_doctype": "Website Item", "attached_to_name": website_item_name}, 
-		# 			"file_url"
-		# 		)
-		# 		thumbnail = f"{base_url}{image_url}" if image_url else None
-		# 		if medusa_id:
-		# 			item_data = frappe.get_doc("Website Item", website_item_name)
-		# 			recommended_items_data.append({
-		# 				"product_id": medusa_id,
-		# 				"name": item_data.web_item_name,
-		# 				"description": item_data.short_description,
-		# 				"thumbnail": thumbnail,
-		# 				"rating": item_data.custom_overall_rating
-		# 			})
 		return relevant_item_codes
 	
 	if method == "basic":
@@ -535,7 +512,7 @@ def update_website_item(self, method, override_skip_update_hook=0):
 				"relevant_item_codes": relevant_item_codes
 			}
 		}
-		
+
 		send_update_request(payload, f"Error while updating recommended items for Website Item {self.name} in Medusa")
 		return
 	
@@ -562,7 +539,6 @@ def update_website_item(self, method, override_skip_update_hook=0):
 				})
 	
 	relevant_item_codes = get_relevant_item_codes()
-	# recommended_items_data = get_recommended_items_data() Need to remove
 
 	payload = {
 		"title": self.web_item_name,
