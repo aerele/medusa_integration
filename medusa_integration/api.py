@@ -1239,12 +1239,10 @@ def export_quotation(self, method):
 			raise e
 
 def export_quotation_on_update(doc, method):
-	# source = frappe.get_value("Lead", {"name": doc.party_name}, "source")
-	# if doc.workflow_state == "Ready for Customer Review" and source == "Alfarsi Website":
 	if doc.workflow_state == "Ready for Customer Review" and doc.from_ecommerce == 1:
 		try:
 			export_quotation(doc.name, "")
-			frappe.msgprint("Quotation details updated in e-Commerce site successfully")
+			frappe.msgprint("Quotation price details sent to e-Commerce site successfully")
 		except Exception as e:
 			frappe.log_error(f"Failed to export Quotation {doc.name}: {str(e)}", "Quotation Export Error")
 			print(f"Error exporting Quotation {doc.name}: {str(e)}")
