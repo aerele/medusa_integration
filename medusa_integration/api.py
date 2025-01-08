@@ -1779,12 +1779,9 @@ def fetch_relevant_collection_products():
 @frappe.whitelist(allow_guest=True)
 def fetch_relevant_items():
 	recommended_items_data = []
-	print(recommended_items_data)
-	# relevant_items_data = []
 
 	def get_recommended_items_data(relevant_items):
 		items_data = []
-		# if self.recommended_items:
 		for recommended_item in relevant_items:
 			base_url = "http://alfarsi-live:8003"
 			website_item_name = recommended_item
@@ -1795,6 +1792,7 @@ def fetch_relevant_items():
 				"file_url"
 			)
 			thumbnail = f"{base_url}{image_url}" if image_url else None
+
 			item_data = frappe.get_doc("Website Item", website_item_name)
 			items_data.append({
 				"id": medusa_id,
@@ -1811,30 +1809,16 @@ def fetch_relevant_items():
 		
 		website_item = frappe.get_doc("Website Item", {"item_code": item_code})
 		parent_route = frappe.db.get_value("Item Group", {"name": website_item.item_group}, "route")
-		print(parent_route)
-		# return
-		# relevant_items = []
-		# for related_item in website_item.recommended_items:
-		# 	relevant_items.append(related_item.website_item)
+
 		relevant_items = [related_item.website_item for related_item in website_item.recommended_items]
-		# print (website_item)
-		# print (relevant_items)
-		print(len(relevant_items))
-		products = get_website_items(url=parent_route, homepage=1)
-		print(products)
-		print(len(products.get("paginatedProducts")))
+
 		relevant_items_data = get_recommended_items_data(relevant_items)
-		# print(recommended_items_data)
 		recommended_items_data.append(relevant_items_data)
-		# print("/n/n",recommended_items_data)
+				
+		products = get_website_items(url=parent_route, homepage=1)
 		recommended_items_data.append(products.get("paginatedProducts"))
-		# print(relevant_items_data)
-
-		# print("/n/n/n",recommended_items_data)
-
-		# return {"related_items": relevant_items_data, "products": products.get("paginatedProducts")}
-		
+				
 		return recommended_items_data
 	except Exception as e:
-		frappe.log_error(message=str(e), title=_("Fetch Relevant Collection Products Failed"))
+		frappe.log_error(message=str(e), title=_("Fetch relevant products failed"))
 		return {"status": "error", "message": str(e)}
