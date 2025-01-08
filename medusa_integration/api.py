@@ -1497,7 +1497,7 @@ def send_quotation_emails():
 			frappe.log_error(message=str(e), title="Quotation Email Sending Failed")
 
 @frappe.whitelist(allow_guest=True)
-def get_website_items():
+def get_website_items(url=None, homepage=0):
 	from frappe import _
 	import re
 	import math
@@ -1539,10 +1539,10 @@ def get_website_items():
 	try:
 		data = frappe.request.get_json()
 
-		url = data.get("url")
+		# url = data.get("url")
 		collection_titles = data.get("collection_title")
 		brands = data.get("brand")
-		homepage = data.get("homepage", 0)
+		# homepage = data.get("homepage", 0)
 		page = data.get("page", 1)
 		availability = data.get("availability")
 		sort_order = data.get("sort_order", "asc")
@@ -1801,20 +1801,26 @@ def fetch_quotation_pdf_url():
 
 @frappe.whitelist(allow_guest=True)
 def fetch_relevant_collection_products():
-	data = json.loads(frappe.request.data)
-	item_group = data.get("item_group")
-	print(item_group)
-	
-	route = frappe.db.get_value("Item Group", {"name": item_group}, "route")
-	print(route)
-	parts = route.strip("/").split("/")
-	if len(parts) > 1:
-		second_part = parts[1].replace("-", "%")
-	
-	parent_group = frappe.db.get_value(
-		"Item Group",
-		{"name": ["like", f"%{second_part}%"]} if "%" in second_part else {"name": second_part}, 
-		"name"
-	)
-	if parent_group:
-		return(parent_group)
+	try:
+		data = json.loads(frappe.request.data)
+		item_group = data.get("item_group")
+		
+		route = frappe.db.get_value("Item Group", {"name": item_group}, "route")
+		parts = route.strip("/").split("/")
+		if len(parts) > 1:
+			second_part = parts[1].replace("-", "%")
+		
+		parent_group = frappe.db.get_value(
+			"Item Group",
+			{"name": ["like", f"%{second_part}%"]} if "%" in second_part else {"name": second_part}, 
+			"name"
+		)
+		if parent_group:
+			parent_route = frappe.db.get_value("Item Group", {"name": parent_group}, "route")
+			result = get_website_items(url=parent_route, homepage=1)
+			return {"top_collection": parent_group, "products": result.get("paginatedProducts")}
+		else:
+			return {"status": "error", "message": "No parent group found."}
+	except Exception as e:
+		frappe.log_error(message=str(e), title=_("Fetch Relevant Collection Products Failed"))
+		return {"status": "error", "message": str(e)}
