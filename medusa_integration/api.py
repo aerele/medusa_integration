@@ -6,22 +6,6 @@ from medusa_integration.utils import send_request
 from datetime import datetime, timedelta
 from alfarsi_erpnext.alfarsi_erpnext.customer import fetch_standard_price
 
-# @frappe.whitelist(allow_guest=True)
-# def create_customer():
-#     data = json.loads(frappe.request.data)
-#     customer = frappe.get_doc({
-#         "doctype": "Customer",
-#         "medusa_id": data.get("id"),
-#         "customer_name": data.get("first_name") + " " + data.get("last_name"),
-#         "customer_type": data.get("business_type"),
-#         "email_id": data.get("email"),
-#         "is_business": data.get("is_business"),
-#         "t_c_acceptance": data.get("t_c_acceptance"),
-#         "offers_agreement": data.get("offers_agreement"),
-#     })
-#     customer.insert(ignore_permissions=True)
-#     return {"message": ("Customer created successfully"), "customer_id": customer.name}
-
 @frappe.whitelist(allow_guest=True)
 def create_lead():
 	data = json.loads(frappe.request.data)
