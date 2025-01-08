@@ -1480,8 +1480,8 @@ def get_website_items(url=None, homepage=0):
 				"title": item["web_item_name"],
 				"brand_name": item["brand"],
 				"description": item["short_description"],
-				"collection_id": item_group_medusa_id,
-				"collection_title": item["item_group"],
+				# "collection_id": item_group_medusa_id,
+				# "collection_title": item["item_group"],
 				"thumbnail": thumbnail,
 				"rating": item["custom_overall_rating"]
 			})
@@ -1777,27 +1777,64 @@ def fetch_relevant_collection_products():
 		return {"status": "error", "message": str(e)}
 
 @frappe.whitelist(allow_guest=True)
-def relevant_items():
+def fetch_relevant_items():
+	recommended_items_data = []
+	print(recommended_items_data)
+	# relevant_items_data = []
+
+	def get_recommended_items_data(relevant_items):
+		items_data = []
+		# if self.recommended_items:
+		for recommended_item in relevant_items:
+			base_url = "http://alfarsi-live:8003"
+			website_item_name = recommended_item
+			medusa_id = frappe.get_value("Website Item", {"name": website_item_name}, "medusa_id")
+			image_url = frappe.db.get_value(
+				"File", 
+				{"attached_to_doctype": "Website Item", "attached_to_name": website_item_name}, 
+				"file_url"
+			)
+			thumbnail = f"{base_url}{image_url}" if image_url else None
+			item_data = frappe.get_doc("Website Item", website_item_name)
+			items_data.append({
+				"id": medusa_id,
+				"title": item_data.web_item_name,
+				"description": item_data.short_description,
+				"thumbnail": thumbnail,
+				"rating": item_data.custom_overall_rating
+			})
+		return items_data
+
 	try:
 		data = json.loads(frappe.request.data)
-		item_group = data.get("item_group")
+		item_code = data.get("item_code")
 		
-		route = frappe.db.get_value("Item Group", {"name": item_group}, "route")
-		parts = route.strip("/").split("/")
-		if len(parts) > 1:
-			second_part = parts[1].replace("-", "%")
+		website_item = frappe.get_doc("Website Item", {"item_code": item_code})
+		parent_route = frappe.db.get_value("Item Group", {"name": website_item.item_group}, "route")
+		print(parent_route)
+		# return
+		# relevant_items = []
+		# for related_item in website_item.recommended_items:
+		# 	relevant_items.append(related_item.website_item)
+		relevant_items = [related_item.website_item for related_item in website_item.recommended_items]
+		# print (website_item)
+		# print (relevant_items)
+		print(len(relevant_items))
+		products = get_website_items(url=parent_route, homepage=1)
+		print(products)
+		print(len(products.get("paginatedProducts")))
+		relevant_items_data = get_recommended_items_data(relevant_items)
+		# print(recommended_items_data)
+		recommended_items_data.append(relevant_items_data)
+		# print("/n/n",recommended_items_data)
+		recommended_items_data.append(products.get("paginatedProducts"))
+		# print(relevant_items_data)
+
+		# print("/n/n/n",recommended_items_data)
+
+		# return {"related_items": relevant_items_data, "products": products.get("paginatedProducts")}
 		
-		parent_group = frappe.db.get_value(
-			"Item Group",
-			{"name": ["like", f"%{second_part}%"]} if "%" in second_part else {"name": second_part}, 
-			"name"
-		)
-		if parent_group:
-			parent_route = frappe.db.get_value("Item Group", {"name": parent_group}, "route")
-			result = get_website_items(url=parent_route, homepage=1)
-			return {"top_collection": parent_group, "products": result.get("paginatedProducts")}
-		else:
-			return {"status": "error", "message": "No parent group found."}
+		return recommended_items_data
 	except Exception as e:
 		frappe.log_error(message=str(e), title=_("Fetch Relevant Collection Products Failed"))
 		return {"status": "error", "message": str(e)}
