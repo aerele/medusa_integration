@@ -896,31 +896,6 @@ def export_image_to_medusa(self):
 		print("Completed image attach")
 		self.db_set("medusa_id", medusa_id)
 
-def get_medusa_products_by_brand(brand_name):
-	# Query Medusa API to fetch all products by brand_name
-	url = f"http://localhost:9000/store/product-listing-with-filters"
-	params = {
-		"parent" : "Products",	 
-		"brand": brand_name
-	}
- 
-#  Want to change here
-
-	response = requests.get(url, params=params)
-	if response.status_code == 200:
-		data = response.json()
-		product_ids = [product["id"] for product in data["products"]]
-		
-		if product_ids:
-			print(f"Found {len(product_ids)} products for brand {brand_name}")
-			return product_ids
-		else:
-			print(f"No products found for brand {brand_name}")
-			return []
-	else:
-		print(f"Failed to fetch products from Medusa for brand {brand_name}. Status code: {response.status_code}")
-		return []
-
 def attach_image_to_products(image_url, product_ids):
 	for product_id in product_ids:
 		url = f"http://localhost:9000/admin/products/{product_id}"
