@@ -496,39 +496,46 @@ def update_website_item(self, method, override_skip_update_hook=0):
 			print(f"Unexpected error while updating {self.name}: {str(e)}")
 			raise e
 	
-	def get_recommended_items_data():
-		recommended_items_data = []
+	def get_relevant_item_codes():
+		relevant_item_codes = []
 		if self.recommended_items:
 			for recommended_item in self.recommended_items:
-				base_url = "http://alfarsi-live:8003"
-				website_item_name = recommended_item.website_item
-				medusa_id = frappe.get_value("Website Item", {"name": website_item_name}, "medusa_id")
-				image_url = frappe.db.get_value(
-					"File", 
-					{"attached_to_doctype": "Website Item", "attached_to_name": website_item_name}, 
-					"file_url"
-				)
-				thumbnail = f"{base_url}{image_url}" if image_url else None
+				medusa_id = frappe.get_value("Website Item", {"name": recommended_item.website_item}, "medusa_id")
 				if medusa_id:
-					item_data = frappe.get_doc("Website Item", website_item_name)
-					recommended_items_data.append({
-						"product_id": medusa_id,
-						"name": item_data.web_item_name,
-						"description": item_data.short_description,
-						"thumbnail": thumbnail,
-						"rating": item_data.custom_overall_rating
-					})
-		return recommended_items_data
+					relevant_item_codes.append(medusa_id)
+		
+		# recommended_items_data = []
+		# if self.recommended_items:
+		# 	for recommended_item in self.recommended_items:
+		# 		base_url = "http://alfarsi-live:8003"
+		# 		website_item_name = recommended_item.website_item
+		# 		medusa_id = frappe.get_value("Website Item", {"name": website_item_name}, "medusa_id")
+		# 		image_url = frappe.db.get_value(
+		# 			"File", 
+		# 			{"attached_to_doctype": "Website Item", "attached_to_name": website_item_name}, 
+		# 			"file_url"
+		# 		)
+		# 		thumbnail = f"{base_url}{image_url}" if image_url else None
+		# 		if medusa_id:
+		# 			item_data = frappe.get_doc("Website Item", website_item_name)
+		# 			recommended_items_data.append({
+		# 				"product_id": medusa_id,
+		# 				"name": item_data.web_item_name,
+		# 				"description": item_data.short_description,
+		# 				"thumbnail": thumbnail,
+		# 				"rating": item_data.custom_overall_rating
+		# 			})
+		return relevant_item_codes
 	
 	if method == "basic":
-		recommended_items_data = get_recommended_items_data()
+		relevant_item_codes = get_relevant_item_codes()
 
 		payload = {
 			"metadata": {
-				"recommended_items": recommended_items_data
+				"relevant_item_codes": relevant_item_codes
 			}
 		}
-
+		
 		send_update_request(payload, f"Error while updating recommended items for Website Item {self.name} in Medusa")
 		return
 	
@@ -554,13 +561,8 @@ def update_website_item(self, method, override_skip_update_hook=0):
 					"description": spec.description
 				})
 	
-	# relevant_item_codes = []
-	# if self.recommended_items:
-	# 	for recommended_item in self.recommended_items:
-	# 		medusa_id = frappe.get_value("Website Item", {"name": recommended_item.website_item}, "medusa_id")
-	# 		if medusa_id:
-	# 			relevant_item_codes.append(medusa_id)
-	recommended_items_data = get_recommended_items_data()
+	relevant_item_codes = get_relevant_item_codes()
+	# recommended_items_data = get_recommended_items_data() Need to remove
 
 	payload = {
 		"title": self.web_item_name,
@@ -575,7 +577,7 @@ def update_website_item(self, method, override_skip_update_hook=0):
 		"origin_country": country_code,
 		"metadata": {
 			"UOM": self.stock_uom,
-			"recommended_items": recommended_items_data
+			"relevant_item_codes": relevant_item_codes
 		},
 		"specifications": specifications
 	}
@@ -1801,6 +1803,32 @@ def fetch_quotation_pdf_url():
 
 @frappe.whitelist(allow_guest=True)
 def fetch_relevant_collection_products():
+	try:
+		data = json.loads(frappe.request.data)
+		item_group = data.get("item_group")
+		
+		route = frappe.db.get_value("Item Group", {"name": item_group}, "route")
+		parts = route.strip("/").split("/")
+		if len(parts) > 1:
+			second_part = parts[1].replace("-", "%")
+		
+		parent_group = frappe.db.get_value(
+			"Item Group",
+			{"name": ["like", f"%{second_part}%"]} if "%" in second_part else {"name": second_part}, 
+			"name"
+		)
+		if parent_group:
+			parent_route = frappe.db.get_value("Item Group", {"name": parent_group}, "route")
+			result = get_website_items(url=parent_route, homepage=1)
+			return {"top_collection": parent_group, "products": result.get("paginatedProducts")}
+		else:
+			return {"status": "error", "message": "No parent group found."}
+	except Exception as e:
+		frappe.log_error(message=str(e), title=_("Fetch Relevant Collection Products Failed"))
+		return {"status": "error", "message": str(e)}
+
+@frappe.whitelist(allow_guest=True)
+def relevant_items():
 	try:
 		data = json.loads(frappe.request.data)
 		item_group = data.get("item_group")
