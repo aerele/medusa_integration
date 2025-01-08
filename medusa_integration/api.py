@@ -493,29 +493,7 @@ def update_website_item(self, method, override_skip_update_hook=0):
 		except Exception as e:
 			print(f"Unexpected error while updating {self.name}: {str(e)}")
 			raise e
-	
-	def get_relevant_item_codes():
-		relevant_item_codes = []
-		if self.recommended_items:
-			for recommended_item in self.recommended_items:
-				medusa_id = frappe.get_value("Website Item", {"name": recommended_item.website_item}, "medusa_id")
-				if medusa_id:
-					relevant_item_codes.append(medusa_id)
 		
-		return relevant_item_codes
-	
-	if method == "basic":
-		relevant_item_codes = get_relevant_item_codes()
-
-		payload = {
-			"metadata": {
-				"relevant_item_codes": relevant_item_codes
-			}
-		}
-
-		send_update_request(payload, f"Error while updating recommended items for Website Item {self.name} in Medusa")
-		return
-	
 	if override_skip_update_hook: # need to change
 		frappe.db.set_value("Website Item", self.name, "custom_skip_update_hook", 0)
 		return
@@ -538,8 +516,6 @@ def update_website_item(self, method, override_skip_update_hook=0):
 					"description": spec.description
 				})
 	
-	relevant_item_codes = get_relevant_item_codes()
-
 	payload = {
 		"title": self.web_item_name,
 		"item_code": self.item_code,
@@ -552,8 +528,7 @@ def update_website_item(self, method, override_skip_update_hook=0):
 		"brand_name": self.brand,
 		"origin_country": country_code,
 		"metadata": {
-			"UOM": self.stock_uom,
-			"relevant_item_codes": relevant_item_codes
+			"UOM": self.stock_uom
 		},
 		"specifications": specifications
 	}
@@ -1169,8 +1144,6 @@ def export_all_website_item():
 			except Exception as e:
 				print(f"Unexpected error while exporting {doc.name}: {str(e)}")
 				raise e
-	
-	update_all_website_item(method = "basic")
 
 def update_all_website_item(method = None):
 	doctype = "Website Item"
