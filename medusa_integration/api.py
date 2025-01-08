@@ -1320,9 +1320,12 @@ def export_quotation(self, method):
 		variant_id = frappe.get_value("Website Item", {"item_name": item.item_name}, "medusa_variant_id")
 		payload["erp_items"].append({
 			"item": variant_id,
+			"item_code": item.item_code,
 			"price": item.rate,
 			"quantity": item.qty,
-			"amount": item.amount
+			"uom": item.uom,
+			"amount": item.amount,
+			"item_tax_template": item.item_tax_template
 		})
 	
 	if quotation.unapproved_items:
