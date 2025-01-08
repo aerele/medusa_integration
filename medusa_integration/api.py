@@ -363,47 +363,6 @@ def update_address():
 		frappe.log_error(frappe.get_traceback(), "Update Address Error")
 		return {"error": str(e)}
 
-def export_item(self):
-	item_group = frappe.get_doc("Item Group", self.item_group)
-
-	if not item_group.medusa_id:
-		export_item_group(item_group)
-
-	payload = {
-					"title": self.item_name, #self.item_code,
-					"discountable": False,
-					"is_giftcard": False,
-					"collection_id": item_group.medusa_id,
-					"description": self.description,
-					"status": "published",
-					"brand_name": self.brand
-	}
-
-	if get_url()[1] and not self.medusa_id:
-		args = frappe._dict({
-						"method" : "POST",
-						"url" : f"{get_url()[0]}/admin/products",
-						"headers": get_headers(with_token=True),
-						"payload": json.dumps(payload),
-						"throw_message": f"Error while exporting Item {self.name} to Medusa"
-		})
-
-		self.db_set("medusa_id", send_request(args).get("product").get("id"))
-		medusa_var_id = create_medusa_variant(self.medusa_id)
-		self.db_set("medusa_variant_id", medusa_var_id)
-
-	elif self.medusa_id and self.get_doc_before_save():
-		payload.pop("is_giftcard")
-		payload.pop("brand_name")
-		args = frappe._dict({
-						"method" : "POST",
-						"url" : f"{get_url()[0]}/admin/products/{self.medusa_id}",
-						"headers": get_headers(with_token=True),
-						"payload": json.dumps(payload),
-						"throw_message": f"Error while updating Item {self.name} in Medusa"
-		})
-		send_request(args)
-
 def export_website_item(self, method):
 	item_group = frappe.get_doc("Item Group", self.item_group)
 
