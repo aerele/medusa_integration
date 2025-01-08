@@ -778,48 +778,6 @@ def fetch_all_customers(name=None):
 
 	return customers
 
-# @frappe.whitelist(allow_guest=True)
-# def fetch_all_customers(name=None):
-# 	base_query = """
-# 		SELECT DISTINCT
-# 			c.name AS customer_id,
-# 			c.customer_name,
-# 			c.email_id,
-# 			c.mobile_no,
-# 			a.name AS address_id,
-# 			a.address_line1,
-# 			a.address_line2,
-# 			a.city,
-# 			a.state,
-# 			a.country,
-# 			a.pincode
-# 		FROM 
-# 			`tabCustomer` c
-# 		LEFT JOIN 
-# 			`tabDynamic Link` dl ON c.name = dl.link_name AND dl.link_doctype = 'Customer'
-# 		LEFT JOIN 
-# 			`tabAddress` a ON dl.parent = a.name
-# 		WHERE 
-# 			c.medusa_id IS NULL
-# 	"""
-
-# 	if name:
-# 		name_parts = name.split()
-# 		conditions = " AND ".join([f"c.customer_name LIKE '%{part}%'" for part in name_parts])
-# 		base_query += f" AND ({conditions})"
-
-# 	base_query += """
-# 		GROUP BY c.name
-# 		ORDER BY a.name IS NULL, c.name
-# 	"""
-
-# 	customers = frappe.db.sql(base_query, as_dict=True)
-
-# 	if not customers:
-# 		return "No relevant customers found"
-
-# 	return customers
-
 def file_validation_wrapper(self):
 	namecheck(self)
 	
