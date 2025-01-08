@@ -1166,13 +1166,11 @@ def export_quotation(self, method):
 	medusa_id = frappe.get_value("Customer", {"name": quotation.party_name}, "medusa_id")
 	if not medusa_id:
 		medusa_id = frappe.get_value("Lead", {"name": quotation.party_name}, "medusa_id")
-	lead = "cus_01JEN21R04B3DK7DRFS2AVY8BR"
 
 	tax_breakup = get_itemised_tax_breakup_data(quotation)
 
 	payload = {
-		# "customer_id": medusa_id,
-		"customer_id": lead, #Need to remove
+		"customer_id": medusa_id, #need to test
 		"draft_order_id": quotation.medusa_draft_order_id,
 		"erp_status": "Quote received",
 		"erp_items": [],
