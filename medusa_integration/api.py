@@ -325,14 +325,12 @@ def update_quotation():
 				return {"error": "Failed to create Sales Order: {}".format(str(e))}
 		quote.reload()
 	
+	if approval != "Rejected":
+		quote.save(ignore_permissions=True)
+
 	if approval == "Rejected":
-		quote.status = "Open" #need to change
-		quote.workflow_state = "Rejected"
-		quote.order_type = "Sales"
-		quote.submit()
-
-	quote.save(ignore_permissions=True)
-
+		quote.cancel()
+	
 	return {"message": "Quotation updated successfully", "Quotation ID": quote.name}
 
 @frappe.whitelist(allow_guest=True)
