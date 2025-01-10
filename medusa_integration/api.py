@@ -330,7 +330,7 @@ def update_quotation():
 
 	if approval == "Rejected":
 		quote.cancel()
-	
+
 	return {"message": "Quotation updated successfully", "Quotation ID": quote.name}
 
 @frappe.whitelist(allow_guest=True)
@@ -1179,7 +1179,7 @@ def export_quotation(self, method):
 	tax_breakup = get_itemised_tax_breakup_data(quotation)
 
 	payload = {
-		"customer_id": medusa_id, #need to test
+		"customer_id": medusa_id,
 		"draft_order_id": quotation.medusa_draft_order_id,
 		"erp_status": "Quote received",
 		"erp_items": [],
@@ -1257,13 +1257,13 @@ def export_quotation_on_update(doc, method):
 			print(f"Error exporting Quotation {doc.name}: {str(e)}")
 
 @frappe.whitelist(allow_guest=True)
-def export_sales_order(self, method):
+def export_sales_order(self, method): # Need to test
 	sales_order = frappe.get_doc("Sales Order", self)
 
-	# customer_id = frappe.get_value("Customer", {"name": sales_order.customer}, "medusa_id") #Need to update
-	# if not customer_id:
-	# 	frappe.throw(f"Medusa Customer ID not found for Customer: {sales_order.customer}")
-	customer_id = "cus_01JEN21R04B3DK7DRFS2AVY8BR"
+	customer_id = frappe.get_value("Customer", {"name": sales_order.customer}, "medusa_id") #Need to update
+	if not customer_id:
+		frappe.throw(f"Medusa Customer ID not found for Customer: {sales_order.customer}")
+	# customer_id = "cus_01JEN21R04B3DK7DRFS2AVY8BR"
 
 	payment_status = "Unpaid"
 	
