@@ -104,7 +104,7 @@ def create_quotation():
 	quote = frappe.get_doc({
 		"doctype": "Quotation",
 		"title": title,
-		"order_type": "Shopping Cart",
+		"order_type": "Sales",
 		"quotation_to": quotation_to,
 		"party_name": party_name,
 		"medusa_draft_order_id": data.get("draft_order_id"),
@@ -233,15 +233,16 @@ def update_quotation():
 	items = data.get("items", [])
 	unapproved_items = data.get("unapproved_items", [])
 	medusa_order_id = data.get("order_id")
+	custom_increased_items = data.get("increased_items", [])
 
 	try:
 		quote = frappe.get_doc("Quotation", quotation_id)
 	except frappe.DoesNotExistError:
 		return {"error": "Quotation not found for ID: {}".format(quotation_id)}
 	
-	if approval == "Partially approved":
+	if approval == "Partially Approved" or "Partially Approved with Increased Deal":
 		quote.status = "Open"
-		quote.workflow_state = "Partially Approved"
+		quote.workflow_state = approval
 		quote.order_type = "Sales"
 
 		tax_summary = set()
@@ -287,6 +288,16 @@ def update_quotation():
 				"uom": item_details["stock_uom"],
 				"rate": item.get("rate"),
 				"amount": item.get("amount")
+			})
+		
+		quote.custom_increased_items = []
+		for item in custom_increased_items:
+			variant_id = item.get("variant_id")
+			item_details = frappe.get_value("Website Item", {"medusa_variant_id": variant_id}, ["item_code", "stock_uom"], as_dict=True)
+			quote.append("custom_increased_items", {
+				"item_code": item_details["item_code"],
+				"old_quantity": item.get("old_quantity"),
+				"new_quantity": item.get("new_quantity")
 			})
 
 	if approval == "Approved":
