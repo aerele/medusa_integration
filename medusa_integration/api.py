@@ -1540,6 +1540,61 @@ def get_website_items(url=None, homepage=0):
 		return {"status": "error", "message": str(e)}
 
 @frappe.whitelist(allow_guest=True)
+def get_child_item_groups(parent=None):
+	import re
+
+	def slugify(name):
+		return re.sub(r"[^a-z0-9]+", "-", name.strip().lower()).strip("-")
+
+	def get_full_route(item_group):
+		current_group = item_group
+		route_parts = []
+
+		while current_group and current_group != "Products":
+			route_parts.append(slugify(current_group))
+			current_group = frappe.db.get_value("Item Group", current_group, "parent_item_group")
+
+		route_parts.append("products")
+		return "/".join(reversed(route_parts))
+
+	def fetch_child_groups(parent_group):
+		children = frappe.get_all(
+			"Item Group",
+			fields=["name"],
+			filters={"parent_item_group": parent_group},
+			order_by="name"
+		)
+
+		child_groups = []
+		for child in children:
+			sub_children = fetch_child_groups(child["name"])
+			route = get_full_route(child["name"])
+			child_groups.append({
+				"title": child["name"],
+				"handle": slugify(child["name"]),
+				"url": route,
+				"child_count": len(sub_children),
+				"children": sub_children
+			})
+
+		return child_groups
+
+	try:
+		if not parent:
+			return {"status": "error", "message": "Parent Item Group is required."}
+
+		child_item_groups = fetch_child_groups(parent)
+
+		return {
+			"parent": parent,
+			"children": child_item_groups
+		}
+
+	except Exception as e:
+		frappe.log_error(message=str(e), title="Fetch Child Item Groups Failed")
+		return {"status": "error", "message": str(e)}
+
+@frappe.whitelist(allow_guest=True)
 def add_review_to_website_item(item_code, customer_id, customer_name=None, review=None, review_id=0, rating=0, date=None, likes=0, dislikes=0):
 	website_item = None
 	try:
