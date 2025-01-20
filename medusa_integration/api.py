@@ -1362,10 +1362,10 @@ def get_website_items(url=None, homepage=0):
 			modified_items.append({
 				"id": item["medusa_id"],
 				"title": item["web_item_name"],
-				"brand_name": item["brand"],
-				"description": item["short_description"],
+				# "brand_name": item["brand"],
+				# "description": item["short_description"],
 				# "collection_id": item_group_medusa_id,
-				# "collection_title": item["item_group"],
+				"collection_title": item["item_group"],
 				"thumbnail": thumbnail,
 				"rating": item["custom_overall_rating"]
 			})
