@@ -8,35 +8,67 @@
  "field_order": [
   "medusa_id",
   "name1",
+  "rating",
   "review",
-  "date"
+  "date",
+  "likes",
+  "dislikes",
+  "review_id"
  ],
  "fields": [
   {
    "fieldname": "medusa_id",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "Medusa ID"
   },
   {
    "fieldname": "name1",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "Name"
   },
   {
    "fieldname": "review",
    "fieldtype": "Text",
+   "in_list_view": 1,
    "label": "Review"
   },
   {
    "fieldname": "date",
    "fieldtype": "Date",
+   "in_list_view": 1,
    "label": "Date"
+  },
+  {
+   "fieldname": "rating",
+   "fieldtype": "Rating",
+   "in_list_view": 1,
+   "label": "Rating"
+  },
+  {
+   "fieldname": "likes",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Likes"
+  },
+  {
+   "fieldname": "dislikes",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Dislikes"
+  },
+  {
+   "fieldname": "review_id",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Review ID"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-12-27 09:28:34.003063",
+ "modified": "2025-01-20 14:08:35.415304",
  "modified_by": "Administrator",
  "module": "Medusa Integration",
  "name": "Website Item Review",
