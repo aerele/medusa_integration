@@ -1827,3 +1827,22 @@ def get_active_recommended_items():
 	except Exception as e:
 		frappe.log_error(message=str(e), title="Fetch Active Recommended Items Failed")
 		return {"status": "error", "message": str(e)}
+
+@frappe.whitelist(allow_guest=True)
+def get_active_homepage_order_list():
+	try:
+		active_order_list_name = "Active Homepage Order List"
+		
+		homepage_order_list = frappe.get_doc("Homepage Order List", active_order_list_name)
+
+		order_data = []
+
+		for order in homepage_order_list.order:
+			handle = order.label.lower().replace(" ", "-")
+			order_data.append(handle)
+		
+		return order_data
+
+	except Exception as e:
+		frappe.log_error(message=str(e), title="Fetch Active Homepage Order List Failed")
+		return {"status": "error", "message": str(e)}
