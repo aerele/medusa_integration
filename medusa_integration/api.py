@@ -1348,7 +1348,7 @@ def get_website_items(url=None, homepage=0):
 			page_length=page_size
 		)
 
-		base_url = "http://alfarsi-live:8003"
+		base_url = "https://medusa-erpnext-staging.aerele.in"
 		modified_items = []
 		for item in website_items:
 			item_group_medusa_id = frappe.db.get_value("Item Group", item["item_group"], "medusa_id")
@@ -1722,7 +1722,7 @@ def fetch_relevant_items():
 	def get_recommended_items_data(relevant_items):
 		items_data = []
 		for recommended_item in relevant_items:
-			base_url = "http://alfarsi-live:8003"
+			base_url = "https://medusa-erpnext-staging.aerele.in"
 			website_item_name = recommended_item
 			medusa_id = frappe.get_value("Website Item", {"name": website_item_name}, "medusa_id")
 			image_url = frappe.db.get_value(
