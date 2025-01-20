@@ -1604,7 +1604,7 @@ def get_menu(parent=None):
 				"title": child["name"],
 				"handle": slugify(child["name"]),
 				"url": route,
-				"children": sub_child_count[0]
+				"childCount": sub_child_count[0]
 			})
 
 		return child_groups
@@ -1616,7 +1616,8 @@ def get_menu(parent=None):
 		child_item_groups = fetch_child_groups(parent)
 
 		return {
-			"parent": parent,
+			"title": parent,
+			"handle": slugify(parent),
 			"children": child_item_groups
 		}
 
