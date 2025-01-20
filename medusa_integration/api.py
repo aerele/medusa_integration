@@ -1540,6 +1540,28 @@ def get_website_items(url=None, homepage=0):
 		return {"status": "error", "message": str(e)}
 
 @frappe.whitelist(allow_guest=True)
+def get_homepage_top_banner():
+	try:
+		banner_name = "Active Homepage Top Banner"
+
+		banner = frappe.get_doc("Homepage Top Banner", banner_name)
+
+		entries_data = []
+		for entry in banner.entries:
+			if entry.link_doctype and entry.name1:
+				
+				entries_data.append({
+					"type": entry.link_doctype,
+					"title": entry.name1
+				})
+		
+		return (entries_data)
+
+	except Exception as e:
+		frappe.log_error(message=str(e), title="Fetch Homepage Top Banner Failed")
+		return {"status": "error", "message": str(e)}
+
+@frappe.whitelist(allow_guest=True)
 def get_child_item_groups(parent=None):
 	import re
 
