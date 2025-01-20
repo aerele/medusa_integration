@@ -1571,7 +1571,7 @@ def get_homepage_top_banner():
 		return {"status": "error", "message": str(e)}
 
 @frappe.whitelist(allow_guest=True)
-def get_child_item_groups(parent=None):
+def get_menu(parent=None):
 	import re
 
 	def slugify(name):
@@ -1598,14 +1598,13 @@ def get_child_item_groups(parent=None):
 
 		child_groups = []
 		for child in children:
-			sub_children = fetch_child_groups(child["name"])
+			sub_child_count = frappe.db.count("Item Group", {"parent_item_group": child["name"]}),
 			route = get_full_route(child["name"])
 			child_groups.append({
 				"title": child["name"],
 				"handle": slugify(child["name"]),
 				"url": route,
-				"child_count": len(sub_children),
-				"children": sub_children
+				"children": sub_child_count[0]
 			})
 
 		return child_groups
