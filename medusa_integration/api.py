@@ -1846,3 +1846,21 @@ def get_active_homepage_order_list():
 	except Exception as e:
 		frappe.log_error(message=str(e), title="Fetch Active Homepage Order List Failed")
 		return {"status": "error", "message": str(e)}
+
+@frappe.whitelist(allow_guest=True)
+def get_active_yt_videos_list():
+	try:
+		active_yt_videos = "Active Youtube Videos List"
+		
+		active_yt_videos_url = frappe.get_doc("Youtube Videos List", active_yt_videos)
+
+		urls = []
+
+		for url in active_yt_videos_url.urls:
+			urls.append(url.url)
+		
+		return urls
+
+	except Exception as e:
+		frappe.log_error(message=str(e), title="Fetch Active Homepage Order List Failed")
+		return {"status": "error", "message": str(e)}
