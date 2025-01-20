@@ -1549,12 +1549,21 @@ def get_homepage_top_banner():
 		entries_data = []
 		for entry in banner.entries:
 			if entry.link_doctype and entry.name1:
+
+				image_url = frappe.db.get_value(
+					"File",
+					{"attached_to_doctype": entry.link_doctype, "attached_to_name": entry.name1},
+					"file_url"
+				)
+				base_url = "https://medusa-erpnext-staging.aerele.in"
+				thumbnail = f"{base_url}{image_url}" if image_url else None
 				
 				entries_data.append({
 					"type": entry.link_doctype,
-					"title": entry.name1
+					"title": entry.name1,
+					"thumbnail": thumbnail
 				})
-		
+
 		return (entries_data)
 
 	except Exception as e:
