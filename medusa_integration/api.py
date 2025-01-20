@@ -1792,3 +1792,38 @@ def fetch_relevant_items():
 	except Exception as e:
 		frappe.log_error(message=str(e), title=_("Fetch relevant products failed"))
 		return {"status": "error", "message": str(e)}
+
+@frappe.whitelist(allow_guest=True)
+def get_active_recommended_items():
+	import random
+	try:
+		active_list_name = "Active Recommended Items List"
+		
+		recommended_item_list = frappe.get_doc("Recommended Items List", active_list_name)
+
+		entries_data = []
+
+		random_entries = random.sample(recommended_item_list.recommended_items, 20)
+
+		for entry in random_entries:
+			website_item_code = entry.website_item
+			
+			website_item_details = frappe.db.get_value(
+				"Website Item",
+				{"name": website_item_code},
+				["medusa_id", "web_item_name", "item_group", "custom_overall_rating"],
+				as_dict=True
+			)
+			
+			entries_data.append({
+				"product_id": website_item_details.medusa_id,
+				"item_name": website_item_details.web_item_name,
+				"item_group": website_item_details.item_group,
+				"overall_rating": website_item_details.custom_overall_rating
+			})
+
+		return entries_data
+
+	except Exception as e:
+		frappe.log_error(message=str(e), title="Fetch Active Recommended Items Failed")
+		return {"status": "error", "message": str(e)}
