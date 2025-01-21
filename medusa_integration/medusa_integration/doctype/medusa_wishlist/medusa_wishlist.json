@@ -1,0 +1,31 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-01-21 16:23:15.128320",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "medusa_customer_id"
+ ],
+ "fields": [
+  {
+   "fieldname": "medusa_customer_id",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Medusa Customer ID"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-01-21 16:23:22.927427",
+ "modified_by": "Administrator",
+ "module": "Medusa Integration",
+ "name": "Medusa Wishlist",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
