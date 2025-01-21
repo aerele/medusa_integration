@@ -1826,7 +1826,12 @@ def get_active_recommended_items():
 
 		entries_data = []
 
-		random_entries = random.sample(recommended_item_list.recommended_items, 20)
+		all_items = recommended_item_list.recommended_items
+
+		if len(all_items) <= 20:
+			random_entries = random.sample(all_items, len(all_items))
+		else:
+			random_entries = random.sample(all_items, 20)
 
 		for entry in random_entries:
 			website_item_code = entry.website_item
