@@ -1870,6 +1870,7 @@ def get_active_recommended_items():
 		recommended_item_list = frappe.get_doc("Homepage Landing", active_list_name)
 
 		entries_data = []
+		base_url = "https://medusa-erpnext-staging.aerele.in"
 
 		all_items = recommended_item_list.recommended_items
 
@@ -1880,6 +1881,13 @@ def get_active_recommended_items():
 
 		for entry in random_entries:
 			website_item_code = entry.website_item
+
+			image_url = frappe.db.get_value(
+				"File", 
+				{"attached_to_doctype": "Website Item", "attached_to_name": website_item_code}, 
+				"file_url"
+			)
+			thumbnail = f"{base_url}{image_url}" if image_url else None
 			
 			website_item_details = frappe.db.get_value(
 				"Website Item",
@@ -1892,7 +1900,8 @@ def get_active_recommended_items():
 				"product_id": website_item_details.medusa_id,
 				"item_name": website_item_details.web_item_name,
 				"item_group": website_item_details.item_group,
-				"overall_rating": website_item_details.custom_overall_rating
+				"overall_rating": website_item_details.custom_overall_rating,
+				"thumbnail": thumbnail
 			})
 
 		return entries_data
