@@ -1731,7 +1731,7 @@ def add_review_to_website_item(item_code, customer_id, customer_name=None, revie
 			frappe.db.set_value("Website Item", website_item.name, "custom_skip_update_hook", 0)
 
 @frappe.whitelist(allow_guest=True)
-def add_customer_to_wishlist(item_code, customer_id):
+def handle_wishlist(item_code, customer_id):
 	website_item = None
 	try:
 		web_item_code = frappe.db.get_value("Website Item", {"medusa_id": item_code}, "name")
@@ -1747,8 +1747,11 @@ def add_customer_to_wishlist(item_code, customer_id):
 				break
 		
 		if existing_wishlist_entry:
-			return {"status": "success", "message": "Customer is already in the wishlist"}
-
+			website_item.custom_medusa_wishlist.remove(existing_wishlist_entry)
+			website_item.save(ignore_permissions=True)
+			frappe.db.commit()
+			return ("Customer removed from wishlist successfully")
+		
 		website_item.append("custom_medusa_wishlist", {
 			"medusa_customer_id": customer_id
 		})
@@ -1756,7 +1759,7 @@ def add_customer_to_wishlist(item_code, customer_id):
 		website_item.save(ignore_permissions=True)
 		frappe.db.commit()
 
-		return {"status": "success", "message": "Customer added to wishlist successfully"}
+		return ("Customer added to wishlist successfully")
 
 	except Exception as e:
 		frappe.log_error(message=frappe.get_traceback(with_context=1), title="Add Customer to Wishlist")
