@@ -1542,9 +1542,9 @@ def get_website_items(url=None, homepage=0):
 @frappe.whitelist(allow_guest=True)
 def get_homepage_top_banner():
 	try:
-		banner_name = "Active Homepage Top Banner"
+		banner_name = "Active Homepage Landing"
 
-		banner = frappe.get_doc("Homepage Top Banner", banner_name)
+		banner = frappe.get_doc("Homepage Landing", banner_name)
 
 		base_url = "https://medusa-erpnext-staging.aerele.in"
 		
@@ -1557,7 +1557,7 @@ def get_homepage_top_banner():
 			return f"{base_url}{image_url}" if image_url else None
 
 		entries_data = []
-		for entry in banner.entries:
+		for entry in banner.top_section:
 			thumbnail = fetch_image_url(entry.link_doctype, entry.name1)
 
 			if entry.link_doctype == "Item Group":
@@ -1820,9 +1820,9 @@ def fetch_relevant_items():
 def get_active_recommended_items():
 	import random
 	try:
-		active_list_name = "Active Recommended Items List"
+		active_list_name = "Active Homepage Landing"
 		
-		recommended_item_list = frappe.get_doc("Recommended Items List", active_list_name)
+		recommended_item_list = frappe.get_doc("Homepage Landing", active_list_name)
 
 		entries_data = []
 
@@ -1854,9 +1854,9 @@ def get_active_recommended_items():
 @frappe.whitelist(allow_guest=True)
 def get_active_homepage_order_list():
 	try:
-		active_order_list_name = "Active Homepage Order List"
+		active_order_list_name = "Active Homepage Landing"
 		
-		homepage_order_list = frappe.get_doc("Homepage Order List", active_order_list_name)
+		homepage_order_list = frappe.get_doc("Homepage Landing", active_order_list_name)
 
 		order_data = []
 
@@ -1873,9 +1873,9 @@ def get_active_homepage_order_list():
 @frappe.whitelist(allow_guest=True)
 def get_active_yt_videos_list():
 	try:
-		active_yt_videos = "Active Youtube Videos List"
+		active_yt_videos = "Active Homepage Landing"
 		
-		active_yt_videos_url = frappe.get_doc("Youtube Videos List", active_yt_videos)
+		active_yt_videos_url = frappe.get_doc("Homepage Landing", active_yt_videos)
 
 		urls = []
 
