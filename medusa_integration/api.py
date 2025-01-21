@@ -1880,15 +1880,40 @@ def get_active_yt_videos_list():
 	try:
 		active_yt_videos = "Active Homepage Landing"
 		
-		active_yt_videos_url = frappe.get_doc("Homepage Landing", active_yt_videos)
+		active_yt_videos_doc = frappe.get_doc("Homepage Landing", active_yt_videos)
 
-		urls = []
+		entries_data = []
 
-		for url in active_yt_videos_url.urls:
-			urls.append(url.url)
-		
-		return urls
+		for entry in active_yt_videos_doc.urls:
+			website_item_code = entry.website_item if hasattr(entry, "website_item") else None
+			website_item_details = None
+			image_url = None
+
+			if website_item_code:
+				website_item_details = frappe.db.get_value(
+					"Website Item",
+					{"name": website_item_code},
+					["web_item_name", "medusa_id"],
+					as_dict=True
+				)
+				
+				image_url = frappe.db.get_value(
+					"File",
+					{"attached_to_doctype": "Website Item", "attached_to_name": website_item_code},
+					"file_url"
+				)
+			
+			entry_data = {
+				"url": entry.url,
+				"title": website_item_details.web_item_name if website_item_details else None,
+				"medusa_id": website_item_details.medusa_id if website_item_details else None,
+				"thumbnail": f"https://medusa-erpnext-staging.aerele.in{image_url}" if image_url else None
+			}
+
+			entries_data.append(entry_data)
+
+		return entries_data
 
 	except Exception as e:
-		frappe.log_error(message=str(e), title="Fetch Active Homepage Order List Failed")
+		frappe.log_error(message=str(e), title="Fetch Active YouTube Videos List Failed")
 		return {"status": "error", "message": str(e)}
