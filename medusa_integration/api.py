@@ -1731,6 +1731,42 @@ def add_review_to_website_item(item_code, customer_id, customer_name=None, revie
 			frappe.db.set_value("Website Item", website_item.name, "custom_skip_update_hook", 0)
 
 @frappe.whitelist(allow_guest=True)
+def add_customer_to_wishlist(item_code, customer_id):
+	website_item = None
+	try:
+		web_item_code = frappe.db.get_value("Website Item", {"medusa_id": item_code}, "name")
+		website_item = frappe.get_doc("Website Item", web_item_code)
+
+		frappe.db.set_value("Website Item", website_item.name, "custom_skip_update_hook", 1)
+		website_item.reload()
+
+		existing_wishlist_entry = None
+		for entry in website_item.custom_medusa_wishlist:
+			if entry.medusa_customer_id == customer_id:
+				existing_wishlist_entry = entry
+				break
+		
+		if existing_wishlist_entry:
+			return {"status": "success", "message": "Customer is already in the wishlist"}
+
+		website_item.append("custom_medusa_wishlist", {
+			"medusa_customer_id": customer_id
+		})
+
+		website_item.save(ignore_permissions=True)
+		frappe.db.commit()
+
+		return {"status": "success", "message": "Customer added to wishlist successfully"}
+
+	except Exception as e:
+		frappe.log_error(message=frappe.get_traceback(with_context=1), title="Add Customer to Wishlist")
+		return {"status": "error", "message": str(e)}
+
+	finally:
+		if website_item:
+			frappe.db.set_value("Website Item", website_item.name, "custom_skip_update_hook", 0)
+
+@frappe.whitelist(allow_guest=True)
 def fetch_quotation_pdf_url():
 	data = json.loads(frappe.request.data)
 	quotation_id = data.get("quotation_id")
