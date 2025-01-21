@@ -1587,6 +1587,15 @@ def get_menu(parent=None):
 
 		route_parts.append("products")
 		return "/".join(reversed(route_parts))
+	
+	def fetch_image(item_group_name):
+		image_url = frappe.db.get_value(
+			"File",
+			{"attached_to_doctype": "Item Group", "attached_to_name": item_group_name},
+			"file_url"
+		)
+		base_url = "https://medusa-erpnext-staging.aerele.in"
+		return f"{base_url}{image_url}" if image_url else None
 
 	def fetch_child_groups(parent_group):
 		children = frappe.get_all(
@@ -1600,18 +1609,19 @@ def get_menu(parent=None):
 		for child in children:
 			sub_child_count = frappe.db.count("Item Group", {"parent_item_group": child["name"]}),
 			route = get_full_route(child["name"])
+			image = fetch_image(child["name"])
+
 			child_groups.append({
 				"title": child["name"],
 				"handle": slugify(child["name"]),
 				"url": route,
-				"childCount": sub_child_count[0]
+				"childCount": sub_child_count[0],
+				"thumbnail": image
 			})
 
 		return child_groups
 
 	try:
-		if not parent:
-			return {"status": "error", "message": "Parent Item Group is required."}
 
 		child_item_groups = fetch_child_groups(parent)
 
