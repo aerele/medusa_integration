@@ -1561,7 +1561,7 @@ def get_homepage_top_banner():
 			thumbnail = fetch_image_url(entry.link_doctype, entry.name1)
 
 			if entry.link_doctype == "Item Group":
-				item_group_details = get_menu(parent=entry.name1)
+				item_group_details = get_menu(parent=entry.name1, mobile_view=0)
 				item_group_info = item_group_details.get("children", [])
 				
 				entries_data.append({
@@ -1584,7 +1584,7 @@ def get_homepage_top_banner():
 		return {"status": "error", "message": str(e)}
 
 @frappe.whitelist(allow_guest=True)
-def get_menu(parent=None):
+def get_menu(parent=None, mobile_view=0):
 	import re
 
 	def slugify(name):
@@ -1610,7 +1610,7 @@ def get_menu(parent=None):
 		base_url = "https://medusa-erpnext-staging.aerele.in"
 		return f"{base_url}{image_url}" if image_url else None
 
-	def fetch_child_groups(parent_group):
+	def fetch_child_groups(parent_group, recursive=False):
 		children = frappe.get_all(
 			"Item Group",
 			fields=["name"],
@@ -1624,19 +1624,25 @@ def get_menu(parent=None):
 			route = get_full_route(child["name"])
 			image = fetch_image(child["name"])
 
-			child_groups.append({
+			child_data = {
 				"title": child["name"],
 				"handle": slugify(child["name"]),
 				"url": route,
 				"childCount": sub_child_count[0],
 				"thumbnail": image
-			})
+			}
+
+			if recursive and sub_child_count[0] > 0:
+				child_data["children"] = fetch_child_groups(child["name"], recursive=True)
+
+			child_groups.append(child_data)
 
 		return child_groups
 
 	try:
 
-		child_item_groups = fetch_child_groups(parent)
+		recursive = bool(int(mobile_view))
+		child_item_groups = fetch_child_groups(parent, recursive=recursive)
 
 		return {
 			"title": parent,
