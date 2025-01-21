@@ -1546,45 +1546,38 @@ def get_homepage_top_banner():
 
 		banner = frappe.get_doc("Homepage Top Banner", banner_name)
 
+		base_url = "https://medusa-erpnext-staging.aerele.in"
+		
+		def fetch_image_url(doctype, name):
+			image_url = frappe.db.get_value(
+				"File",
+				{"attached_to_doctype": doctype, "attached_to_name": name},
+				"file_url"
+			)
+			return f"{base_url}{image_url}" if image_url else None
+
 		entries_data = []
 		for entry in banner.entries:
-			if entry.link_doctype and entry.name1:
+			thumbnail = fetch_image_url(entry.link_doctype, entry.name1)
+
+			if entry.link_doctype == "Item Group":
+				item_group_details = get_menu(parent=entry.name1)
+				item_group_info = item_group_details.get("children", [])
 				
-				if entry.link_doctype == "Item Group":
-					item_group_details = get_menu(parent=entry.name1)
-
-					item_group_info = item_group_details.get("children", [])
-
-					image_url = frappe.db.get_value(
-						"File",
-						{"attached_to_doctype": entry.link_doctype, "attached_to_name": entry.name1},
-						"file_url"
-					)
-					base_url = "https://medusa-erpnext-staging.aerele.in"
-					thumbnail = f"{base_url}{image_url}" if image_url else None
-					
-					entries_data.append({
-						"type": entry.link_doctype,
-						"title": entry.name1,
-						"thumbnail": thumbnail,
-						"sub_categories": item_group_info
-					})
-				else:
-					image_url = frappe.db.get_value(
-						"File",
-						{"attached_to_doctype": entry.link_doctype, "attached_to_name": entry.name1},
-						"file_url"
-					)
-					base_url = "https://medusa-erpnext-staging.aerele.in"
-					thumbnail = f"{base_url}{image_url}" if image_url else None
-					
-					entries_data.append({
-						"type": entry.link_doctype,
-						"title": entry.name1,
-						"thumbnail": thumbnail
-					})
-
-		return (entries_data)
+				entries_data.append({
+					"type": entry.link_doctype,
+					"title": entry.name1,
+					"thumbnail": thumbnail,
+					"sub_categories": item_group_info
+				})
+			else:
+				entries_data.append({
+					"type": entry.link_doctype,
+					"title": entry.name1,
+					"thumbnail": thumbnail
+				})
+		
+		return entries_data
 
 	except Exception as e:
 		frappe.log_error(message=str(e), title="Fetch Homepage Top Banner Failed")
