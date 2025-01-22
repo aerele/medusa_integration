@@ -1962,6 +1962,55 @@ def get_active_recommended_items():
 		return {"status": "error", "message": str(e)}
 
 @frappe.whitelist(allow_guest=True)
+def get_dental_items():
+	import random
+	try:
+		active_list_name = "Active Homepage Landing"
+		
+		dental_item_list = frappe.get_doc("Homepage Landing", active_list_name)
+
+		entries_data = []
+		base_url = frappe.utils.get_url()
+
+		all_items = dental_item_list.dental_items
+
+		if len(all_items) <= 20:
+			random_entries = random.sample(all_items, len(all_items))
+		else:
+			random_entries = random.sample(all_items, 20)
+
+		for entry in random_entries:
+			website_item_code = entry.website_item
+
+			image_url = frappe.db.get_value(
+				"File", 
+				{"attached_to_doctype": "Website Item", "attached_to_name": website_item_code}, 
+				"file_url"
+			)
+			thumbnail = f"{base_url}{image_url}" if image_url else None
+			
+			website_item_details = frappe.db.get_value(
+				"Website Item",
+				{"name": website_item_code},
+				["medusa_id", "web_item_name", "item_group", "custom_overall_rating"],
+				as_dict=True
+			)
+			
+			entries_data.append({
+				"product_id": website_item_details.medusa_id,
+				"item_name": website_item_details.web_item_name,
+				"item_group": website_item_details.item_group,
+				"overall_rating": website_item_details.custom_overall_rating,
+				"thumbnail": thumbnail
+			})
+
+		return entries_data
+
+	except Exception as e:
+		frappe.log_error(message=str(e), title="Fetch Dental Items Failed")
+		return {"status": "error", "message": str(e)}
+
+@frappe.whitelist(allow_guest=True)
 def get_active_homepage_order_list():
 	try:
 		active_order_list_name = "Active Homepage Landing"
