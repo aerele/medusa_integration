@@ -1331,7 +1331,7 @@ def send_quotation_emails():
 			frappe.log_error(message=str(e), title="Quotation Email Sending Failed")
 
 @frappe.whitelist(allow_guest=True)
-def get_website_items(url=None, homepage=0):
+def get_website_items(url=None):
 	from frappe import _
 	import re
 	import math
@@ -1414,13 +1414,6 @@ def get_website_items(url=None, homepage=0):
 		descendant_groups.append(item_group)
 
 		filters = {"item_group": ["in", descendant_groups]}
-		
-		if homepage == 1:
-			modified_items = fetch_items(filters, order_by, offset, page_size, customer_id)
-			total_products = frappe.db.count("Website Item", filters=filters)
-			return {
-				"paginatedProducts": modified_items,
-			}
 		
 		distinct_parent_item_groups = []
 		distinct_collection_titles = []
