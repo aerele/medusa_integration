@@ -1093,7 +1093,6 @@ def export_all_brands():
 				print(f"Unexpected error while exporting {doc.name}: {str(e)}")
 				raise e
 
-
 def export_all_medusa_price_list():
 	doctype = "Item Price"
 	record = frappe.get_all(doctype)
@@ -1348,7 +1347,7 @@ def get_website_items(url=None, homepage=0):
 			page_length=page_size
 		)
 
-		base_url = "https://medusa-erpnext-staging.aerele.in"
+		base_url = frappe.utils.get_url()
 		modified_items = []
 		for item in website_items:
 			item_group_medusa_id = frappe.db.get_value("Item Group", item["item_group"], "medusa_id")
@@ -1554,7 +1553,7 @@ def get_homepage_top_banner():
 
 		banner = frappe.get_doc("Homepage Landing", banner_name)
 
-		base_url = "https://medusa-erpnext-staging.aerele.in"
+		base_url = frappe.utils.get_url()
 		
 		def fetch_image_url(doctype, name):
 			image_url = frappe.db.get_value(
@@ -1615,7 +1614,7 @@ def get_menu(parent=None, mobile_view=0):
 			{"attached_to_doctype": "Item Group", "attached_to_name": item_group_name},
 			"file_url"
 		)
-		base_url = "https://medusa-erpnext-staging.aerele.in"
+		base_url = frappe.utils.get_url()
 		return f"{base_url}{image_url}" if image_url else None
 
 	def fetch_child_groups(parent_group, recursive=False):
@@ -1829,7 +1828,7 @@ def fetch_relevant_items():
 	def get_recommended_items_data(relevant_items):
 		items_data = []
 		for recommended_item in relevant_items:
-			base_url = "https://medusa-erpnext-staging.aerele.in"
+			base_url = frappe.utils.get_url()
 			website_item_name = recommended_item
 			medusa_id = frappe.get_value("Website Item", {"name": website_item_name}, "medusa_id")
 			image_url = frappe.db.get_value(
@@ -1878,7 +1877,7 @@ def get_active_recommended_items():
 		recommended_item_list = frappe.get_doc("Homepage Landing", active_list_name)
 
 		entries_data = []
-		base_url = "https://medusa-erpnext-staging.aerele.in"
+		base_url = frappe.utils.get_url()
 
 		all_items = recommended_item_list.recommended_items
 
