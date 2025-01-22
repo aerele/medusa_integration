@@ -1547,26 +1547,37 @@ def get_website_items(url=None, homepage=0):
 		return {"status": "error", "message": str(e)}
 
 @frappe.whitelist(allow_guest=True)
-def get_all_brands():
+def get_all_brands(item_group=None):
 	try:
 		base_url = frappe.utils.get_url()
-		brands = frappe.get_all(
-			"Brand",
-			fields=["name"],
-			order_by="name asc"
-		)
+		brands = []
+
+		if item_group:
+			descendant_groups = frappe.db.get_descendants("Item Group", item_group)
+			descendant_groups.append(item_group)
+
+			brands = frappe.db.sql("""
+				SELECT DISTINCT w.brand AS name
+				FROM `tabWebsite Item` w
+				WHERE w.item_group IN %(descendant_groups)s
+				AND w.brand IS NOT NULL AND w.brand != ''
+				ORDER BY w.brand ASC
+			""", {"descendant_groups": tuple(descendant_groups)}, as_dict=True)
+
+		else:
+			brands = frappe.get_all("Brand", fields=["name"], order_by="name asc")
 
 		brand_list = []
 		for brand in brands:
 			image_url = frappe.db.get_value(
 				"File",
-				{"attached_to_doctype": "Brand", "attached_to_name": brand["name"]},
+				{"attached_to_doctype": "Brand", "attached_to_name": brand.get("brand") or brand["name"]},
 				"file_url"
 			)
 			image_url = f"{base_url}{image_url}" if image_url else None
 
 			brand_list.append({
-				"brand": brand["name"],
+				"brand": brand.get("brand") or brand["name"],
 				"image": image_url
 			})
 
