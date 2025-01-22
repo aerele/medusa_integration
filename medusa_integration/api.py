@@ -1337,11 +1337,11 @@ def get_website_items(url=None, homepage=0):
 	import re
 	import math
 
-	def fetch_items(filters, order_by, offset, page_size):
+	def fetch_items(filters, order_by, offset, page_size, customer_id):
 		"""Fetch paginated website items with filters and sorting."""
 		website_items = frappe.get_all(
 			"Website Item",
-			fields=["name", "medusa_id", "short_description", "web_item_name", "item_group", "brand", "custom_overall_rating"],
+			fields=["name", "medusa_id", "web_item_name", "item_group", "custom_overall_rating"],
 			filters=filters,
 			order_by=order_by,
 			start=offset,
@@ -1359,12 +1359,24 @@ def get_website_items(url=None, homepage=0):
 			)
 			thumbnail = f"{base_url}{image_url}" if image_url else None
 
+			is_wishlisted = 0
+			if customer_id:
+				is_wishlisted = frappe.db.exists(
+					"Medusa Wishlist",
+					{
+						"parent": item["name"],
+						"medusa_customer_id": customer_id
+					}
+				)
+				is_wishlisted = 1 if is_wishlisted else 0
+
 			modified_items.append({
 				"id": item["medusa_id"],
 				"title": item["web_item_name"],
 				"collection_title": item["item_group"],
 				"thumbnail": thumbnail,
-				"rating": item["custom_overall_rating"]
+				"rating": item["custom_overall_rating"],
+				"is_wishlisted": is_wishlisted
 			})
 		return modified_items
 
@@ -1373,6 +1385,7 @@ def get_website_items(url=None, homepage=0):
 
 		collection_titles = data.get("collection_title")
 		brands = data.get("brand")
+		customer_id = data.get("customer_id")
 		page = data.get("page", 1)
 		availability = data.get("availability")
 		sort_order = data.get("sort_order", "asc")
@@ -1404,7 +1417,7 @@ def get_website_items(url=None, homepage=0):
 		filters = {"item_group": ["in", descendant_groups]}
 		
 		if homepage == 1:
-			modified_items = fetch_items(filters, order_by, offset, page_size)
+			modified_items = fetch_items(filters, order_by, offset, page_size, customer_id)
 			total_products = frappe.db.count("Website Item", filters=filters)
 			return {
 				"paginatedProducts": modified_items,
@@ -1517,7 +1530,7 @@ def get_website_items(url=None, homepage=0):
 
 		total_products = frappe.db.count("Website Item", filters=filters)
 
-		modified_items = fetch_items(filters, order_by, offset, page_size)
+		modified_items = fetch_items(filters, order_by, offset, page_size, customer_id)
 
 		return {
 			"product_count": total_products,
