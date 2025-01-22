@@ -1913,21 +1913,37 @@ def fetch_relevant_items():
 		return {"status": "error", "message": str(e)}
 
 @frappe.whitelist(allow_guest=True)
-def get_active_recommended_items():
+def get_recommended_items():
 	return fetch_items_from_homepage("recommended_items")
 
+@frappe.whitelist(allow_guest=True)
+def get_trending_items():
+	return fetch_items_from_homepage("trending_items")
+
+@frappe.whitelist(allow_guest=True)
+def get_new_arrivals():
+	return fetch_items_from_homepage("new_arrivals")
 
 @frappe.whitelist(allow_guest=True)
 def get_dental_items():
 	return fetch_items_from_homepage("dental_items")
 
+@frappe.whitelist(allow_guest=True)
+def get_medical_items():
+	return fetch_items_from_homepage("medical_items")
+
+@frappe.whitelist(allow_guest=True)
+def get_medical_laboratory_items():
+	return fetch_items_from_homepage("medical_laboratory_items")
+
+@frappe.whitelist(allow_guest=True)
+def get_infection_control_items():
+	return fetch_items_from_homepage("infection_control_items")
 
 def fetch_items_from_homepage(item_field_name):
 	import random
 	try:
-		active_list_name = "Active Homepage Landing"
-
-		homepage_landing = frappe.get_doc("Homepage Landing", active_list_name)
+		homepage_landing = frappe.get_doc("Homepage Landing", "Active Homepage Landing")
 		all_items = getattr(homepage_landing, item_field_name, [])
 
 		if len(all_items) <= 20:
