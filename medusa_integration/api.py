@@ -1547,6 +1547,39 @@ def get_website_items(url=None, homepage=0):
 		return {"status": "error", "message": str(e)}
 
 @frappe.whitelist(allow_guest=True)
+def get_all_brands():
+	try:
+		base_url = frappe.utils.get_url()
+		brands = frappe.get_all(
+			"Brand",
+			fields=["name"],
+			order_by="name asc"
+		)
+
+		brand_list = []
+		for brand in brands:
+			image_url = frappe.db.get_value(
+				"File",
+				{"attached_to_doctype": "Brand", "attached_to_name": brand["name"]},
+				"file_url"
+			)
+			image_url = f"{base_url}{image_url}" if image_url else None
+
+			brand_list.append({
+				"brand": brand["name"],
+				"image": image_url
+			})
+
+		return brand_list
+
+	except Exception as e:
+		frappe.log_error(message=str(e), title="Fetch Brands Failed")
+		return {
+			"status": "error",
+			"message": str(e)
+		}
+
+@frappe.whitelist(allow_guest=True)
 def get_homepage_top_banner():
 	try:
 		banner_name = "Active Homepage Landing"
