@@ -1362,9 +1362,6 @@ def get_website_items(url=None, homepage=0):
 			modified_items.append({
 				"id": item["medusa_id"],
 				"title": item["web_item_name"],
-				# "brand_name": item["brand"],
-				# "description": item["short_description"],
-				# "collection_id": item_group_medusa_id,
 				"collection_title": item["item_group"],
 				"thumbnail": thumbnail,
 				"rating": item["custom_overall_rating"]
@@ -1374,10 +1371,8 @@ def get_website_items(url=None, homepage=0):
 	try:
 		data = frappe.request.get_json()
 
-		# url = data.get("url")
 		collection_titles = data.get("collection_title")
 		brands = data.get("brand")
-		# homepage = data.get("homepage", 0)
 		page = data.get("page", 1)
 		availability = data.get("availability")
 		sort_order = data.get("sort_order", "asc")
