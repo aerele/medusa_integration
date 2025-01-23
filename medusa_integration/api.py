@@ -867,7 +867,17 @@ def attach_thumbnail_to_product(image_url, product_id):
 def attach_image_to_product(image_url, product_id):
 	url = f"{get_url()[0]}/admin/products/{product_id}"
 	headers = get_headers(with_token=True)
-	payload = json.dumps({"images": image_url})
+
+	response = requests.get(url, headers=headers)
+
+	existing_images = response.json().get("product", {}).get("images", [])
+	existing_image_urls = [img.get("url") for img in existing_images if "url" in img]
+
+	updated_image_urls = existing_image_urls + [image_url]
+
+	updated_image_urls = list(set(updated_image_urls))
+
+	payload = json.dumps({"images": updated_image_urls})
 
 	args = frappe._dict({
 		"method": "POST",
