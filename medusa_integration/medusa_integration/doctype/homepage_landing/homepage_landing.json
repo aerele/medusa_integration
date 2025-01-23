@@ -16,6 +16,8 @@
   "medical_laboratory_items",
   "infection_control_items",
   "order",
+  "banners",
+  "testimonials",
   "urls"
  ],
  "fields": [
@@ -78,11 +80,23 @@
    "fieldtype": "Table",
    "label": "New Arrivals",
    "options": "New Arrivals"
+  },
+  {
+   "fieldname": "banners",
+   "fieldtype": "Table",
+   "label": "Banners",
+   "options": "Homepage Banner"
+  },
+  {
+   "fieldname": "testimonials",
+   "fieldtype": "Table",
+   "label": "Testimonials",
+   "options": "Testimonial"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-01-22 15:26:11.503901",
+ "modified": "2025-01-22 17:18:49.287958",
  "modified_by": "Administrator",
  "module": "Medusa Integration",
  "name": "Homepage Landing",
