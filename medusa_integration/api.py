@@ -1417,9 +1417,7 @@ def get_all_brands(item_group=None):
 @frappe.whitelist(allow_guest=True)
 def get_homepage_top_section():
 	try:
-		banner_name = "Active Homepage Landing"
-
-		banner = frappe.get_doc("Homepage Landing", banner_name)
+		top_section = frappe.get_doc("Homepage Landing", "Active Homepage Landing")
 
 		base_url = frappe.utils.get_url()
 		
@@ -1432,7 +1430,7 @@ def get_homepage_top_section():
 			return f"{base_url}{image_url}" if image_url else None
 
 		entries_data = []
-		for entry in banner.top_section:
+		for entry in top_section.top_section:
 			thumbnail = fetch_image_url(entry.link_doctype, entry.name1)
 
 			if entry.link_doctype == "Item Group":
@@ -1445,13 +1443,21 @@ def get_homepage_top_section():
 					"thumbnail": thumbnail,
 					"sub_categories": item_group_info
 				})
-			else:
+			elif entry.link_doctype == "Brand":
+				item_groups = frappe.db.sql("""
+					SELECT DISTINCT w.item_group AS name
+					FROM `tabWebsite Item` w
+					WHERE w.brand = %(brand_name)s
+					ORDER BY w.item_group ASC
+				""", {"brand_name": entry.name1}, as_dict=True)
+
 				entries_data.append({
 					"type": entry.link_doctype,
 					"title": entry.name1,
-					"thumbnail": thumbnail
+					"thumbnail": thumbnail,
+					"categories": [group["name"] for group in item_groups]
 				})
-		
+			
 		return entries_data
 
 	except Exception as e:
