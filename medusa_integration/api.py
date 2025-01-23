@@ -2040,3 +2040,23 @@ def get_yt_videos_list():
 	except Exception as e:
 		frappe.log_error(message=str(e), title="Fetch Active YouTube Videos List Failed")
 		return {"status": "error", "message": str(e)}
+
+@frappe.whitelist(allow_guest=True)
+def get_testimonials():
+	try:
+		homepage = frappe.get_doc("Homepage Landing", "Active Homepage Landing")
+
+		testimonials_data = []
+		for entry in homepage.testimonials:
+			testimonials_data.append({
+				"thumbnail": entry.image_url,
+				"review": entry.review,
+				"review_by": entry.review_by,
+				"designation": entry.designation
+			})
+		
+		return testimonials_data
+
+	except Exception as e:
+		frappe.log_error(message=str(e), title="Fetch Testimonials Failed")
+		return {"status": "error", "message": str(e)}
