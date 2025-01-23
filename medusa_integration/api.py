@@ -694,47 +694,6 @@ def create_medusa_price_list(self, called_manually=False):
 		})
 		send_request(args)
 
-def export_brand(self):
-	payload = {
-		"brand_name": self.brand,
-	}
-	
-	if self.description:
-		payload["description"] = self.description
-
-	try:
-		if not self.medusa_id:
-			args = frappe._dict({
-				"method": "POST",
-				"url": f"{get_url()[0]}/store/brand-create",
-				"headers": get_headers(with_token=True),
-				"payload": json.dumps(payload),
-				"throw_message": f"Error while exporting Brand {self.name} to Medusa"
-			})
-			self.db_set("medusa_id", send_request(args).get("brand").get("id"))
-			print(self.name, " exported successfully")
-
-		# elif self.medusa_id and self.get_doc_before_save():
-		# 	args = frappe._dict({
-		# 		"method": "POST",
-		# 		"url": f"{get_url()[0]}/store/brand-update?={self.medusa_id}",
-		# 		"headers": get_headers(with_token=True),
-		# 		"payload": json.dumps(payload),
-		# 		"throw_message": f"Error while updating Brand {self.name} in Medusa"
-		# 	})
-		# 	send_request(args)
-		# 	print(self.name, "updated successfully")
-
-	except frappe.ValidationError as e:
-		if "Brand with handle" in str(e) and "already exists" in str(e):
-			print(f"Duplicate error for {self.name}: {str(e)}")
-		else:
-			raise e
-	except Exception as e:
-		print(f"Unexpected error while exporting {self.name}: {str(e)}")
-		raise e
-
-
 def create_medusa_customer(self, method):
 	if get_url()[1] and not self.get_doc_before_save():
 		def split_name(full_name):
@@ -983,21 +942,6 @@ def export_all_website_images():
 				print(f"Unexpected error while exporting {doc.name}: {str(e)}")
 				raise e
 
-def export_all_brands():
-	doctype = "Brand"
-	records = frappe.get_all(doctype)
-	for r in records:
-		doc = frappe.get_doc(doctype, r)
-		if not doc.medusa_id:
-			try:
-				print("Beginning to export: ", doc.name)
-				export_brand(doc)
-			except frappe.ValidationError as e:
-				print(f"Skipping {doc.name} due to error: {str(e)}")
-			except Exception as e:
-				print(f"Unexpected error while exporting {doc.name}: {str(e)}")
-				raise e
-
 def export_all_medusa_price_list():
 	doctype = "Item Price"
 	record = frappe.get_all(doctype)
@@ -1050,24 +994,6 @@ def clear_all_item_price_id(): #For item price
 
 	for item_price in item_prices:
 		frappe.db.set_value("Item Price", item_price.name, {"medusa_id": "", "medusa_price_id": ""})
-
-	frappe.db.commit()
-
-def clear_all_brand_id(): #For brand
-	brands = frappe.get_all("Brand", filters={"medusa_id": ["!=", ""]}, fields=["name"])
-	print(brands)
-
-	for brand in brands:
-		frappe.db.set_value("Brand", brand.name, {"medusa_id": ""})
-
-	frappe.db.commit()
-
-def clear_all_brand_image_id(): #For brand
-	images = frappe.get_all("File", filters={"attached_to_doctype": "Brand", "medusa_id": ["!=", ""]}, fields=["name"])
-	print(images)
-
-	for image in images:
-		frappe.db.set_value("File", image.name, {"medusa_id": ""})
 
 	frappe.db.commit()
 
