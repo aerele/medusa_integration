@@ -1584,7 +1584,7 @@ def get_all_brands(item_group=None):
 		}
 
 @frappe.whitelist(allow_guest=True)
-def get_homepage_top_banner():
+def get_homepage_top_section():
 	try:
 		banner_name = "Active Homepage Landing"
 
@@ -1980,7 +1980,7 @@ def fetch_items_from_homepage(item_field_name):
 		return {"status": "error", "message": str(e)}
 
 @frappe.whitelist(allow_guest=True)
-def get_active_homepage_order_list():
+def get_homepage_order_list():
 	try:
 		active_order_list_name = "Active Homepage Landing"
 		
@@ -1999,7 +1999,7 @@ def get_active_homepage_order_list():
 		return {"status": "error", "message": str(e)}
 
 @frappe.whitelist(allow_guest=True)
-def get_active_yt_videos_list():
+def get_yt_videos_list():
 	try:
 		active_yt_videos = "Active Homepage Landing"
 		
