@@ -1436,11 +1436,13 @@ def get_homepage_top_section():
 			if entry.link_doctype == "Item Group":
 				item_group_details = get_menu(parent=entry.name1, mobile_view=0)
 				item_group_info = item_group_details.get("children", [])
+				url = get_full_route(item_group=entry.name1)
 				
 				entries_data.append({
 					"type": entry.link_doctype,
 					"title": entry.name1,
 					"thumbnail": thumbnail,
+					"url": url,
 					"sub_categories": item_group_info
 				})
 			elif entry.link_doctype == "Brand":
@@ -1464,14 +1466,7 @@ def get_homepage_top_section():
 		frappe.log_error(message=str(e), title="Fetch Homepage Top Banner Failed")
 		return {"status": "error", "message": str(e)}
 
-@frappe.whitelist(allow_guest=True)
-def get_menu(parent=None, mobile_view=0):
-	import re
-
-	def slugify(name):
-		return re.sub(r"[^a-z0-9]+", "-", name.strip().lower()).strip("-")
-
-	def get_full_route(item_group):
+def get_full_route(item_group):
 		current_group = item_group
 		route_parts = []
 
@@ -1481,6 +1476,14 @@ def get_menu(parent=None, mobile_view=0):
 
 		route_parts.append("products")
 		return "/".join(reversed(route_parts))
+
+def slugify(name):
+	import re
+	
+	return re.sub(r"[^a-z0-9]+", "-", name.strip().lower()).strip("-")
+
+@frappe.whitelist(allow_guest=True)
+def get_menu(parent=None, mobile_view=0):
 	
 	def fetch_image(item_group_name):
 		image_url = frappe.db.get_value(
