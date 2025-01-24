@@ -1509,7 +1509,7 @@ def get_menu(parent=None, mobile_view=0):
 			filters={"parent_item_group": parent_group},
 			order_by="name"
 		)
-
+		
 		child_groups = []
 		for child in children:
 			sub_child_count = frappe.db.count("Item Group", {"parent_item_group": child["name"]}),
@@ -1520,7 +1520,6 @@ def get_menu(parent=None, mobile_view=0):
 				"title": child["name"],
 				"handle": slugify(child["name"]),
 				"url": route,
-				"childCount": sub_child_count[0],
 				"thumbnail": image
 			}
 
@@ -1537,8 +1536,6 @@ def get_menu(parent=None, mobile_view=0):
 		child_item_groups = fetch_child_groups(parent, recursive=recursive)
 
 		return {
-			"title": parent,
-			"handle": slugify(parent),
 			"children": child_item_groups
 		}
 
