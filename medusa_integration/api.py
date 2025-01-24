@@ -1453,11 +1453,19 @@ def get_homepage_top_section():
 					ORDER BY w.item_group ASC
 				""", {"brand_name": entry.name1}, as_dict=True)
 
+				categories = [
+					{
+						"name": group["name"],
+						"url": get_full_route(item_group=group["name"])
+					}
+					for group in item_groups
+				]
+
 				entries_data.append({
 					"type": entry.link_doctype,
 					"title": entry.name1,
 					"thumbnail": thumbnail,
-					"categories": [group["name"] for group in item_groups]
+					"categories": categories
 				})
 			
 		return entries_data
