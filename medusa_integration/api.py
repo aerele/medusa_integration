@@ -1747,7 +1747,7 @@ def fetch_relevant_items():
 		parent_route = frappe.db.get_value("Item Group", {"name": website_item.item_group}, "route")
 
 		relevant_items = [related_item.website_item for related_item in website_item.recommended_items]
-		
+
 		relevant_items_data = get_recommended_items_data(relevant_items, cus_id)
 		recommended_items_data.extend(relevant_items_data)
 			
@@ -1855,8 +1855,14 @@ def get_homepage_order_list():
 		order_data = []
 
 		for order in homepage_order_list.order:
-			handle = order.label.lower().replace(" ", "-")
-			order_data.append(handle)
+			if order.label == "DENTAL":
+				order_data.append("get_dental_items")
+			elif order.label == "MEDICAL":
+				order_data.append("get_medical_items")
+			elif order.label == "INFECTION CONTROL":
+				order_data.append("get_infection_control_items")
+			else:
+				order_data.append("get_medical_laboratory_items")
 		
 		return order_data
 
