@@ -1428,7 +1428,24 @@ def get_homepage_top_section():
 				"file_url"
 			)
 			return f"{base_url}{image_url}" if image_url else None
+		
+		def enrich_item_group_with_routes(children):
+			enriched_children = []
+			for child in children:
+				enriched_child = {
+					"title": child["title"],
+					"url": get_full_route(item_group=child["title"]),
+					"thumbnail": child.get("thumbnail"),
+					"childCount": child.get("childCount", 0),
+				}
 
+				if "children" in child and child["children"]:
+					enriched_child["children"] = enrich_item_group_with_routes(child["children"])
+				else:
+					enriched_child["children"] = []
+				enriched_children.append(enriched_child)
+			return enriched_children
+		
 		entries_data = []
 		for entry in top_section.top_section:
 			thumbnail = fetch_image_url(entry.link_doctype, entry.name1)
@@ -1437,13 +1454,14 @@ def get_homepage_top_section():
 				item_group_details = get_menu(parent=entry.name1, mobile_view=0)
 				item_group_info = item_group_details.get("children", [])
 				url = get_full_route(item_group=entry.name1)
+				enriched_sub_categories = enrich_item_group_with_routes(item_group_info)
 				
 				entries_data.append({
 					"type": entry.link_doctype,
 					"title": entry.name1,
 					"thumbnail": thumbnail,
 					"url": url,
-					"sub_categories": item_group_info
+					"sub_categories": enriched_sub_categories
 				})
 			elif entry.link_doctype == "Brand":
 				item_groups = frappe.db.sql("""
