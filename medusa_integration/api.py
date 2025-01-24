@@ -1747,13 +1747,13 @@ def fetch_relevant_items():
 		parent_route = frappe.db.get_value("Item Group", {"name": website_item.item_group}, "route")
 
 		relevant_items = [related_item.website_item for related_item in website_item.recommended_items]
-
+		
 		relevant_items_data = get_recommended_items_data(relevant_items, cus_id)
-		recommended_items_data.append(relevant_items_data)
-				
+		recommended_items_data.extend(relevant_items_data)
+			
 		products = get_website_items(url=parent_route)
-		recommended_items_data.append(products.get("paginatedProducts"))
-				
+		recommended_items_data.extend(products.get("paginatedProducts"))
+		
 		return recommended_items_data
 	except Exception as e:
 		frappe.log_error(message=str(e), title=_("Fetch relevant products failed"))
