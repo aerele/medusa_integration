@@ -1699,7 +1699,7 @@ def fetch_relevant_collection_products():
 def fetch_relevant_items():
 	recommended_items_data = []
 
-	def get_recommended_items_data(relevant_items):
+	def get_recommended_items_data(relevant_items, cus_id):
 		items_data = []
 		for recommended_item in relevant_items:
 			base_url = frappe.utils.get_url()
@@ -1713,28 +1713,42 @@ def fetch_relevant_items():
 			thumbnail = f"{base_url}{image_url}" if image_url else None
 
 			item_data = frappe.get_doc("Website Item", website_item_name)
+
+			is_wishlisted = 0
+			if cus_id:
+				is_wishlisted = frappe.db.exists(
+					"Medusa Wishlist",
+					{
+						"parent": item_data.web_item_name,
+						"medusa_customer_id": cus_id
+					}
+				)
+				is_wishlisted = 1 if is_wishlisted else 0
+			
 			items_data.append({
 				"id": medusa_id,
 				"title": item_data.web_item_name,
-				"description": item_data.short_description,
+				"item_group": item_data.item_group,
 				"thumbnail": thumbnail,
-				"rating": item_data.custom_overall_rating
+				"rating": item_data.custom_overall_rating,
+				"isWishlisted": is_wishlisted
 			})
 		return items_data
 
 	try:
 		data = json.loads(frappe.request.data)
 		item_code = data.get("item_code")
+		cus_id = data.get("cus_id")
 		
 		website_item = frappe.get_doc("Website Item", {"item_code": item_code})
 		parent_route = frappe.db.get_value("Item Group", {"name": website_item.item_group}, "route")
 
 		relevant_items = [related_item.website_item for related_item in website_item.recommended_items]
 
-		relevant_items_data = get_recommended_items_data(relevant_items)
+		relevant_items_data = get_recommended_items_data(relevant_items, cus_id)
 		recommended_items_data.append(relevant_items_data)
 				
-		products = get_website_items(url=parent_route, homepage=1)
+		products = get_website_items(url=parent_route)
 		recommended_items_data.append(products.get("paginatedProducts"))
 				
 		return recommended_items_data
