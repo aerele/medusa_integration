@@ -1576,7 +1576,8 @@ def get_menu(parent=None, mobile_view=0):
 				"title": child["name"],
 				"handle": slugify(child["name"]),
 				"url": route,
-				"thumbnail": image
+				"thumbnail": image,
+				"childCount": sub_child_count
 			}
 
 			if sub_child_count > 0 and (mobile_view or depth < max_depth):
@@ -1587,6 +1588,7 @@ def get_menu(parent=None, mobile_view=0):
 				)
 
 			child_groups.append(child_data)
+		child_groups.sort(key=lambda x: x["childCount"], reverse=True)
 
 		return child_groups
 
