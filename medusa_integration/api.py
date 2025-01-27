@@ -1432,9 +1432,10 @@ def get_homepage_top_section():
 		def enrich_item_group_with_routes(children):
 			enriched_children = []
 			for child in children:
+				route = frappe.db.get_value("Item Group", child["title"], "custom_medusa_route")
 				enriched_child = {
 					"title": child["title"],
-					"url": get_full_route(item_group=child["title"]),
+					"url": route,
 					"thumbnail": child.get("thumbnail"),
 					"childCount": child.get("childCount", 0),
 				}
@@ -1453,7 +1454,7 @@ def get_homepage_top_section():
 			if entry.link_doctype == "Item Group":
 				item_group_details = get_menu(parent=entry.name1, mobile_view=0)
 				item_group_info = item_group_details.get("children", [])
-				url = get_full_route(item_group=entry.name1)
+				url = frappe.db.get_value("Item Group", entry.name1, "custom_medusa_route")
 				enriched_sub_categories = enrich_item_group_with_routes(item_group_info)
 				
 				entries_data.append({
@@ -1489,7 +1490,7 @@ def get_homepage_top_section():
 		return entries_data
 
 	except Exception as e:
-		frappe.log_error(message=str(e), title="Fetch Homepage Top Banner Failed")
+		frappe.log_error(message=str(e), title="Fetch Homepage Top Section Failed")
 		return {"status": "error", "message": str(e)}
 
 def get_full_route(item_group):
