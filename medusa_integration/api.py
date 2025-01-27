@@ -1429,17 +1429,24 @@ def get_homepage_top_section():
 			)
 			return f"{base_url}{image_url}" if image_url else None
 		
-		def enrich_item_group_with_routes(children):
+		def fetch_first_layer_children(parent_group):
+			children = frappe.get_all(
+				"Item Group",
+				fields=["name"],
+				filters={"parent_item_group": parent_group},
+				order_by="name"
+			)
+			
 			enriched_children = []
 			for child in children:
-				route = frappe.db.get_value("Item Group", child["title"], "custom_medusa_route")
-				enriched_child = {
-					"title": child["title"],
+				route = frappe.db.get_value("Item Group", child["name"], "custom_medusa_route")
+				thumbnail = fetch_image_url("Item Group", child["name"])
+				
+				enriched_children.append({
+					"title": child["name"],
 					"url": route,
-					"thumbnail": child.get("thumbnail")
-				}
-
-				enriched_children.append(enriched_child)
+					"thumbnail": thumbnail
+				})
 			return enriched_children
 		
 		entries_data = []
@@ -1447,10 +1454,8 @@ def get_homepage_top_section():
 			thumbnail = fetch_image_url(entry.link_doctype, entry.name1)
 
 			if entry.link_doctype == "Item Group":
-				item_group_details = get_menu(parent=entry.name1, mobile_view=0)
-				item_group_info = item_group_details.get("children", [])
 				url = frappe.db.get_value("Item Group", entry.name1, "custom_medusa_route")
-				enriched_sub_categories = enrich_item_group_with_routes(item_group_info)
+				enriched_sub_categories = fetch_first_layer_children(entry.name1)
 				
 				entries_data.append({
 					"type": entry.link_doctype,
