@@ -1547,7 +1547,7 @@ def get_menu(parent=None, mobile_view=0):
 			route = None
 			image = None
 			if mobile_view:
-				route = get_full_route(child["name"])
+				route = frappe.db.get_value("Item Group", child["name"], "custom_medusa_route")
 				image = fetch_image(child["name"])
 
 			child_data = {
