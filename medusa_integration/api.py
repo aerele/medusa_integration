@@ -2000,3 +2000,18 @@ def get_testimonials():
 	except Exception as e:
 		frappe.log_error(message=str(e), title="Fetch Testimonials Failed")
 		return {"status": "error", "message": str(e)}
+
+@frappe.whitelist(allow_guest=True)
+def get_product_details_banner(item_group):
+	try:
+		url = frappe.db.get_value(
+			"Product details banner",
+			{"parent": "Active Homepage Landing", "item_group": item_group},
+			"url"
+		)
+		
+		return url
+	
+	except Exception as e:
+		frappe.log_error(message=str(e), title="Fetch URL by Item Group Failed")
+		return {"status": "error", "message": str(e)}
