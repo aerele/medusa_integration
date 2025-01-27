@@ -1755,14 +1755,13 @@ def fetch_relevant_collection_products():
 			{"name": ["like", f"%{second_part}%"]} if "%" in second_part else {"name": second_part}, 
 			"name"
 		)
-		if parent_group:
-			parent_route = frappe.db.get_value("Item Group", {"name": parent_group}, "route")
-			result = get_website_items(url=parent_route, homepage=1)
-			return {"top_collection": parent_group, "products": result.get("paginatedProducts")}
-		else:
-			return {"status": "error", "message": "No parent group found."}
+		
+		parent_route = frappe.db.get_value("Item Group", {"name": parent_group}, "custom_medusa_route")
+		result = get_website_items(url=parent_route)
+		banner = get_product_details_banner(parent_group)
+		return {"top_collection": parent_group,"banner": banner, "banner_url": parent_route, "products": result.get("paginatedProducts")}
 	except Exception as e:
-		frappe.log_error(message=str(e), title=_("Fetch Relevant Collection Products Failed"))
+		frappe.log_error(message=str(e), title="Fetch Relevant Collection Products Failed")
 		return {"status": "error", "message": str(e)}
 
 @frappe.whitelist(allow_guest=True)
