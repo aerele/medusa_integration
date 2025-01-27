@@ -1528,8 +1528,9 @@ def update_all_item_groups():
 
 @frappe.whitelist(allow_guest=True)
 def get_menu(parent=None, mobile_view=0):
-	
+
 	def fetch_image(item_group_name):
+
 		image_url = frappe.db.get_value(
 			"File",
 			{"attached_to_doctype": "Item Group", "attached_to_name": item_group_name},
@@ -1541,18 +1542,34 @@ def get_menu(parent=None, mobile_view=0):
 	def fetch_child_groups(parent_group, depth=0, max_depth=1):
 		children = frappe.get_all(
 			"Item Group",
-			fields=["name"],
+			fields=["name", "custom_medusa_route"],
 			filters={"parent_item_group": parent_group},
 			order_by="name"
 		)
 		
+		if not children:
+			return []
+
+		sub_child_counts = frappe.db.sql(
+			"""
+			SELECT parent_item_group, COUNT(name) AS child_count 
+			FROM `tabItem Group` 
+			WHERE parent_item_group IN %(parent_groups)s 
+			GROUP BY parent_item_group
+			""",
+			{"parent_groups": tuple([child["name"] for child in children])},
+			as_dict=True
+		)
+		child_count_map = {row["parent_item_group"]: row["child_count"] for row in sub_child_counts}
+
 		child_groups = []
 		for child in children:
-			sub_child_count = frappe.db.count("Item Group", {"parent_item_group": child["name"]}),
-			route = None
+			sub_child_count = child_count_map.get(child["name"], 0)
 			image = None
+			route = None
+
 			if mobile_view:
-				route = frappe.db.get_value("Item Group", child["name"], "custom_medusa_route")
+				route = child["custom_medusa_route"]
 				image = fetch_image(child["name"])
 
 			child_data = {
@@ -1562,7 +1579,7 @@ def get_menu(parent=None, mobile_view=0):
 				"thumbnail": image
 			}
 
-			if sub_child_count[0] > 0 and (mobile_view or depth < max_depth):
+			if sub_child_count > 0 and (mobile_view or depth < max_depth):
 				child_data["children"] = fetch_child_groups(
 					parent_group=child["name"],
 					depth=depth + 1,
@@ -1580,9 +1597,7 @@ def get_menu(parent=None, mobile_view=0):
 
 		child_item_groups = fetch_child_groups(parent, max_depth=max_depth)
 
-		return {
-			"children": child_item_groups
-		}
+		return child_item_groups
 
 	except Exception as e:
 		frappe.log_error(message=str(e), title="Fetch Child Item Groups Failed")
