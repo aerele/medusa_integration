@@ -18,7 +18,8 @@
   "order",
   "banners",
   "testimonials",
-  "urls"
+  "urls",
+  "product_details_banner"
  ],
  "fields": [
   {
@@ -92,11 +93,17 @@
    "fieldtype": "Table",
    "label": "Testimonials",
    "options": "Testimonial"
+  },
+  {
+   "fieldname": "product_details_banner",
+   "fieldtype": "Table",
+   "label": "Product Details Banner",
+   "options": "Product details banner"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-01-22 17:18:49.287958",
+ "modified": "2025-01-27 12:16:44.122708",
  "modified_by": "Administrator",
  "module": "Medusa Integration",
  "name": "Homepage Landing",
