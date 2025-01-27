@@ -2015,3 +2015,29 @@ def get_product_details_banner(item_group):
 	except Exception as e:
 		frappe.log_error(message=str(e), title="Fetch URL by Item Group Failed")
 		return {"status": "error", "message": str(e)}
+
+@frappe.whitelist(allow_guest=True)
+def get_homepage_banners():
+	try:
+		homepage = frappe.get_doc("Homepage Landing", "Active Homepage Landing")
+
+		banners_data = []
+
+		for banner in homepage.banners:
+			banner_data = {
+				"banner_url": banner.url,
+				"link_doctype": banner.link_doctype,
+				"name1": banner.name1
+			}
+
+			if banner.link_doctype == "Item Group":
+				custom_route = frappe.db.get_value("Item Group", banner.name1, "custom_medusa_route")
+				banner_data["item_group_url"] = custom_route
+
+			banners_data.append(banner_data)
+
+		return banners_data
+
+	except Exception as e:
+		frappe.log_error(message=str(e), title="Fetch Homepage Banners Failed")
+		return {"status": "error", "message": str(e)}
