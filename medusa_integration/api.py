@@ -1162,7 +1162,7 @@ def send_quotation_emails():
 			frappe.log_error(message=str(e), title="Quotation Email Sending Failed")
 
 @frappe.whitelist(allow_guest=True)
-def get_website_items(url=None):
+def get_website_items(url=None, customer_id=None):
 	from frappe import _
 	import re
 	import math
@@ -1216,7 +1216,7 @@ def get_website_items(url=None):
 
 		collection_titles = data.get("collection_title")
 		brands = data.get("brand")
-		customer_id = data.get("customer_id")
+		# customer_id = data.get("customer_id")
 		page = data.get("page", 1)
 		availability = data.get("availability")
 		sort_order = data.get("sort_order", "asc")
@@ -1741,7 +1741,7 @@ def fetch_quotation_pdf_url():
 		return {"error": f"Failed to generate PDF URL: {str(e)}"}
 
 @frappe.whitelist(allow_guest=True)
-def fetch_relevant_collection_products():
+def fetch_relevant_collection_products(cus_id=None):
 	try:
 		data = json.loads(frappe.request.data)
 		item_group = data.get("item_group")
@@ -1758,7 +1758,7 @@ def fetch_relevant_collection_products():
 		)
 		
 		parent_route = frappe.db.get_value("Item Group", {"name": parent_group}, "custom_medusa_route")
-		result = get_website_items(url=parent_route)
+		result = get_website_items(url=parent_route, customer_id=cus_id)
 		banner = get_product_details_banner(parent_group)
 		return {"top_collection": parent_group,"banner": banner, "banner_url": parent_route, "products": result.get("paginatedProducts")}
 	except Exception as e:
