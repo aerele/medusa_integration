@@ -1436,14 +1436,9 @@ def get_homepage_top_section():
 				enriched_child = {
 					"title": child["title"],
 					"url": route,
-					"thumbnail": child.get("thumbnail"),
-					"childCount": child.get("childCount", 0),
+					"thumbnail": child.get("thumbnail")
 				}
 
-				if "children" in child and child["children"]:
-					enriched_child["children"] = enrich_item_group_with_routes(child["children"])
-				else:
-					enriched_child["children"] = []
 				enriched_children.append(enriched_child)
 			return enriched_children
 		
@@ -1475,7 +1470,7 @@ def get_homepage_top_section():
 				categories = [
 					{
 						"name": group["name"],
-						"url": get_full_route(item_group=group["name"])
+						"url": frappe.db.get_value("Item Group", group["name"], "custom_medusa_route")
 					}
 					for group in item_groups
 				]
