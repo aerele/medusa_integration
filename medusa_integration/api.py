@@ -1796,6 +1796,7 @@ def fetch_relevant_items():
 			
 			items_data.append({
 				"id": medusa_id,
+				"variant_id": item_data.medusa_variant_id,
 				"title": item_data.web_item_name,
 				"item_group": item_data.item_group,
 				"thumbnail": thumbnail,
