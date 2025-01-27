@@ -1520,7 +1520,7 @@ def get_menu(parent=None, mobile_view=0):
 		base_url = frappe.utils.get_url()
 		return f"{base_url}{image_url}" if image_url else None
 
-	def fetch_child_groups(parent_group, recursive=False):
+	def fetch_child_groups(parent_group, depth=0, max_depth=1):
 		children = frappe.get_all(
 			"Item Group",
 			fields=["name"],
@@ -1531,8 +1531,11 @@ def get_menu(parent=None, mobile_view=0):
 		child_groups = []
 		for child in children:
 			sub_child_count = frappe.db.count("Item Group", {"parent_item_group": child["name"]}),
-			route = get_full_route(child["name"])
-			image = fetch_image(child["name"])
+			route = None
+			image = None
+			if mobile_view:
+				route = get_full_route(child["name"])
+				image = fetch_image(child["name"])
 
 			child_data = {
 				"title": child["name"],
@@ -1541,8 +1544,12 @@ def get_menu(parent=None, mobile_view=0):
 				"thumbnail": image
 			}
 
-			if recursive and sub_child_count[0] > 0:
-				child_data["children"] = fetch_child_groups(child["name"], recursive=True)
+			if sub_child_count[0] > 0 and (mobile_view or depth < max_depth):
+				child_data["children"] = fetch_child_groups(
+					parent_group=child["name"],
+					depth=depth + 1,
+					max_depth=max_depth
+				)
 
 			child_groups.append(child_data)
 
@@ -1550,8 +1557,10 @@ def get_menu(parent=None, mobile_view=0):
 
 	try:
 
-		recursive = bool(int(mobile_view))
-		child_item_groups = fetch_child_groups(parent, recursive=recursive)
+		mobile_view = bool(int(mobile_view))
+		max_depth = 1 if not mobile_view else float('inf')
+
+		child_item_groups = fetch_child_groups(parent, max_depth=max_depth)
 
 		return {
 			"children": child_item_groups
