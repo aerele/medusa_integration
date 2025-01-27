@@ -1881,7 +1881,7 @@ def fetch_items_from_homepage(item_field_name, customer_id=None):
 			website_item_details = frappe.db.get_value(
 				"Website Item",
 				{"name": website_item_code},
-				["medusa_id", "web_item_name", "item_group", "custom_overall_rating"],
+				["medusa_id", "medusa_variant_id" "web_item_name", "item_group", "custom_overall_rating"],
 				as_dict=True
 			)
 
@@ -1899,6 +1899,7 @@ def fetch_items_from_homepage(item_field_name, customer_id=None):
 			if website_item_details:
 				entries_data.append({
 					"product_id": website_item_details.medusa_id,
+					"variant_id": website_item_details.medusa_variant_id,
 					"item_name": website_item_details.web_item_name,
 					"item_group": website_item_details.item_group,
 					"overall_rating": website_item_details.custom_overall_rating,
