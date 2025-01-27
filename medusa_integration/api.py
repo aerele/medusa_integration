@@ -1171,7 +1171,7 @@ def get_website_items(url=None):
 		"""Fetch paginated website items with filters and sorting."""
 		website_items = frappe.get_all(
 			"Website Item",
-			fields=["name", "medusa_id", "web_item_name", "item_group", "custom_overall_rating"],
+			fields=["name", "medusa_id", "medusa_variant_id", "web_item_name", "item_group", "custom_overall_rating"],
 			filters=filters,
 			order_by=order_by,
 			start=offset,
@@ -1202,6 +1202,7 @@ def get_website_items(url=None):
 
 			modified_items.append({
 				"id": item["medusa_id"],
+				"variant_id": item["medusa_variant_id"],
 				"title": item["web_item_name"],
 				"collection_title": item["item_group"],
 				"thumbnail": thumbnail,
