@@ -1440,12 +1440,10 @@ def get_homepage_top_section():
 			enriched_children = []
 			for child in children:
 				route = frappe.db.get_value("Item Group", child["name"], "custom_medusa_route")
-				thumbnail = fetch_image_url("Item Group", child["name"])
 				
 				enriched_children.append({
 					"title": child["name"],
-					"url": route,
-					"thumbnail": thumbnail
+					"url": route
 				})
 			return enriched_children
 		
