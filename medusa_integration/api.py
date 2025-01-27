@@ -1508,6 +1508,23 @@ def slugify(name):
 	
 	return re.sub(r"[^a-z0-9]+", "-", name.strip().lower()).strip("-")
 
+@frappe.whitelist()
+def update_all_item_groups():
+	try:
+		item_groups = frappe.get_all("Item Group", fields=["name"])
+
+		for item_group in item_groups:
+			route = get_full_route(item_group["name"])
+
+			frappe.db.set_value("Item Group", item_group["name"], "custom_medusa_route", route)
+
+		frappe.db.commit()
+		return {"status": "success", "message": "All item groups updated successfully."}
+
+	except Exception as e:
+		frappe.log_error(message=str(e), title="Update Item Groups Failed")
+		return {"status": "error", "message": str(e)}
+
 @frappe.whitelist(allow_guest=True)
 def get_menu(parent=None, mobile_view=0):
 	
