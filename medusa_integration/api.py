@@ -1216,7 +1216,6 @@ def get_website_items(url=None, customer_id=None):
 
 		collection_titles = data.get("collection_title")
 		brands = data.get("brand")
-		# customer_id = data.get("customer_id")
 		page = data.get("page", 1)
 		availability = data.get("availability")
 		sort_order = data.get("sort_order", "asc")
@@ -1789,7 +1788,7 @@ def fetch_relevant_items():
 				is_wishlisted = frappe.db.exists(
 					"Medusa Wishlist",
 					{
-						"parent": item_data.web_item_name,
+						"parent": website_item_name,
 						"medusa_customer_id": cus_id
 					}
 				)
