@@ -1827,31 +1827,31 @@ def fetch_relevant_items():
 		return {"status": "error", "message": str(e)}
 
 @frappe.whitelist(allow_guest=True)
-def get_recommended_items(customer_id):
+def get_recommended_items(customer_id=None):
 	return fetch_items_from_homepage("recommended_items", customer_id)
 
 @frappe.whitelist(allow_guest=True)
-def get_trending_items(customer_id):
+def get_trending_items(customer_id=None):
 	return fetch_items_from_homepage("trending_items", customer_id)
 
 @frappe.whitelist(allow_guest=True)
-def get_new_arrivals(customer_id):
+def get_new_arrivals(customer_id=None):
 	return fetch_items_from_homepage("new_arrivals", customer_id)
 
 @frappe.whitelist(allow_guest=True)
-def get_dental_items(customer_id):
+def get_dental_items(customer_id=None):
 	return fetch_items_from_homepage("dental_items", customer_id)
 
 @frappe.whitelist(allow_guest=True)
-def get_medical_items(customer_id):
+def get_medical_items(customer_id=None):
 	return fetch_items_from_homepage("medical_items", customer_id)
 
 @frappe.whitelist(allow_guest=True)
-def get_medical_laboratory_items(customer_id):
+def get_medical_laboratory_items(customer_id=None):
 	return fetch_items_from_homepage("medical_laboratory_items", customer_id)
 
 @frappe.whitelist(allow_guest=True)
-def get_infection_control_items(customer_id):
+def get_infection_control_items(customer_id=None):
 	return fetch_items_from_homepage("infection_control_items", customer_id)
 
 def fetch_items_from_homepage(item_field_name, customer_id=None):
@@ -1881,7 +1881,7 @@ def fetch_items_from_homepage(item_field_name, customer_id=None):
 			website_item_details = frappe.db.get_value(
 				"Website Item",
 				{"name": website_item_code},
-				["medusa_id", "medusa_variant_id" "web_item_name", "item_group", "custom_overall_rating"],
+				["medusa_id", "medusa_variant_id", "web_item_name", "item_group", "custom_overall_rating"],
 				as_dict=True
 			)
 
