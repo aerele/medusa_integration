@@ -240,7 +240,7 @@ def update_quotation():
 	except frappe.DoesNotExistError:
 		return {"error": "Quotation not found for ID: {}".format(quotation_id)}
 	
-	if approval == "Partially Approved" or "Partially Approved with Increased Deal":
+	if approval == "Partially Approved" or approval == "Partially Approved with Increased Deal":
 		quote.status = "Open"
 		quote.workflow_state = approval
 		quote.order_type = "Sales"
@@ -329,7 +329,9 @@ def update_quotation():
 		quote.save(ignore_permissions=True)
 
 	if approval == "Rejected":
-		quote.cancel()
+		quote.status = "Open"
+		quote.workflow_state = "Rejected"
+		quote.submit()
 
 	return {"message": "Quotation updated successfully", "Quotation ID": quote.name}
 
@@ -1011,7 +1013,7 @@ def export_quotation(self, method):
 	payload = {
 		"customer_id": medusa_id,
 		"draft_order_id": quotation.medusa_draft_order_id,
-		"erp_status": "Quote received",
+		"erp_status": "Price received",
 		"erp_items": [],
 		"erp_unaccepted_items": [],
 		"erp_total_quantity": quotation.total_qty,
