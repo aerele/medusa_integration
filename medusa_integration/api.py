@@ -1715,10 +1715,16 @@ def add_review_to_website_item(item_code, customer_id, customer_name=None, revie
 			frappe.db.set_value("Website Item", website_item.name, "custom_skip_update_hook", 0)
 
 @frappe.whitelist(allow_guest=True)
-def handle_wishlist(item_codes, customer_id):
+def handle_wishlist(item_codes, customer_id, is_add=0, is_remove=0):
 	try:
 		if not isinstance(item_codes, list):
 			item_codes = [item_codes]
+
+		is_add = int(is_add)
+		is_remove = int(is_remove)
+
+		if is_add == is_remove:
+			return {"status": "error", "message": "Either is_add or is_remove must be 1, not both or none"}
 
 		response = []
 
@@ -1741,17 +1747,23 @@ def handle_wishlist(item_codes, customer_id):
 						existing_wishlist_entry = entry
 						break
 				
-				if existing_wishlist_entry:
-					website_item.custom_medusa_wishlist.remove(existing_wishlist_entry)
-					action = "removed"
-				else:
-					website_item.append("custom_medusa_wishlist", {"medusa_customer_id": customer_id})
-					action = "added"
+				if is_add:
+					if existing_wishlist_entry:
+						response.append({"item_code": item_code, "status": "skipped", "message": "Customer already in wishlist"})
+					else:
+						website_item.append("custom_medusa_wishlist", {"medusa_customer_id": customer_id})
+						website_item.save(ignore_permissions=True)
+						frappe.db.commit()
+						response.append({"item_code": item_code, "status": "success", "message": "Customer added to wishlist"})
 
-				website_item.save(ignore_permissions=True)
-				frappe.db.commit()
-
-				response.append({"item_code": item_code, "status": "success", "message": f"Customer {action}"})
+				elif is_remove:
+					if existing_wishlist_entry:
+						website_item.custom_medusa_wishlist.remove(existing_wishlist_entry)
+						website_item.save(ignore_permissions=True)
+						frappe.db.commit()
+						response.append({"item_code": item_code, "status": "success", "message": "Customer removed from wishlist"})
+					else:
+						response.append({"item_code": item_code, "status": "skipped", "message": "Customer not in wishlist"})
 
 			except Exception as e:
 				frappe.log_error(message=frappe.get_traceback(with_context=1), title="Wishlist Error")
