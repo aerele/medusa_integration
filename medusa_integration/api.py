@@ -1758,8 +1758,7 @@ def fetch_relevant_collection_products(cus_id=None):
 		
 		parent_route = frappe.db.get_value("Item Group", {"name": parent_group}, "custom_medusa_route")
 		result = get_website_items(url=parent_route, customer_id=cus_id)
-		banner = get_product_details_banner(parent_group)
-		return {"top_collection": parent_group,"banner": banner, "banner_url": parent_route, "products": result.get("paginatedProducts")}
+		return {"top_collection": parent_group,"products": result.get("paginatedProducts")}
 	except Exception as e:
 		frappe.log_error(message=str(e), title="Fetch Relevant Collection Products Failed")
 		return {"status": "error", "message": str(e)}
