@@ -1715,43 +1715,57 @@ def add_review_to_website_item(item_code, customer_id, customer_name=None, revie
 			frappe.db.set_value("Website Item", website_item.name, "custom_skip_update_hook", 0)
 
 @frappe.whitelist(allow_guest=True)
-def handle_wishlist(item_code, customer_id):
-	website_item = None
+def handle_wishlist(item_codes, customer_id):
 	try:
-		web_item_code = frappe.db.get_value("Website Item", {"medusa_id": item_code}, "name")
-		website_item = frappe.get_doc("Website Item", web_item_code)
+		if not isinstance(item_codes, list):
+			item_codes = [item_codes]
 
-		frappe.db.set_value("Website Item", website_item.name, "custom_skip_update_hook", 1)
-		website_item.reload()
+		response = []
 
-		existing_wishlist_entry = None
-		for entry in website_item.custom_medusa_wishlist:
-			if entry.medusa_customer_id == customer_id:
-				existing_wishlist_entry = entry
-				break
-		
-		if existing_wishlist_entry:
-			website_item.custom_medusa_wishlist.remove(existing_wishlist_entry)
-			website_item.save(ignore_permissions=True)
-			frappe.db.commit()
-			return ("Customer removed from wishlist successfully")
-		
-		website_item.append("custom_medusa_wishlist", {
-			"medusa_customer_id": customer_id
-		})
+		for item_code in item_codes:
+			website_item = None
 
-		website_item.save(ignore_permissions=True)
-		frappe.db.commit()
+			try:
+				web_item_code = frappe.db.get_value("Website Item", {"medusa_id": item_code}, "name")
+				if not web_item_code:
+					response.append({"item_code": item_code, "status": "error", "message": "Item not found"})
+					continue
 
-		return ("Customer added to wishlist successfully")
+				website_item = frappe.get_doc("Website Item", web_item_code)
+				frappe.db.set_value("Website Item", website_item.name, "custom_skip_update_hook", 1)
+				website_item.reload()
+
+				existing_wishlist_entry = None
+				for entry in website_item.custom_medusa_wishlist:
+					if entry.medusa_customer_id == customer_id:
+						existing_wishlist_entry = entry
+						break
+				
+				if existing_wishlist_entry:
+					website_item.custom_medusa_wishlist.remove(existing_wishlist_entry)
+					action = "removed"
+				else:
+					website_item.append("custom_medusa_wishlist", {"medusa_customer_id": customer_id})
+					action = "added"
+
+				website_item.save(ignore_permissions=True)
+				frappe.db.commit()
+
+				response.append({"item_code": item_code, "status": "success", "message": f"Customer {action}"})
+
+			except Exception as e:
+				frappe.log_error(message=frappe.get_traceback(with_context=1), title="Wishlist Error")
+				response.append({"item_code": item_code, "status": "error", "message": str(e)})
+
+			finally:
+				if website_item:
+					frappe.db.set_value("Website Item", website_item.name, "custom_skip_update_hook", 0)
+
+		return response
 
 	except Exception as e:
-		frappe.log_error(message=frappe.get_traceback(with_context=1), title="Add Customer to Wishlist")
+		frappe.log_error(message=frappe.get_traceback(with_context=1), title="Wishlist API Failed")
 		return {"status": "error", "message": str(e)}
-
-	finally:
-		if website_item:
-			frappe.db.set_value("Website Item", website_item.name, "custom_skip_update_hook", 0)
 
 @frappe.whitelist(allow_guest=True)
 def fetch_quotation_pdf_url():
