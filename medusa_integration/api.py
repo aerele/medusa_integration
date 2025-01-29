@@ -1612,9 +1612,26 @@ def get_menu(parent=None, mobile_view=0):
 		mobile_view = bool(int(mobile_view))
 		max_depth = 1 if not mobile_view else float('inf')
 
-		child_item_groups = fetch_child_groups(parent, max_depth=max_depth)
+		parent_data = frappe.get_value(
+			"Item Group",
+			{"name": parent},
+			["name", "custom_medusa_route"],
+			as_dict=True
+		)
 
-		return child_item_groups
+		if not parent_data:
+			return {"status": "error", "message": "Parent item group not found"}
+
+		parent_details = {
+			"title": parent_data["name"],
+			"handle": slugify(parent_data["name"]),
+			"url": parent_data["custom_medusa_route"],
+			"thumbnail": fetch_image(parent_data["name"]),
+			"childCount": frappe.db.count("Item Group", {"parent_item_group": parent}),
+			"children": fetch_child_groups(parent, max_depth=max_depth)
+		}
+
+		return parent_details
 
 	except Exception as e:
 		frappe.log_error(message=str(e), title="Fetch Child Item Groups Failed")
