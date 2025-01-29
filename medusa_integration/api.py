@@ -1224,7 +1224,18 @@ def get_website_items(url=None, customer_id=None):
 		page_size = 20
 		offset = (int(page) - 1) * page_size
 
-		last_part = url.strip("/").split("/")[-1].replace("-", "%")
+		parts = url.strip("/").split("/")
+		banner_url = "/".join(parts[:2]) if len(parts) > 1 else url
+
+		url_second_part = parts[1].replace("-", "%") if len(parts) > 1 else None
+
+		banner_item_group = frappe.db.get_value(
+			"Item Group",
+			{"name": ["like", f"%{url_second_part}%"]} if "%" in url_second_part else {"name": url_second_part} if url_second_part else None,
+			"name"
+		) if url_second_part else None
+
+		last_part = parts[-1].replace("-", "%")
 		second_part = set()
 
 		item_group = frappe.db.get_value(
@@ -1251,6 +1262,8 @@ def get_website_items(url=None, customer_id=None):
 		distinct_parent_item_groups = []
 		distinct_collection_titles = []
 		distinct_brands = []
+
+		banner_details = get_product_details_banner(banner_item_group)
 
 		distinct_collection_titles = frappe.db.sql("""
 			SELECT item_group AS name, COUNT(*) AS count
@@ -1362,10 +1375,12 @@ def get_website_items(url=None, customer_id=None):
 			"total_pages": math.ceil(total_products / page_size),
 			"current_page": int(page),
 			"items_in_page": len(modified_items),
+			"banner": banner_details,
+			"banner_url": banner_url,
 			"distinct_parent_item_groups": distinct_parent_item_groups,
 			"distinct_collection_titles": distinct_collection_titles,
 			"distinct_brands": distinct_brands,
-			"paginatedProducts": modified_items,
+			"paginatedProducts": modified_items
 		}
 
 	except Exception as e:
