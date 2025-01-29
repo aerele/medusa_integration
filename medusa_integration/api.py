@@ -1954,16 +1954,20 @@ def get_homepage_order_list():
 
 		order_data = []
 
+		function_map = {
+			"DENTAL": "get_dental_items",
+			"MEDICAL": "get_medical_items",
+			"INFECTION CONTROL": "get_infection_control_items",
+			"MEDICAL LABORATORY IVD": "get_medical_laboratory_items"
+		}
+
 		for order in homepage_order_list.order:
-			if order.label == "DENTAL":
-				order_data.append("get_dental_items")
-			elif order.label == "MEDICAL":
-				order_data.append("get_medical_items")
-			elif order.label == "INFECTION CONTROL":
-				order_data.append("get_infection_control_items")
-			else:
-				order_data.append("get_medical_laboratory_items")
-		
+			if order.label.upper() in function_map:
+				order_data.append({
+					"title": order.label.title(),
+					"function": function_map[order.label.upper()]
+				})
+
 		return order_data
 
 	except Exception as e:
