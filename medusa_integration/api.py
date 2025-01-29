@@ -1409,6 +1409,7 @@ def get_all_brands(item_group=None):
 			brands = frappe.get_all("Brand", fields=["name"], order_by="name asc")
 
 		brand_list = []
+		top_categories = ["DENTAL", "MEDICAL", "Medical Laboratory IVD", "Infection Control"]
 		for brand in brands:
 			image_url = frappe.db.get_value(
 				"File",
@@ -1422,7 +1423,7 @@ def get_all_brands(item_group=None):
 				"image": image_url
 			})
 
-		return brand_list
+		return {"top_categories": top_categories, "brand_list": brand_list}
 
 	except Exception as e:
 		frappe.log_error(message=str(e), title="Fetch Brands Failed")
