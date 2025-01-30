@@ -1089,13 +1089,12 @@ def export_quotation_on_update(doc, method):
 			print(f"Error exporting Quotation {doc.name}: {str(e)}")
 
 @frappe.whitelist(allow_guest=True)
-def export_sales_order(self, method): # Need to test
+def export_sales_order(self, method):
 	sales_order = frappe.get_doc("Sales Order", self)
 
-	customer_id = frappe.get_value("Customer", {"name": sales_order.customer}, "medusa_id") #Need to update
+	customer_id = frappe.get_value("Customer", {"name": sales_order.customer}, "medusa_id")
 	if not customer_id:
 		frappe.throw(f"Medusa Customer ID not found for Customer: {sales_order.customer}")
-	# customer_id = "cus_01JEN21R04B3DK7DRFS2AVY8BR"
 
 	payment_status = "Unpaid"
 	
@@ -1113,7 +1112,7 @@ def export_sales_order(self, method): # Need to test
 
 	payload = {
 		"customer_id": customer_id,
-		"order_status": "Pending" if sales_order.state == "Draft" else sales_order.state,
+		"order_status": "Pending" if sales_order.status == "Draft" else sales_order.status,
 		"payment_status":  payment_status,
 	}
 
