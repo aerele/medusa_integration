@@ -151,6 +151,11 @@ doc_events = {
 		"on_update": "medusa_integration.api.export_sales_order_on_update",
 		"on_update_after_submit": "medusa_integration.api.export_sales_order_on_update"
 	},
+	"Sales Invoice": {
+		"after_insert": "medusa_integration.api.export_sales_invoice_on_update",
+		"on_update": "medusa_integration.api.export_sales_invoice_on_update",
+		"on_update_after_submit": "medusa_integration.api.export_sales_invoice_on_update"
+	},
 	# "File": {
 	# 	"after_insert": "medusa_integration.api.file_validation_wrapper"
 	# }
