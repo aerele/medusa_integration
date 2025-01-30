@@ -1144,6 +1144,30 @@ def export_sales_order_on_update(doc, method):
 			frappe.log_error(f"Failed to export Sales Order {doc.name}: {str(e)}", "Sales Order Export Error")
 			print(f"Error exporting Sales Order {doc.name}: {str(e)}")
 
+def export_sales_invoice_on_update(doc, method):
+	if not doc.medusa_order_id:
+		return
+
+	try:
+		sales_orders = frappe.db.sql("""
+			SELECT DISTINCT soi.sales_order 
+			FROM `tabSales Invoice Item` soi
+			WHERE soi.parent = %s
+		""", (doc.name,), as_dict=True)
+
+		if not sales_orders:
+			frappe.log_error(f"No Sales Order found for Sales Invoice {doc.name}", "Sales Invoice Hook Error")
+			return
+
+		sales_order_name = sales_orders[0].sales_order
+
+		export_sales_order(sales_order_name, "")
+		frappe.msgprint(f"Invoice details updated in Medusa for Sales Order {sales_order_name} successfully.")
+
+	except Exception as e:
+		frappe.log_error(f"Failed to export Sales Invoice {doc.name}: {str(e)}", "Sales Invoice Export Error")
+		print(f"Error exporting Sales Invoice {doc.name}: {str(e)}")
+
 def send_quotation_emails():
 	email_queue = frappe.get_all(
 		"Email Queue",
