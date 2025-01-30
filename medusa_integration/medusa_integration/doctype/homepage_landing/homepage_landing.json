@@ -7,6 +7,7 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
+  "menu_section",
   "top_section",
   "recommended_items",
   "trending_items",
@@ -99,11 +100,17 @@
    "fieldtype": "Table",
    "label": "Product Details Banner",
    "options": "Product details banner"
+  },
+  {
+   "fieldname": "menu_section",
+   "fieldtype": "Table",
+   "label": "Menu section",
+   "options": "Item and Brand Entry"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-01-27 12:16:44.122708",
+ "modified": "2025-01-30 09:55:39.896959",
  "modified_by": "Administrator",
  "module": "Medusa Integration",
  "name": "Homepage Landing",
