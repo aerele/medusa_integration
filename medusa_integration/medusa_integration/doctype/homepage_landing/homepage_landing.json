@@ -104,13 +104,13 @@
   {
    "fieldname": "menu_section",
    "fieldtype": "Table",
-   "label": "Menu section",
+   "label": "Menu section (Do not add brands here)",
    "options": "Item and Brand Entry"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-01-30 09:55:39.896959",
+ "modified": "2025-01-31 11:57:54.938040",
  "modified_by": "Administrator",
  "module": "Medusa Integration",
  "name": "Homepage Landing",
