@@ -1168,6 +1168,26 @@ def export_sales_invoice_on_update(doc, method):
 		frappe.log_error(f"Failed to export Sales Invoice {doc.name}: {str(e)}", "Sales Invoice Export Error")
 		print(f"Error exporting Sales Invoice {doc.name}: {str(e)}")
 
+def handle_payment_entry(doc, method):
+	linked_invoices = frappe.db.sql("""
+		SELECT DISTINCT per.reference_name 
+		FROM `tabPayment Entry Reference` per
+		WHERE per.parent = %s AND per.reference_doctype = 'Sales Invoice'
+	""", (doc.name,), as_dict=True)
+
+	if not linked_invoices:
+		return
+
+	for invoice in linked_invoices:
+		sales_invoice = frappe.get_doc("Sales Invoice", invoice.reference_name)
+
+		if sales_invoice.medusa_order_id:
+			try:
+				export_sales_invoice_on_update(sales_invoice, method)
+				frappe.msgprint(f"Payment details updated in Medusa for Sales Invoice {sales_invoice.name}.")
+			except Exception as e:
+				frappe.log_error(f"Failed to export Payment Entry {doc.name}: {str(e)}", "Payment Entry Hook Error")
+
 def send_quotation_emails():
 	email_queue = frappe.get_all(
 		"Email Queue",
