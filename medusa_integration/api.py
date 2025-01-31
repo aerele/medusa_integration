@@ -1556,77 +1556,22 @@ def get_homepage_top_section():
 def get_homepage_menu_section():
 	try:
 		menu_section = frappe.get_doc("Homepage Landing", "Active Homepage Landing")
-
-		base_url = frappe.utils.get_url()
-		
-		def fetch_image_url(doctype, name):
-			image_url = frappe.db.get_value(
-				"File",
-				{"attached_to_doctype": doctype, "attached_to_name": name},
-				"file_url"
-			)
-			return f"{base_url}{image_url}" if image_url else None
-		
-		def fetch_first_layer_children(parent_group):
-			children = frappe.get_all(
-				"Item Group",
-				fields=["name"],
-				filters={"parent_item_group": parent_group},
-				order_by="name"
-			)
-			
-			enriched_children = []
-			for child in children:
-				route = frappe.db.get_value("Item Group", child["name"], "custom_medusa_route")
-				
-				enriched_children.append({
-					"title": child["name"],
-					"url": route
-				})
-			return enriched_children
 		
 		entries_data = []
 		for entry in menu_section.menu_section:
-			thumbnail = fetch_image_url(entry.link_doctype, entry.name1)
 
 			if entry.link_doctype == "Item Group":
 				url = frappe.db.get_value("Item Group", entry.name1, "custom_medusa_route")
-				enriched_sub_categories = fetch_first_layer_children(entry.name1)
 				
 				entries_data.append({
-					"type": entry.link_doctype,
 					"title": entry.name1,
-					"thumbnail": thumbnail,
-					"url": url,
-					"sub_categories": enriched_sub_categories
-				})
-			elif entry.link_doctype == "Brand":
-				item_groups = frappe.db.sql("""
-					SELECT DISTINCT w.item_group AS name
-					FROM `tabWebsite Item` w
-					WHERE w.brand = %(brand_name)s
-					ORDER BY w.item_group ASC
-				""", {"brand_name": entry.name1}, as_dict=True)
-
-				categories = [
-					{
-						"name": group["name"],
-						"url": frappe.db.get_value("Item Group", group["name"], "custom_medusa_route")
-					}
-					for group in item_groups
-				]
-
-				entries_data.append({
-					"type": entry.link_doctype,
-					"title": entry.name1,
-					"thumbnail": thumbnail,
-					"categories": categories
+					"url": url
 				})
 			
 		return entries_data
 
 	except Exception as e:
-		frappe.log_error(message=str(e), title="Fetch Homepage Top Section Failed")
+		frappe.log_error(message=str(e), title="Fetch Homepage Menu Section Failed")
 		return {"status": "error", "message": str(e)}
 
 def get_full_route(item_group):
