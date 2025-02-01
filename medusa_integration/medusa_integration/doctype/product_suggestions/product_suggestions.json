@@ -1,0 +1,85 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-02-01 09:40:22.067602",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "product_name",
+  "product_short_description",
+  "product_link",
+  "suggested_by",
+  "contact_number",
+  "product_supplier",
+  "supplier_details"
+ ],
+ "fields": [
+  {
+   "fieldname": "product_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Product Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "product_short_description",
+   "fieldtype": "Data",
+   "label": "Product Short Description"
+  },
+  {
+   "fieldname": "product_link",
+   "fieldtype": "Data",
+   "label": "Product Link"
+  },
+  {
+   "fieldname": "suggested_by",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Suggested by",
+   "reqd": 1
+  },
+  {
+   "fieldname": "contact_number",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Contact Number",
+   "reqd": 1
+  },
+  {
+   "fieldname": "product_supplier",
+   "fieldtype": "Data",
+   "label": "Product Supplier"
+  },
+  {
+   "fieldname": "supplier_details",
+   "fieldtype": "Data",
+   "label": "Supplier Details"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-02-01 09:40:22.067602",
+ "modified_by": "Administrator",
+ "module": "Medusa Integration",
+ "name": "Product Suggestions",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
