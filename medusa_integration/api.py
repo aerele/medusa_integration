@@ -2168,3 +2168,28 @@ def get_homepage_banners():
 	except Exception as e:
 		frappe.log_error(message=str(e), title="Fetch Homepage Banners Failed")
 		return {"status": "error", "message": str(e)}
+
+@frappe.whitelist(allow_guest=True)
+def create_product_suggestion(product_name, suggested_by, contact_number, product_short_description=None, product_link=None, product_supplier=None, supplier_details=None):
+	if not product_name or not suggested_by or not contact_number:
+		return {"status": "error", "message": "Product Name, Suggested By, and Contact Number are mandatory fields."}
+	
+	try:
+		new_suggestion = frappe.get_doc({
+			"doctype": "Product Suggestions",
+			"product_name": product_name,
+			"suggested_by": suggested_by,
+			"contact_number": contact_number,
+			"product_short_description": product_short_description,
+			"product_link": product_link,
+			"product_supplier": product_supplier,
+			"supplier_details": supplier_details
+		})
+		new_suggestion.insert(ignore_permissions=True)
+		frappe.db.commit()
+
+		return ("Product suggestion created successfully")
+
+	except Exception as e:
+		frappe.log_error(frappe.get_traceback(), "Product Suggestion Creation Failed")
+		return {"status": "error", "message": str(e)}
