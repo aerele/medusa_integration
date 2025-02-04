@@ -1907,13 +1907,19 @@ def fetch_relevant_items():
 	recommended_items_data = []
 
 	def get_recommended_items_data(relevant_items, cus_id):
-		items_data = []
+		items_data = set()
+		results = []
+
 		for recommended_item in relevant_items:
 			base_url = frappe.utils.get_url()
 			website_item_name = recommended_item
 			medusa_id = frappe.get_value("Website Item", {"name": website_item_name}, "medusa_id")
+			
+			if medusa_id in items_data:  
+				continue 
+			
 			image_url = frappe.db.get_value(
-				"File", 
+				"File", 	
 				{"attached_to_doctype": "Website Item", "attached_to_name": website_item_name}, 
 				"file_url"
 			)
@@ -1932,7 +1938,7 @@ def fetch_relevant_items():
 				)
 				is_wishlisted = 1 if is_wishlisted else 0
 			
-			items_data.append({
+			item_entry = {
 				"id": medusa_id,
 				"variant_id": item_data.medusa_variant_id,
 				"title": item_data.web_item_name,
@@ -1940,8 +1946,12 @@ def fetch_relevant_items():
 				"thumbnail": thumbnail,
 				"rating": item_data.custom_overall_rating,
 				"isWishlisted": is_wishlisted
-			})
-		return items_data
+			}
+
+			results.append(item_entry)
+			items_data.add(medusa_id)
+
+		return results
 
 	try:
 		data = json.loads(frappe.request.data)
@@ -1957,7 +1967,11 @@ def fetch_relevant_items():
 		recommended_items_data.extend(relevant_items_data)
 			
 		products = get_website_items(url=parent_route)
-		recommended_items_data.extend(products.get("paginatedProducts"))
+		paginated_products = [
+				p for p in products["paginatedProducts"]
+				if p["id"] != website_item.medusa_id and p["id"] not in {item["id"] for item in recommended_items_data}
+			]
+		recommended_items_data.extend(paginated_products)
 		
 		return recommended_items_data
 	except Exception as e:
