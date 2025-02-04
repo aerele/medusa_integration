@@ -1965,6 +1965,10 @@ def fetch_relevant_items():
 		return {"status": "error", "message": str(e)}
 
 @frappe.whitelist(allow_guest=True)
+def get_top_sellers(customer_id=None):
+	return fetch_items_from_homepage("top_sellers", customer_id)
+	
+@frappe.whitelist(allow_guest=True)
 def get_recommended_items(customer_id=None):
 	return fetch_items_from_homepage("recommended_items", customer_id)
 
