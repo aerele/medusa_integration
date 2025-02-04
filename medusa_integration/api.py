@@ -2208,3 +2208,93 @@ def create_product_suggestion(product_name, suggested_by, contact_number, produc
 	except Exception as e:
 		frappe.log_error(frappe.get_traceback(), "Product Suggestion Creation Failed")
 		return {"status": "error", "message": str(e)}
+
+TOP_SELLER_FILTER_KEYWORDS = [
+	"Bed pan", "urinal", "urine bag", "stool container",
+	"yellow bag", "underpad", "napkin", "Waste Bin"
+]
+
+MAX_ITEMS_PER_PAGE = 20
+
+@frappe.whitelist(allow_guest=True)
+def top_sellers():
+	try:
+		# Parse request data
+		data = json.loads(frappe.request.data)
+		customer_id = data.get("customer_id")
+		page = int(data.get("page", 1))
+
+		if page < 1:
+			return {"status": "error", "message": "Invalid page number"}
+
+		# Step 1: Fetch all "Paid" Sales Invoices
+		paid_invoices = frappe.get_all("Sales Invoice",
+									   filters={"status": "Paid"},
+									   fields=["name"])
+
+		if not paid_invoices:
+			return {"status": "success", "message": "No sales data available", "data": []}
+
+		# Step 2: Fetch items from these invoices
+		item_count = {}
+		for invoice in paid_invoices:
+			items = frappe.get_all("Sales Invoice Item",
+								   filters={"parent": invoice["name"]},
+								   fields=["item_code"])
+			for item in items:
+				item_count[item["item_code"]] = item_count.get(item["item_code"], 0) + 1
+
+		if not item_count:
+			return {"status": "success", "message": "No items found in invoices", "data": []}
+
+		# Step 3: Fetch corresponding Website Items
+		website_items = frappe.get_all("Website Item",
+									   filters={"item_code": ["in", list(item_count.keys())]},
+									   fields=["name", "web_item_name", "web_long_description",
+											   "medusa_id", "medusa_variant_id", "item_group"])
+
+		filtered_items = []
+		for item in website_items:
+			# Step 4: Filter out items based on keywords
+			description = (item.get("web_long_description") or "").lower()
+			item_name = (item.get("web_item_name") or "").lower()
+			
+			if any(keyword.lower() in item_name or keyword.lower() in description for keyword in TOP_SELLER_FILTER_KEYWORDS):
+				continue  # Skip items with restricted keywords
+
+			# Step 5: Check if the item is wishlisted
+			is_wishlisted = 0
+			if customer_id:
+				is_wishlisted = frappe.db.exists("Medusa Wishlist",
+												 {"parent": item["name"],
+												  "medusa_customer_id": customer_id})
+				is_wishlisted = 1 if is_wishlisted else 0
+
+			# Append processed item
+			filtered_items.append({
+				"web_item_name": item["web_item_name"],
+				"medusa_id": item["medusa_id"],
+				"medusa_variant_id": item["medusa_variant_id"],
+				"item_group": item["item_group"],
+				"is_wishlisted": is_wishlisted
+			})
+
+		# Step 6: Handle Pagination
+		total_items = len(filtered_items)
+		start_index = (page - 1) * MAX_ITEMS_PER_PAGE
+		end_index = start_index + MAX_ITEMS_PER_PAGE
+
+		paginated_items = filtered_items[start_index:end_index]
+
+		return {
+			"status": "success",
+			"message": "Top selling products retrieved successfully",
+			"total_items": total_items,
+			"page": page,
+			"items_per_page": MAX_ITEMS_PER_PAGE,
+			"data": paginated_items
+		}
+
+	except Exception as e:
+		frappe.log_error(frappe.get_traceback(), "Top Sellers API Error")
+		return {"status": "error", "message": str(e)}
