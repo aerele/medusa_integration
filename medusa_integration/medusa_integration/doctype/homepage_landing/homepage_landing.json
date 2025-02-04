@@ -9,6 +9,7 @@
  "field_order": [
   "menu_section",
   "top_section",
+  "top_sellers",
   "recommended_items",
   "trending_items",
   "new_arrivals",
@@ -51,37 +52,37 @@
    "fieldname": "dental_items",
    "fieldtype": "Table",
    "label": "Dental Items",
-   "options": "Dental"
+   "options": "Homepage Item"
   },
   {
    "fieldname": "medical_items",
    "fieldtype": "Table",
    "label": "Medical Items",
-   "options": "Medical"
+   "options": "Homepage Item"
   },
   {
    "fieldname": "medical_laboratory_items",
    "fieldtype": "Table",
    "label": "Medical Laboratory Items",
-   "options": "Medical Laboratory IVD"
+   "options": "Homepage Item"
   },
   {
    "fieldname": "infection_control_items",
    "fieldtype": "Table",
    "label": "Infection Control Items",
-   "options": "Infection Control"
+   "options": "Homepage Item"
   },
   {
    "fieldname": "trending_items",
    "fieldtype": "Table",
    "label": "Trending Items",
-   "options": "Trending Now"
+   "options": "Homepage Item"
   },
   {
    "fieldname": "new_arrivals",
    "fieldtype": "Table",
    "label": "New Arrivals",
-   "options": "New Arrivals"
+   "options": "Homepage Item"
   },
   {
    "fieldname": "banners",
@@ -106,11 +107,17 @@
    "fieldtype": "Table",
    "label": "Menu section (Do not add brands here)",
    "options": "Item and Brand Entry"
+  },
+  {
+   "fieldname": "top_sellers",
+   "fieldtype": "Table",
+   "label": "Top Sellers",
+   "options": "Homepage Item"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-01-31 11:57:54.938040",
+ "modified": "2025-02-04 16:04:52.595793",
  "modified_by": "Administrator",
  "module": "Medusa Integration",
  "name": "Homepage Landing",
