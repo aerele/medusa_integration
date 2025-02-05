@@ -87,7 +87,7 @@
   {
    "fieldname": "banners",
    "fieldtype": "Table",
-   "label": "Banners",
+   "label": "Homepage Banners",
    "options": "Homepage Banner"
   },
   {
@@ -99,7 +99,7 @@
   {
    "fieldname": "product_details_banner",
    "fieldtype": "Table",
-   "label": "Product Details Banner",
+   "label": "Product Listing Banners",
    "options": "Product details banner"
   },
   {
@@ -117,7 +117,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-02-04 16:04:52.595793",
+ "modified": "2025-02-05 10:24:13.103552",
  "modified_by": "Administrator",
  "module": "Medusa Integration",
  "name": "Homepage Landing",
