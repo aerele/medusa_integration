@@ -1963,6 +1963,10 @@ def fetch_relevant_items():
 
 		relevant_items = [related_item.website_item for related_item in website_item.recommended_items]
 
+		if relevant_items == []:
+			frappe.local.response["http_status_code"] = 404
+			return ("No relevant items found")
+
 		relevant_items_data = get_recommended_items_data(relevant_items, cus_id)
 		recommended_items_data.extend(relevant_items_data)
 			
