@@ -2285,3 +2285,15 @@ def verify_otp(email, user_otp):
 		return ("OTP verified successfully")
 	else:
 		return ("Invalid or expired OTP")
+
+def expire_otps():
+	from frappe.utils import now_datetime
+	now = now_datetime()
+	expired_otps = frappe.get_all("Email OTP", 
+								  filters={"status": "Pending", "expiration_time": ["<", now]}, 
+								  fields=["name"])
+
+	for otp in expired_otps:
+		doc = frappe.get_doc("Email OTP", otp.name)
+		doc.status = "Expired"
+		doc.save(ignore_permissions=True)
