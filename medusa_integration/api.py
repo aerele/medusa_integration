@@ -632,11 +632,15 @@ def create_medusa_price_list(self, called_manually=False):
 			FROM 
 				`tabItem Price`
 			WHERE 
-				item_code = %s
+				item_code = %s AND price_list = 'Standard Selling'
 			ORDER BY 
 				valid_from DESC
 			LIMIT 1
 		""", (self.item_code,), as_dict=True)
+
+		if not recent_item_price:
+			print(f"No Standard Selling price found for {self.item_code}")
+			return
 
 		if recent_item_price[0]['name'] != self.name:
 			print(f"Skipping {self.name} as it is not the most recent Item Price of {self.item_code}")
@@ -645,6 +649,9 @@ def create_medusa_price_list(self, called_manually=False):
 		item_price = recent_item_price[0]['price_list_rate']
 
 	else:
+		if self.price_list != "Standard Selling":
+			print(f"Skipping {self.name} as it does not belong to Standard Selling price list")
+			return
 		item_price = self.price_list_rate
 
 	item_price = int(item_price * 1000)
