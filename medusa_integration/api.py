@@ -2230,3 +2230,58 @@ def create_product_suggestion(product_name, suggested_by, contact_number, produc
 	except Exception as e:
 		frappe.log_error(frappe.get_traceback(), "Product Suggestion Creation Failed")
 		return {"status": "error", "message": str(e)}
+
+@frappe.whitelist(allow_guest=True)
+def send_otp(email):
+	from frappe.utils import now_datetime, add_to_date
+	import random
+
+	expiration_time = add_to_date(now_datetime(), minutes=5)
+
+	existing_otp = frappe.get_all("Email OTP", 
+								  filters={"email": email, "status": "Pending"}, 
+								  fields=["name", "otp", "expiration_time"])
+	
+	if existing_otp:
+		otp_doc = frappe.get_doc("Email OTP", existing_otp[0].name)
+		otp = otp_doc.otp
+		otp_doc.expiration_time = expiration_time
+		otp_doc.save(ignore_permissions=True)
+	else:
+		otp = random.randint(100000, 999999)
+		frappe.get_doc({
+			"doctype": "Email OTP",
+			"email": email,
+			"otp": otp,
+			"expiration_time": expiration_time,
+			"status": "Pending"
+		}).insert(ignore_permissions=True)
+
+	subject = "Your OTP for Verification"
+	message = f"Your OTP for verification is: <b>{otp}</b>. This OTP is valid for 5 minutes."
+
+	try:
+		frappe.sendmail(
+			recipients=email,
+			sender="chethan@aerele.in",
+			subject=subject,
+			message=message
+		)
+		return ("OTP sent successfully")
+	except Exception as e:
+		frappe.log_error(message=str(e), title="OTP Email Sending Failed")
+		return ("Failed to send OTP")
+
+@frappe.whitelist(allow_guest=True)
+def verify_otp(email, user_otp):
+	otp_record = frappe.get_all("Email OTP", filters={"email": email}, fields=["otp", "expiration_time"], limit=1)
+	if not otp_record:
+		return ("Invalid OTP or email")
+
+	stored_otp = otp_record[0].otp
+
+	if str(stored_otp) == str(user_otp):
+		frappe.db.delete("Email OTP", {"email": email})
+		return ("OTP verified successfully")
+	else:
+		return ("Invalid or expired OTP")
