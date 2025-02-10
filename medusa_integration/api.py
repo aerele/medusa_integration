@@ -2272,7 +2272,8 @@ def send_otp(email):
 			recipients=email,
 			sender="chethan@aerele.in",
 			subject=subject,
-			message=message
+			message=message,
+			now=True
 		)
 		return ("OTP sent successfully")
 	except Exception as e:
