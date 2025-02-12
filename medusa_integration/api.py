@@ -637,7 +637,9 @@ def create_medusa_price_list(self, called_manually=False):
 			FROM 
 				`tabItem Price`
 			WHERE 
-				item_code = %s AND price_list = 'Standard Selling'
+				item_code = %s 
+				AND price_list = 'Standard Selling'
+				AND (customer IS NULL OR customer = '')
 			ORDER BY 
 				valid_from DESC
 			LIMIT 1
@@ -654,8 +656,8 @@ def create_medusa_price_list(self, called_manually=False):
 		item_price = recent_item_price[0]['price_list_rate']
 
 	else:
-		if self.price_list != "Standard Selling":
-			print(f"Skipping {self.name} as it does not belong to Standard Selling price list")
+		if self.price_list != "Standard Selling" or self.customer:
+			print(f"Skipping {self.name} as it does not belong to common Standard Selling price list")
 			return
 		item_price = self.price_list_rate
 
@@ -669,7 +671,6 @@ def create_medusa_price_list(self, called_manually=False):
 	else:
 		starts_at = datetime.datetime.strptime(self.valid_from, "%Y-%m-%d").isoformat() if self.valid_from else None
 		ends_at = datetime.datetime.strptime(self.valid_upto, "%Y-%m-%d").isoformat() if self.valid_upto else None
-
 	
 	payload = json.dumps({
 		"name": web_item_name,
