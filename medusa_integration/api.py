@@ -16,20 +16,12 @@ def create_lead():
 		"last_name": data.get("last_name"),
 		"email_id": data.get("email"),
 		"mobile_no": data.get("mobile"),
-		"phone": data.get("phone"),
 		"source": "Alfarsi Website",
 		"status": "Lead",
 		"company_name": data.get("organization_name"),
-		"custom_address_line1": data.get("address_line_1"),
-		"custom_address_line2": data.get("address_line_2"),
-		"city": data.get("city"),
-		"state": data.get("state"),
-		"country": data.get("country"),
-		"custom_pincode": data.get("pin_code"),
 		"t_c_acceptance": data.get("t_c_acceptance"),
-		"offers_agreement": data.get("offers_agreement"),
 	})
-	lead.insert(ignore_permissions=True)
+	lead.insert(ignore_permissions=True,ignore_mandatory=True)
 	return {"message": ("Lead created successfully"), "Lead ID": lead.name}
 
 @frappe.whitelist(allow_guest=True)
