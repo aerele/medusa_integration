@@ -1888,6 +1888,7 @@ def fetch_relevant_collection_products(cus_id=None):
 	try:
 		data = json.loads(frappe.request.data)
 		item_group = data.get("item_group")
+		second_part = ""
 		
 		route = frappe.db.get_value("Item Group", {"name": item_group}, "route")
 		parts = route.strip("/").split("/")
