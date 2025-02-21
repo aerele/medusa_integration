@@ -1,6 +1,7 @@
 import requests
 import frappe
 import json
+from frappe import _
 from medusa_integration.constants import get_headers, get_url
 from medusa_integration.utils import send_request
 from datetime import datetime, timedelta
