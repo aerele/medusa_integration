@@ -2756,7 +2756,7 @@ def send_otp(email):
 	if existing_otp:
 		otp = existing_otp[0].get("otp")
 	else:
-		expiration_time = add_to_date(now_datetime(), minutes=5)
+		expiration_time = add_to_date(now_datetime(), minutes=10)
 		otp = random.randint(100000, 999999)
 		frappe.get_doc(
 			{
@@ -2775,6 +2775,7 @@ def send_otp(email):
 
 	try:
 		frappe.sendmail(recipients=[email], subject=subject, message=message, now=True)
+		frappe.db.commit()
 		return "OTP sent successfully"
 	except Exception as e:
 		frappe.log_error(message=str(e), title="OTP Email Sending Failed")
@@ -2798,6 +2799,7 @@ def verify_otp(email, user_otp):
 	if not otp_record:
 		return "Invalid OTP or email"
 	frappe.db.delete("Email OTP", {"email": email})
+	frappe.db.commit()
 	return "OTP verified successfully"
 
 
