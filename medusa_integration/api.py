@@ -31,6 +31,7 @@ def create_lead():
 	)
 	lead.insert(ignore_permissions=True, ignore_mandatory=True)
 	frappe.db.set_value("Email OTP", {"email": data.get("email")}, "logged_in", True)
+	frappe.db.commit()
 	return {"message": ("Lead created successfully"), "Lead ID": lead.name}
 
 
@@ -52,6 +53,7 @@ def update_existing_customer():
 		frappe.db.set_value(
 			"Email OTP", {"email": data.get("email_id")}, "logged_in", True
 		)
+		frappe.db.commit()
 		return "Customer updated successfully"
 	except frappe.DoesNotExistError:
 		return {"error": f"Customer with ID '{customer_id}' does not exist."}
@@ -2761,6 +2763,7 @@ def sign_up(
 			password = str(random.randrange(10**11, (10**12) - 1))
 			otp_doc.password = password
 			otp_doc.save(ignore_permissions=True)
+			frappe.db.commit()
 			url = f"{medusa_base_url}/store/signup"
 			payload = json.dumps(
 				{
@@ -2864,7 +2867,6 @@ def get_otp(email):
 	return otp
 
 
-@frappe.whitelist(allow_guest=True)
 def verify_otp(email, user_otp):
 	otp_record = (
 		frappe.db.get_value(
@@ -2879,6 +2881,7 @@ def verify_otp(email, user_otp):
 	) or None
 	if not otp_record:
 		return {"otp_name": None, "message": "Invalid OTP or email"}
+	frappe.db.set_value("Email OTP",otp_record,"status","Verified")
 	return {"otp_name": otp_record, "message": "OTP verified successfully"}
 
 
