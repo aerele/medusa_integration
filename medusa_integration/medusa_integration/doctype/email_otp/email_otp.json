@@ -10,13 +10,17 @@
   "email",
   "otp",
   "expiration_time",
-  "status"
+  "status",
+  "password",
+  "logged_in"
  ],
  "fields": [
   {
    "fieldname": "email",
    "fieldtype": "Data",
-   "label": "Email"
+   "label": "Email",
+   "options": "Email",
+   "unique": 1
   },
   {
    "fieldname": "otp",
@@ -33,11 +37,22 @@
    "fieldtype": "Select",
    "label": "Status",
    "options": "Pending\nVerified\nExpired"
+  },
+  {
+   "fieldname": "password",
+   "fieldtype": "Password",
+   "label": "Password"
+  },
+  {
+   "default": "0",
+   "fieldname": "logged_in",
+   "fieldtype": "Check",
+   "label": "Logged in"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-02-07 14:42:49.977203",
+ "modified": "2025-02-28 14:11:30.474696",
  "modified_by": "Administrator",
  "module": "Medusa Integration",
  "name": "Email OTP",
@@ -54,6 +69,15 @@
    "role": "System Manager",
    "share": 1,
    "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Guest",
+   "share": 1
   }
  ],
  "sort_field": "modified",

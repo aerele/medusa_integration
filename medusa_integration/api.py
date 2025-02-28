@@ -9,6 +9,8 @@ from alfarsi_erpnext.alfarsi_erpnext.customer import fetch_standard_price
 from frappe.utils import now_datetime, add_to_date
 import random
 
+medusa_base_url = "https://medusa-be.aerele.in"
+
 
 @frappe.whitelist(allow_guest=True)
 def create_lead():
@@ -28,6 +30,7 @@ def create_lead():
 		}
 	)
 	lead.insert(ignore_permissions=True, ignore_mandatory=True)
+	frappe.db.set_value("Email OTP", {"email": data.get("email")}, "logged_in", True)
 	return {"message": ("Lead created successfully"), "Lead ID": lead.name}
 
 
@@ -46,7 +49,9 @@ def update_existing_customer():
 		customer.offers_agreement = data.get("offers_agreement")
 
 		customer.save(ignore_permissions=True)
-
+		frappe.db.set_value(
+			"Email OTP", {"email": data.get("email_id")}, "logged_in", True
+		)
 		return "Customer updated successfully"
 	except frappe.DoesNotExistError:
 		return {"error": f"Customer with ID '{customer_id}' does not exist."}
@@ -2737,37 +2742,77 @@ def create_product_suggestion(
 
 
 @frappe.whitelist(allow_guest=True)
-def send_otp(email):
-	existing_otp = (
-		frappe.get_all(
-			"Email OTP",
-			filters={
-				"email": email,
-				"status": "Pending",
-				"expiration_time": [">", now_datetime()],
-			},
-			fields=["otp"],
-			order_by="creation desc",
-			limit=1,
-		)
-		or None
-	)
-
-	if existing_otp:
-		otp = existing_otp[0].get("otp")
+def sign_up(
+	email,
+	first_name,
+	last_name,
+	t_c_acceptance,
+	mobile,
+	otp,
+	organization_name,
+	erp_customer_id=None,
+):
+	validate_otp = verify_otp(email=email, user_otp=otp)
+	if validate_otp.get("otp_name"):
+		otp_doc = frappe.get_doc("Email OTP", validate_otp.get("otp_name"))
+		if otp_doc.logged_in:
+			return "This Email is Registered kindly login"
+		else:
+			password = random.randrange(10**11, (10**12) - 1)
+			otp_doc.password = password
+			otp_doc.save(ignore_permissions=True)
+			url = f"{medusa_base_url}/store/signup"
+			payload = json.dumps(
+				{
+					"email": email,
+					"first_name": first_name,
+					"last_name": last_name,
+					"password": password,
+					"t_c_acceptance": t_c_acceptance,
+					"organization_name": organization_name,
+					"mobile": mobile,
+					"erp_customer_id": erp_customer_id,
+				}
+			)
+			headers = {"Content-Type": "application/json"}
+			response = requests.request("POST", url, headers=headers, data=payload)
+			return response.json()
 	else:
-		expiration_time = add_to_date(now_datetime(), minutes=10)
-		otp = random.randint(100000, 999999)
-		frappe.get_doc(
-			{
-				"doctype": "Email OTP",
-				"email": email,
-				"otp": otp,
-				"expiration_time": expiration_time,
-				"status": "Pending",
-			}
-		).insert(ignore_permissions=True)
+		return validate_otp.get("message")
 
+
+@frappe.whitelist(allow_guest=True)
+def login(email, password=None, otp=None):
+	headers = {
+		"Content-Type": "application/json",
+	}
+	url = f"{medusa_base_url}/store/login"
+	if password:
+		payload = json.dumps({"email": email, "password": password})
+		response = requests.request("POST", url, headers=headers, data=payload)
+		return response.json()
+	elif otp:
+		validate_otp = verify_otp(email=email, user_otp=otp)
+		if validate_otp.get("otp_name"):
+			otp_doc = frappe.get_doc("Email OTP", validate_otp.get("otp_name"))
+			if otp_doc.logged_in and otp_doc.password:
+				payload = json.dumps(
+					{"email": email, "password": otp_doc.get_password("password")}
+				)
+				response = requests.request("POST", url, headers=headers, data=payload)
+				return response.json()
+
+			else:
+				return "kindly Registered"
+		else:
+			return validate_otp.get("message")
+	else:
+		return "Login Need Otp or Password"
+
+
+@frappe.whitelist(allow_guest=True)
+def send_otp(email):
+	otp = get_otp(email)
 	subject = "Your OTP for Verification"
 	message = (
 		f"Your OTP for verification is: <b>{otp}</b>. This OTP is valid for 5 minutes."
@@ -2782,25 +2827,59 @@ def send_otp(email):
 		return "Failed to send OTP"
 
 
+def get_otp(email):
+	email_otp_name = frappe.db.get_value("Email OTP", {"email": email})
+	expiration_time = add_to_date(now_datetime(), minutes=10)
+	new_otp = random.randint(100000, 999999)
+	otp = None
+	if email_otp_name:
+		otp = frappe.db.get_value(
+			"Email OTP",
+			{
+				"name": email_otp_name,
+				"status": "Pending",
+				"expiration_time": [">", now_datetime()],
+			},
+			"otp",
+		)
+		if not otp:
+			otp = new_otp
+			frappe.db.set_value(
+				"Email OTP",
+				email_otp_name,
+				{"expiration_time": expiration_time, "otp": otp, "status": "Pending"},
+			)
+	else:
+		otp = new_otp
+		frappe.get_doc(
+			{
+				"doctype": "Email OTP",
+				"email": email,
+				"otp": otp,
+				"expiration_time": expiration_time,
+				"status": "Pending",
+			}
+		).insert(ignore_permissions=True)
+		frappe.db.commit()
+	return otp
+
+
 @frappe.whitelist(allow_guest=True)
 def verify_otp(email, user_otp):
 	otp_record = (
-		frappe.get_all(
+		frappe.db.get_value(
 			"Email OTP",
-			filters={
+			{
 				"email": email,
 				"status": "Pending",
 				"expiration_time": [">", now_datetime()],
 				"otp": str(user_otp),
 			},
 		)
-		or None
-	)
+	) or None
 	if not otp_record:
-		return "Invalid OTP or email"
-	frappe.db.delete("Email OTP", {"email": email})
-	frappe.db.commit()
-	return "OTP verified successfully"
+		return {"otp_name": None, "message": "Invalid OTP or email"}
+	return {"otp_name": otp_record, "message": "OTP verified successfully"}
 
 
 def expire_otps():
