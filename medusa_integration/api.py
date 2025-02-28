@@ -2758,7 +2758,7 @@ def sign_up(
 		if otp_doc.logged_in:
 			return "This Email is Registered kindly login"
 		else:
-			password = random.randrange(10**11, (10**12) - 1)
+			password = str(random.randrange(10**11, (10**12) - 1))
 			otp_doc.password = password
 			otp_doc.save(ignore_permissions=True)
 			url = f"{medusa_base_url}/store/signup"
