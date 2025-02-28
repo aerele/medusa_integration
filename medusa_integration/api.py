@@ -30,8 +30,6 @@ def create_lead():
 		}
 	)
 	lead.insert(ignore_permissions=True, ignore_mandatory=True)
-	frappe.db.set_value("Email OTP", {"email": data.get("email")}, "logged_in", True)
-	frappe.db.commit()
 	return {"message": ("Lead created successfully"), "Lead ID": lead.name}
 
 
@@ -50,10 +48,6 @@ def update_existing_customer():
 		customer.offers_agreement = data.get("offers_agreement")
 
 		customer.save(ignore_permissions=True)
-		frappe.db.set_value(
-			"Email OTP", {"email": data.get("email_id")}, "logged_in", True
-		)
-		frappe.db.commit()
 		return "Customer updated successfully"
 	except frappe.DoesNotExistError:
 		return {"error": f"Customer with ID '{customer_id}' does not exist."}
@@ -2762,8 +2756,6 @@ def sign_up(
 		else:
 			password = str(random.randrange(10**11, (10**12) - 1))
 			otp_doc.password = password
-			otp_doc.save(ignore_permissions=True)
-			frappe.db.commit()
 			url = f"{medusa_base_url}/store/signup"
 			payload = json.dumps(
 				{
@@ -2779,7 +2771,13 @@ def sign_up(
 			)
 			headers = {"Content-Type": "application/json"}
 			response = requests.request("POST", url, headers=headers, data=payload)
-			return response.json()
+			return_data =response.json()
+			if return_data.get("error"):
+				return return_data.get("error")
+			otp_doc.logged_in =1
+			otp_doc.save(ignore_permissions=True)
+			frappe.db.commit()
+			return return_data
 	else:
 		return validate_otp.get("message")
 
@@ -2803,7 +2801,10 @@ def login(email, password=None, otp=None):
 					{"email": email, "password": otp_doc.get_password("password")}
 				)
 				response = requests.request("POST", url, headers=headers, data=payload)
-				return response.json()
+				return_data =response.json()
+				if return_data.get("error"):
+					return return_data.get("error")
+				return return_data
 
 			else:
 				return "kindly Registered"
@@ -2882,6 +2883,7 @@ def verify_otp(email, user_otp):
 	if not otp_record:
 		return {"otp_name": None, "message": "Invalid OTP or email"}
 	frappe.db.set_value("Email OTP",otp_record,"status","Verified")
+	frappe.db.commit()
 	return {"otp_name": otp_record, "message": "OTP verified successfully"}
 
 
