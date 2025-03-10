@@ -2815,8 +2815,10 @@ def login(email, password=None, otp=None):
 
 
 @frappe.whitelist(allow_guest=True)
-def send_otp(email):
-	otp = get_otp(email)
+def send_otp(email,login):
+	otp = get_otp(email,login)
+	if str(otp) == "kindly Registered":
+		return otp
 	subject = "Your OTP for Verification"
 	message = (
 		f"Your OTP for verification is: <b>{otp}</b>. This OTP is valid for 5 minutes."
@@ -2831,7 +2833,7 @@ def send_otp(email):
 		return "Failed to send OTP"
 
 
-def get_otp(email):
+def get_otp(email,login):
 	email_otp_name = frappe.db.get_value("Email OTP", {"email": email})
 	expiration_time = add_to_date(now_datetime(), minutes=10)
 	new_otp = random.randint(100000, 999999)
@@ -2853,6 +2855,8 @@ def get_otp(email):
 				email_otp_name,
 				{"expiration_time": expiration_time, "otp": otp, "status": "Pending"},
 			)
+	elif login:
+		return "kindly Registered"
 	else:
 		otp = new_otp
 		frappe.get_doc(
