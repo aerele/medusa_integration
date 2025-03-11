@@ -2836,7 +2836,7 @@ def send_otp(email,isLogin):
 
 def get_otp(email,isLogin):
 
-	existing_user = frappe.db.exists("Email OTP", {"email": email, "status": "Verified"})
+	existing_user = frappe.db.exists("Email OTP", {"email": email, "logged_in": 1})
 	
 	if existing_user and not isLogin:
 		return "Account with this mail already exists. Please login"
