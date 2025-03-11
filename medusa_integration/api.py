@@ -2840,7 +2840,8 @@ def get_otp(email,isLogin):
 	
 	if existing_user and not isLogin:
 		return "Account with this mail already exists. Please login"
-	
+	if not existing_user and isLogin:
+		return "Please kindly register first"
 	email_otp_name = frappe.db.get_value("Email OTP", {"email": email})
 	expiration_time = add_to_date(now_datetime(), minutes=10)
 	new_otp = random.randint(100000, 999999)
