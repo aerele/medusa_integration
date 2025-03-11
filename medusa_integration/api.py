@@ -2818,7 +2818,7 @@ def login(email, password=None, otp=None):
 def send_otp(email,isLogin):
 	otp = get_otp(email,isLogin)
 	if otp in ["Please kindly register first", "Account with this mail already exists. Please login"]:
-		return otp
+		return {"isSuccess": 0, "message": otp}
 	
 	subject = "Your OTP for Verification"
 	message = (
@@ -2828,10 +2828,10 @@ def send_otp(email,isLogin):
 	try:
 		frappe.sendmail(recipients=[email], subject=subject, message=message, now=True)
 		frappe.db.commit()
-		return "OTP sent successfully"
+		return {"message":"OTP sent successfully", "isSuccess": 1}
 	except Exception as e:
 		frappe.log_error(message=str(e), title="OTP Email Sending Failed")
-		return "Failed to send OTP"
+		return {"message": "Failed to send OTP", "isSuccess": 0}
 
 
 def get_otp(email,isLogin):
