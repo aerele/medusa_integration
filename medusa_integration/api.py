@@ -287,13 +287,98 @@ def update_quotation():
 	except frappe.DoesNotExistError:
 		return {"error": "Quotation not found for ID: {}".format(quotation_id)}
 
-	if (
-		approval == "Partially Approved"
-		or approval == "Partially Approved with Increased Deal"
-	):
+	# if (
+	# 	approval == "Partially Approved"
+	# 	or approval == "Partially Approved with Increased Deal"
+	# ):
+	# 	quote.status = "Open"
+	# 	quote.workflow_state = approval
+	# 	quote.order_type = "Sales"
+
+	# 	tax_summary = set()
+
+	# 	quote.items = []
+	# 	quote.taxes = []
+	# 	for item in items:
+	# 		variant_id = item.get("variant_id")
+	# 		item_code = frappe.get_value(
+	# 			"Website Item", {"medusa_variant_id": variant_id}, "item_code"
+	# 		)
+	# 		if not item_code:
+	# 			return {"error": "Item not found for variant ID: {}".format(variant_id)}
+
+	# 		quote.append(
+	# 			"items",
+	# 			{
+	# 				"item_code": item_code,
+	# 				"qty": item.get("quantity"),
+	# 				"rate": item.get("rate"),
+	# 				"amount": item.get("amount"),
+	# 			},
+	# 		)
+
+	# 		item_doc = frappe.get_doc("Item", item_code)
+	# 		item_taxes = item_doc.taxes or []
+	# 		for tax in item_taxes:
+	# 			tax_template = tax.item_tax_template
+	# 			if tax_template:
+	# 				tax_template_doc = frappe.get_doc("Item Tax Template", tax_template)
+	# 				for template_tax in tax_template_doc.taxes:
+	# 					account_head = template_tax.tax_type
+	# 					if account_head not in tax_summary:
+	# 						tax_summary.add(account_head)
+	# 						quote.append(
+	# 							"taxes",
+	# 							{
+	# 								"charge_type": "On Net Total",
+	# 								"account_head": account_head,
+	# 								"description": account_head,
+	# 							},
+	# 						)
+
+	# 	quote.unapproved_items = []
+	# 	for item in unapproved_items:
+	# 		variant_id = item.get("variant_id")
+	# 		item_details = frappe.get_value(
+	# 			"Website Item",
+	# 			{"medusa_variant_id": variant_id},
+	# 			["item_code", "stock_uom"],
+	# 			as_dict=True,
+	# 		)
+	# 		quote.append(
+	# 			"unapproved_items",
+	# 			{
+	# 				"item_code": item_details["item_code"],
+	# 				"qty": item.get("quantity"),
+	# 				"uom": item_details["stock_uom"],
+	# 				"rate": item.get("rate"),
+	# 				"amount": item.get("amount"),
+	# 			},
+	# 		)
+
+	# 	quote.custom_increased_items = []
+	# 	for item in custom_increased_items:
+	# 		variant_id = item.get("variant_id")
+	# 		item_details = frappe.get_value(
+	# 			"Website Item",
+	# 			{"medusa_variant_id": variant_id},
+	# 			["item_code", "stock_uom"],
+	# 			as_dict=True,
+	# 		)
+	# 		quote.append(
+	# 			"custom_increased_items",
+	# 			{
+	# 				"item_code": item_details["item_code"],
+	# 				"old_quantity": item.get("old_quantity"),
+	# 				"new_quantity": item.get("new_quantity"),
+	# 			},
+	# 		)
+
+	if approval == "Approved":
 		quote.status = "Open"
-		quote.workflow_state = approval
+		quote.workflow_state = "Approved"
 		quote.order_type = "Sales"
+		quote.medusa_order_id = medusa_order_id
 
 		tax_summary = set()
 
@@ -301,21 +386,16 @@ def update_quotation():
 		quote.taxes = []
 		for item in items:
 			variant_id = item.get("variant_id")
-			item_code = frappe.get_value(
-				"Website Item", {"medusa_variant_id": variant_id}, "item_code"
-			)
+			item_code = frappe.get_value("Website Item", {"medusa_variant_id": variant_id}, "item_code")
 			if not item_code:
 				return {"error": "Item not found for variant ID: {}".format(variant_id)}
 
-			quote.append(
-				"items",
-				{
-					"item_code": item_code,
-					"qty": item.get("quantity"),
-					"rate": item.get("rate"),
-					"amount": item.get("amount"),
-				},
-			)
+			quote.append("items", {
+				"item_code": item_code,
+				"qty": item.get("quantity"),
+				"rate": item.get("rate"),
+				"amount": item.get("amount")
+			})
 
 			item_doc = frappe.get_doc("Item", item_code)
 			item_taxes = item_doc.taxes or []
@@ -327,59 +407,36 @@ def update_quotation():
 						account_head = template_tax.tax_type
 						if account_head not in tax_summary:
 							tax_summary.add(account_head)
-							quote.append(
-								"taxes",
-								{
-									"charge_type": "On Net Total",
-									"account_head": account_head,
-									"description": account_head,
-								},
-							)
+							quote.append("taxes", {
+								"charge_type": "On Net Total",
+								"account_head": account_head,
+								"description": account_head
+							})
 
 		quote.unapproved_items = []
 		for item in unapproved_items:
 			variant_id = item.get("variant_id")
-			item_details = frappe.get_value(
-				"Website Item",
-				{"medusa_variant_id": variant_id},
-				["item_code", "stock_uom"],
-				as_dict=True,
-			)
-			quote.append(
-				"unapproved_items",
-				{
-					"item_code": item_details["item_code"],
-					"qty": item.get("quantity"),
-					"uom": item_details["stock_uom"],
-					"rate": item.get("rate"),
-					"amount": item.get("amount"),
-				},
-			)
-
+			item_details = frappe.get_value("Website Item", {"medusa_variant_id": variant_id}, ["item_code", "stock_uom"], as_dict=True)
+			quote.append("unapproved_items", {
+				"item_code": item_details["item_code"],
+				"qty": item.get("quantity"),
+				"uom": item_details["stock_uom"],
+				"rate": item.get("rate"),
+				"amount": item.get("amount")
+			})
+		
 		quote.custom_increased_items = []
 		for item in custom_increased_items:
 			variant_id = item.get("variant_id")
-			item_details = frappe.get_value(
-				"Website Item",
-				{"medusa_variant_id": variant_id},
-				["item_code", "stock_uom"],
-				as_dict=True,
-			)
-			quote.append(
-				"custom_increased_items",
-				{
-					"item_code": item_details["item_code"],
-					"old_quantity": item.get("old_quantity"),
-					"new_quantity": item.get("new_quantity"),
-				},
-			)
-
-	if approval == "Approved":
-		quote.status = "Open"
-		quote.workflow_state = "Approved"
-		quote.order_type = "Sales"
-		quote.medusa_order_id = (medusa_order_id,)
+			item_details = frappe.get_value("Website Item", {"medusa_variant_id": variant_id}, ["item_code", "stock_uom"], as_dict=True)
+			quote.append("custom_increased_items", {
+				"item_code": item_details["item_code"],
+				"old_quantity": item.get("old_quantity"),
+				"new_quantity": item.get("new_quantity")
+			})
+		
 		quote.submit()
+		
 		if quote.quotation_to == "Customer":
 			try:
 				sales_order = frappe.call(
