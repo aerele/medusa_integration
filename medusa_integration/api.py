@@ -1687,9 +1687,7 @@ def get_website_items(url=None, customer_id=None):
 			GROUP BY item_group
 			ORDER BY name
 		""",
-			{"descendant_groups": tuple(descendant_groups)},
-			as_dict=True,
-		)
+			{"descendant_groups": tuple(descendant_groups)}, as_dict=True)
 
 		if collection_titles:
 			if not isinstance(collection_titles, list):
@@ -1697,8 +1695,8 @@ def get_website_items(url=None, customer_id=None):
 
 			collection_descendants = []
 			for title in collection_titles:
-				descendants = frappe.db.get_descendants("Item Group", title)
-				collection_descendants.extend(descendants)
+				# descendants = frappe.db.get_descendants("Item Group", title)
+				# collection_descendants.extend(descendants)
 				collection_descendants.append(title)
 
 			filters["item_group"] = ["in", list(set(collection_descendants))]
