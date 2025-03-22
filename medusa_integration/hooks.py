@@ -154,6 +154,9 @@ doc_events = {
 	"Sales Invoice": {
 		"on_submit": "medusa_integration.api.export_sales_invoice_on_update",
 	},
+	"Delivery Note": {
+		"on_submit": "medusa_integration.api.export_delivery_note_on_update",
+	},
 	"Payment Entry": {
 		"after_insert": "medusa_integration.api.handle_payment_entry",
 		"on_update": "medusa_integration.api.handle_payment_entry",
