@@ -1559,7 +1559,6 @@ def export_sales_order_on_update(doc, method):
 
 
 def export_sales_invoice_on_update(doc, method):
-	
 	try:
 		sales_orders = frappe.db.sql(
 			"""
@@ -1593,6 +1592,39 @@ def export_sales_invoice_on_update(doc, method):
 		)
 		print(f"Error exporting Sales Invoice {doc.name}: {str(e)}")
 
+def export_delivery_note_on_update(doc, method):
+	try:
+		sales_orders = frappe.db.sql(
+			"""
+			SELECT DISTINCT dni.against_sales_order 
+			FROM `tabDelivery Note Item` dni
+			WHERE dni.parent = %s AND dni.against_sales_order IS NOT NULL
+			""",
+			(doc.name,),
+			as_dict=True,
+		)
+
+		if not sales_orders:
+			return
+
+		sales_order_name = sales_orders[0].against_sales_order
+
+		medusa_order_id = frappe.db.get_value("Sales Order", sales_order_name, "medusa_order_id")
+
+		if not medusa_order_id:
+			return
+
+		export_sales_order(sales_order_name, "")
+		frappe.msgprint(
+			f"Delivery Note details updated in Medusa for Sales Order {sales_order_name} successfully."
+		)
+
+	except Exception as e:
+		frappe.log_error(
+			f"Failed to export Delivery Note {doc.name}: {str(e)}",
+			"Delivery Note Export Error",
+		)
+		print(f"Error exporting Delivery Note {doc.name}: {str(e)}")
 
 def handle_payment_entry(doc, method):
 	linked_invoices = frappe.db.sql(
