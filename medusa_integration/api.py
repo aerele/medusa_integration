@@ -266,7 +266,6 @@ def create_sales_order():
 		frappe.log_error(frappe.get_traceback(), "Sales Order Creation Error")
 		return {"error": str(e)}
 
-
 @frappe.whitelist(allow_guest=True)
 def update_quotation():
 	data = json.loads(frappe.request.data)
@@ -277,10 +276,10 @@ def update_quotation():
 	approval = data.get("approval")
 	custom_is_courier_required = data.get("is_courier_required")
 	custom_location_and_contact_no = data.get("location_and_contact_no")
-	items = data.get("items", [])
-	unapproved_items = data.get("unapproved_items", [])
+	# items = data.get("items", [])
+	# unapproved_items = data.get("unapproved_items", [])
 	medusa_order_id = data.get("order_id")
-	custom_increased_items = data.get("increased_items", [])
+	# custom_increased_items = data.get("increased_items", [])
 
 	try:
 		quote = frappe.get_doc("Quotation", quotation_id)
@@ -380,60 +379,60 @@ def update_quotation():
 		quote.order_type = "Sales"
 		quote.medusa_order_id = medusa_order_id
 
-		tax_summary = set()
+		# tax_summary = set()
 
-		quote.items = []
-		quote.taxes = []
-		for item in items:
-			variant_id = item.get("variant_id")
-			item_code = frappe.get_value("Website Item", {"medusa_variant_id": variant_id}, "item_code")
-			if not item_code:
-				return {"error": "Item not found for variant ID: {}".format(variant_id)}
+		# quote.items = []
+		# quote.taxes = []
+		# for item in items:
+		# 	variant_id = item.get("variant_id")
+		# 	item_code = frappe.get_value("Website Item", {"medusa_variant_id": variant_id}, "item_code")
+		# 	if not item_code:
+		# 		return {"error": "Item not found for variant ID: {}".format(variant_id)}
 
-			quote.append("items", {
-				"item_code": item_code,
-				"qty": item.get("quantity"),
-				"rate": item.get("rate"),
-				"amount": item.get("amount")
-			})
+		# 	quote.append("items", {
+		# 		"item_code": item_code,
+		# 		"qty": item.get("quantity"),
+		# 		"rate": item.get("rate"),
+		# 		"amount": item.get("amount")
+		# 	})
 
-			item_doc = frappe.get_doc("Item", item_code)
-			item_taxes = item_doc.taxes or []
-			for tax in item_taxes:
-				tax_template = tax.item_tax_template
-				if tax_template:
-					tax_template_doc = frappe.get_doc("Item Tax Template", tax_template)
-					for template_tax in tax_template_doc.taxes:
-						account_head = template_tax.tax_type
-						if account_head not in tax_summary:
-							tax_summary.add(account_head)
-							quote.append("taxes", {
-								"charge_type": "On Net Total",
-								"account_head": account_head,
-								"description": account_head
-							})
+		# 	item_doc = frappe.get_doc("Item", item_code)
+		# 	item_taxes = item_doc.taxes or []
+		# 	for tax in item_taxes:
+		# 		tax_template = tax.item_tax_template
+		# 		if tax_template:
+		# 			tax_template_doc = frappe.get_doc("Item Tax Template", tax_template)
+		# 			for template_tax in tax_template_doc.taxes:
+		# 				account_head = template_tax.tax_type
+		# 				if account_head not in tax_summary:
+		# 					tax_summary.add(account_head)
+		# 					quote.append("taxes", {
+		# 						"charge_type": "On Net Total",
+		# 						"account_head": account_head,
+		# 						"description": account_head
+		# 					})
 
-		quote.unapproved_items = []
-		for item in unapproved_items:
-			variant_id = item.get("variant_id")
-			item_details = frappe.get_value("Website Item", {"medusa_variant_id": variant_id}, ["item_code", "stock_uom"], as_dict=True)
-			quote.append("unapproved_items", {
-				"item_code": item_details["item_code"],
-				"qty": item.get("quantity"),
-				"uom": item_details["stock_uom"],
-				"rate": item.get("rate"),
-				"amount": item.get("amount")
-			})
+		# quote.unapproved_items = []
+		# for item in unapproved_items:
+		# 	variant_id = item.get("variant_id")
+		# 	item_details = frappe.get_value("Website Item", {"medusa_variant_id": variant_id}, ["item_code", "stock_uom"], as_dict=True)
+		# 	quote.append("unapproved_items", {
+		# 		"item_code": item_details["item_code"],
+		# 		"qty": item.get("quantity"),
+		# 		"uom": item_details["stock_uom"],
+		# 		"rate": item.get("rate"),
+		# 		"amount": item.get("amount")
+		# 	})
 		
-		quote.custom_increased_items = []
-		for item in custom_increased_items:
-			variant_id = item.get("variant_id")
-			item_details = frappe.get_value("Website Item", {"medusa_variant_id": variant_id}, ["item_code", "stock_uom"], as_dict=True)
-			quote.append("custom_increased_items", {
-				"item_code": item_details["item_code"],
-				"old_quantity": item.get("old_quantity"),
-				"new_quantity": item.get("new_quantity")
-			})
+		# quote.custom_increased_items = []
+		# for item in custom_increased_items:
+		# 	variant_id = item.get("variant_id")
+		# 	item_details = frappe.get_value("Website Item", {"medusa_variant_id": variant_id}, ["item_code", "stock_uom"], as_dict=True)
+		# 	quote.append("custom_increased_items", {
+		# 		"item_code": item_details["item_code"],
+		# 		"old_quantity": item.get("old_quantity"),
+		# 		"new_quantity": item.get("new_quantity")
+		# 	})
 		
 		quote.submit()
 		
@@ -470,6 +469,93 @@ def update_quotation():
 
 	return {"message": "Quotation updated successfully", "Quotation ID": quote.name}
 
+@frappe.whitelist(allow_guest=True)
+def update_quotation_new():
+	data = json.loads(frappe.request.data)
+
+	medusa_quotation_id = data.get("quotation_id")
+	quotation_id = frappe.get_value("Quotation", {"medusa_quotation_id": medusa_quotation_id}, "name")
+
+	items = data.get("items", [])
+	unapproved_items = data.get("unapproved_items", [])
+	custom_increased_items = data.get("increased_items", [])
+
+	try:
+		quote = frappe.get_doc("Quotation", quotation_id)
+	except frappe.DoesNotExistError:
+		return {"error": "Quotation not found for ID: {}".format(quotation_id)}
+
+	quote.status = "Open"
+	quote.workflow_state = "Approved"
+	quote.order_type = "Sales"
+
+	tax_summary = set()
+
+	quote.items = []
+	quote.taxes = []
+	for item in items:
+		variant_id = item.get("variant_id")
+		item_details = frappe.get_value("Website Item", {"medusa_variant_id": variant_id}, ["item_code", "item_name", "description", "stock_uom"], as_dict=True)
+		
+		item_code = item_details["item_code"]
+		if not item_code:
+			return {"error": "Item not found for variant ID: {}".format(variant_id)}
+
+		quote.append("items", {
+			"item_code": item_code,
+			"item_name": item_details["item_name"],
+			"qty": item.get("quantity"),
+			"rate": item.get("rate"),
+			"amount": item.get("amount"),
+			"description": item_details["description"],
+			"uom": item_details["stock_uom"],
+			"conversion_factor": 1.0
+		})
+
+		item_doc = frappe.get_doc("Item", item_code)
+		item_taxes = item_doc.taxes or []
+		for tax in item_taxes:
+			tax_template = tax.item_tax_template
+			if tax_template:
+				tax_template_doc = frappe.get_doc("Item Tax Template", tax_template)
+				for template_tax in tax_template_doc.taxes:
+					account_head = template_tax.tax_type
+					if account_head not in tax_summary:
+						tax_summary.add(account_head)
+						quote.append("taxes", {
+							"charge_type": "On Net Total",
+							"account_head": account_head,
+							"description": account_head
+						})
+
+	quote.unapproved_items = []
+	for item in unapproved_items:
+		variant_id = item.get("variant_id")
+		item_details = frappe.get_value("Website Item", {"medusa_variant_id": variant_id}, ["item_code", "stock_uom"], as_dict=True)
+		quote.append("unapproved_items", {
+			"item_code": item_details["item_code"],
+			"qty": item.get("quantity"),
+			"uom": item_details["stock_uom"],
+			"rate": item.get("rate"),
+			"amount": item.get("amount")
+		})
+	
+	quote.custom_increased_items = []
+	for item in custom_increased_items:
+		variant_id = item.get("variant_id")
+		item_details = frappe.get_value("Website Item", {"medusa_variant_id": variant_id}, ["item_code", "stock_uom"], as_dict=True)
+		quote.append("custom_increased_items", {
+			"item_code": item_details["item_code"],
+			"old_quantity": item.get("old_quantity"),
+			"new_quantity": item.get("new_quantity")
+		})
+	
+	quote.save()
+	quote.reload()
+
+	export_quotation(self=quote, method='')
+
+	return {"message": "Quotation updated successfully", "Quotation ID": quote.name}
 
 @frappe.whitelist(allow_guest=True)
 def update_address():
