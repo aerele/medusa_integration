@@ -1479,6 +1479,12 @@ def export_quotation_on_update(doc, method):
 def export_sales_order(self, method):
 	sales_order = frappe.get_doc("Sales Order", self)
 
+	frappe.log_error(title="sales_order.status 1", message=sales_order.status)
+
+	sales_order.reload()
+
+	frappe.log_error(title="sales_order.status 2", message=sales_order.status)
+
 	customer_id = frappe.get_value(
 		"Customer", {"name": sales_order.customer}, "medusa_id"
 	)
@@ -1553,9 +1559,7 @@ def export_sales_order_on_update(doc, method):
 
 
 def export_sales_invoice_on_update(doc, method):
-	if not doc.medusa_order_id:
-		return
-
+	
 	try:
 		sales_orders = frappe.db.sql(
 			"""
@@ -1568,13 +1572,14 @@ def export_sales_invoice_on_update(doc, method):
 		)
 
 		if not sales_orders:
-			frappe.log_error(
-				f"No Sales Order found for Sales Invoice {doc.name}",
-				"Sales Invoice Hook Error",
-			)
 			return
 
 		sales_order_name = sales_orders[0].sales_order
+
+		medusa_order_id = frappe.db.get_value("Sales Order", sales_order_name, "medusa_order_id")
+
+		if not medusa_order_id:
+			return
 
 		export_sales_order(sales_order_name, "")
 		frappe.msgprint(
