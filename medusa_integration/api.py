@@ -3090,3 +3090,39 @@ def expire_otps():
 		doc = frappe.get_doc("Email OTP", otp.name)
 		doc.status = "Expired"
 		doc.save(ignore_permissions=True)
+
+def fetch_clearance_items():
+	today = datetime.today().date()
+	expiry_limit = today + timedelta(days=60)
+
+	items = frappe.get_all(
+		"Item",
+		filters={
+			"has_expiry_date": 1,
+			"end_of_life": ["between", [today, expiry_limit]]
+		},
+		fields=["name"]
+	)
+
+	if not items:
+		return
+	
+	item_names = [item["name"] for item in items]
+
+	website_items = frappe.get_all(
+		"Website Item",
+		filters={"item_code": ["in", item_names]},
+		fields=["name"]
+	)
+
+	if not website_items:
+		return
+	
+	doc = frappe.get_doc("Homepage Landing", "Active Homepage Landing")
+	doc.clearance_items = []
+
+	for item in website_items:
+		doc.append("clearance_items", {"website_item": item.get("name")})
+	
+	doc.save()
+	frappe.db.commit()
