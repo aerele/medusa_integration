@@ -21,7 +21,9 @@
   "banners",
   "testimonials",
   "urls",
-  "product_details_banner"
+  "product_details_banner",
+  "clearance_items",
+  "best_deals"
  ],
  "fields": [
   {
@@ -113,11 +115,23 @@
    "fieldtype": "Table",
    "label": "Top Sellers",
    "options": "Homepage Item"
+  },
+  {
+   "fieldname": "clearance_items",
+   "fieldtype": "Table",
+   "label": "Clearance Items",
+   "options": "Homepage Item"
+  },
+  {
+   "fieldname": "best_deals",
+   "fieldtype": "Table",
+   "label": "Best Deals",
+   "options": "Homepage Item"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-02-05 10:24:13.103552",
+ "modified": "2025-04-05 14:29:54.192872",
  "modified_by": "Administrator",
  "module": "Medusa Integration",
  "name": "Homepage Landing",
