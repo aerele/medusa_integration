@@ -2647,6 +2647,13 @@ def get_medical_laboratory_items(customer_id=None):
 def get_infection_control_items(customer_id=None):
 	return fetch_items_from_homepage("infection_control_items", customer_id)
 
+@frappe.whitelist(allow_guest=True)
+def get_clearance_items(customer_id=None):
+	return fetch_items_from_homepage("clearance_items", customer_id)
+
+@frappe.whitelist(allow_guest=True)
+def get_best_deals(customer_id=None):
+	return fetch_items_from_homepage("best_deals", customer_id)
 
 def fetch_items_from_homepage(item_field_name, customer_id=None):
 	import random
