@@ -3101,19 +3101,18 @@ def fetch_clearance_items():
 	today = datetime.today().date()
 	expiry_limit = today + timedelta(days=60)
 
-	items = frappe.get_all(
-		"Item",
+	batches = frappe.get_all(
+		"Batch",
 		filters={
-			"has_expiry_date": 1,
-			"end_of_life": ["between", [today, expiry_limit]]
+			"expiry_date": ["between", [today, expiry_limit]]
 		},
-		fields=["name"]
+		fields=["item"]
 	)
 
-	if not items:
+	if not batches:
 		return
 	
-	item_names = [item["name"] for item in items]
+	item_names = list(set(batch["item"] for batch in batches))
 
 	website_items = frappe.get_all(
 		"Website Item",
