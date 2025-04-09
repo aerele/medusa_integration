@@ -41,7 +41,7 @@
   {
    "fieldname": "urls",
    "fieldtype": "Table",
-   "label": "URLs",
+   "label": "Youtube URLs",
    "options": "Youtube Videos"
   },
   {
@@ -126,12 +126,12 @@
    "fieldname": "best_deals",
    "fieldtype": "Table",
    "label": "Best Deals",
-   "options": "Homepage Item"
+   "options": "Best Deals"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-04-05 14:29:54.192872",
+ "modified": "2025-04-09 10:36:53.219215",
  "modified_by": "Administrator",
  "module": "Medusa Integration",
  "name": "Homepage Landing",

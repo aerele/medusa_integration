@@ -2652,8 +2652,44 @@ def get_clearance_items(customer_id=None):
 	return fetch_items_from_homepage("clearance_items", customer_id)
 
 @frappe.whitelist(allow_guest=True)
-def get_best_deals(customer_id=None):
-	return fetch_items_from_homepage("best_deals", customer_id)
+def get_best_deals():
+	try:
+		active_best_deals = frappe.get_doc("Homepage Landing", "Active Homepage Landing")
+
+		entries_data = []
+
+		for entry in active_best_deals.best_deals:
+			website_item_code = (
+				entry.website_item if hasattr(entry, "website_item") else None
+			)
+			website_item_details = None
+			image_url = None
+
+			if website_item_code:
+				website_item_details = frappe.db.get_value(
+					"Website Item",
+					{"name": website_item_code},
+					["web_item_name", "medusa_id"],
+					as_dict=True,
+				)
+
+			entry_data = {
+				"url": entry.url,
+				"title": website_item_details.web_item_name
+				if website_item_details
+				else None,
+				"medusa_id": website_item_details.medusa_id,
+			}
+
+			entries_data.append(entry_data)
+
+		return entries_data
+
+	except Exception as e:
+		frappe.log_error(
+			message=str(e), title="Fetch Best Deals Failed"
+		)
+		return {"status": "error", "message": str(e)}
 
 def fetch_items_from_homepage(item_field_name, customer_id=None):
 	import random
