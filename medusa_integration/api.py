@@ -624,8 +624,11 @@ def export_website_item(self, method):
 		)
 	country_code = country_of_origin.upper() if origin_country else None
 	web_long_description = self.web_long_description
-	clean_description = strip_html(web_long_description)
-	final_description = html.unescape(clean_description)
+	clean_description = ""
+	final_description = ""
+	if web_long_description:
+		clean_description = strip_html(web_long_description)
+		final_description = html.unescape(clean_description)
 
 	specifications = []
 	if self.website_specifications:
