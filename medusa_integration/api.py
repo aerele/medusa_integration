@@ -1681,7 +1681,6 @@ def send_quotation_emails():
 
 @frappe.whitelist(allow_guest=True)
 def get_website_items(url=None, customer_id=None):
-	from frappe import _
 	import re
 	import math
 
@@ -1696,6 +1695,7 @@ def get_website_items(url=None, customer_id=None):
 				"web_item_name",
 				"item_group",
 				"custom_overall_rating",
+				"has_variants",
 			],
 			filters=filters,
 			order_by=order_by,
@@ -1706,9 +1706,6 @@ def get_website_items(url=None, customer_id=None):
 		base_url = frappe.utils.get_url()
 		modified_items = []
 		for item in website_items:
-			# item_group_medusa_id = frappe.db.get_value(
-			#     "Item Group", item["item_group"], "medusa_id"
-			# )
 			image_url = frappe.db.get_value(
 				"File",
 				{
@@ -1736,6 +1733,7 @@ def get_website_items(url=None, customer_id=None):
 					"thumbnail": thumbnail,
 					"rating": item["custom_overall_rating"],
 					"is_wishlisted": is_wishlisted,
+					"has_variants": item["has_variants"]
 				}
 			)
 		return modified_items
@@ -1943,6 +1941,48 @@ def get_website_items(url=None, customer_id=None):
 		frappe.log_error(message=str(e), title=_("Fetch Website Items Failed"))
 		return {"status": "error", "message": str(e)}
 
+@frappe.whitelist(allow_guest=True)
+def get_website_variants(medusa_id, customer_id=None):
+	try:
+		parent_item = frappe.get_value("Website Item", {"medusa_id": medusa_id}, "name")
+
+		if not parent_item:
+			return ("No Website Item found with this medusa_id")
+
+		variant_items = frappe.get_all(
+			"Website Item",
+			filters={"custom_parent_website_item": parent_item},
+			fields=["name", "web_item_name", "medusa_id", "item_group", "custom_overall_rating"]
+		)
+
+		modified_items = []
+		for item in variant_items:
+			is_wishlisted = 0
+			if customer_id:
+				is_wishlisted = frappe.db.exists(
+					"Medusa Wishlist",
+					{"parent": item["name"], "medusa_customer_id": customer_id},
+				)
+				is_wishlisted = 1 if is_wishlisted else 0
+			
+			modified_items.append(
+				{
+					"id": item["medusa_id"],
+					"title": item["web_item_name"],
+					"collection_title": item["item_group"],
+					"rating": item["custom_overall_rating"],
+					"is_wishlisted": is_wishlisted
+				}
+			)
+
+		return {
+			"status": "success",
+			"related_items": modified_items
+		}
+
+	except Exception as e:
+		frappe.log_error(title= "get_website_variants error", message=frappe.get_traceback())
+		return {"status": "error", "message": str(e)}
 
 @frappe.whitelist(allow_guest=True)
 def get_all_brands(item_group=None):
@@ -2731,6 +2771,7 @@ def fetch_items_from_homepage(item_field_name, customer_id=None):
 					"web_item_name",
 					"item_group",
 					"custom_overall_rating",
+					"has_variants"
 				],
 				as_dict=True,
 			)
@@ -2753,6 +2794,7 @@ def fetch_items_from_homepage(item_field_name, customer_id=None):
 						"overall_rating": website_item_details.custom_overall_rating,
 						"thumbnail": thumbnail,
 						"is_wishlisted": is_wishlisted,
+						"has_variants": website_item_details.has_variants
 					}
 				)
 
@@ -2817,7 +2859,7 @@ def get_yt_videos_list():
 				website_item_details = frappe.db.get_value(
 					"Website Item",
 					{"name": website_item_code},
-					["web_item_name", "medusa_id"],
+					["web_item_name", "medusa_id", "has_variants"],
 					as_dict=True,
 				)
 
@@ -2836,6 +2878,9 @@ def get_yt_videos_list():
 				if website_item_details
 				else None,
 				"medusa_id": website_item_details.medusa_id
+				if website_item_details
+				else None,
+				"has_variants": website_item_details.has_variants
 				if website_item_details
 				else None,
 				"thumbnail": f"https://medusa-erpnext-staging.aerele.in{image_url}"
