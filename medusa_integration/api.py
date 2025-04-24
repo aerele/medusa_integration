@@ -2206,9 +2206,11 @@ def get_website_variants(medusa_id, customer_id=None):
 					"shade": shade
 				}
 			)
+		
+		status = "success" if modified_items != [] else "empty"
 
 		return {
-			"status": "success",
+			"status": status,
 			"related_items": modified_items
 		}
 
