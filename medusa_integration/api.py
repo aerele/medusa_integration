@@ -1738,14 +1738,15 @@ def get_website_items(url=None, customer_id=None):
 			shade = ""
 
 			for spec in specifications:
-				if 'colo' in spec.get("label", "").lower():
-					colour = spec.description
-				
-				elif 'shape' in spec.get("label", "").lower():
-					shape = spec.description
-				
-				elif 'shade' in spec.get("label", "").lower():
-					shade = spec.description
+				label = spec.get("label", "").lower()
+				description = frappe.utils.strip_html(spec.get("description", ""))
+
+				if 'colo' in label:
+					colour = description
+				elif 'shape' in label:
+					shape = description
+				elif 'shade' in label:
+					shade = description
 
 			modified_items.append(
 				{
@@ -2147,6 +2148,8 @@ def get_website_items(url=None, customer_id=None):
 
 @frappe.whitelist(allow_guest=True)
 def get_website_variants(medusa_id, customer_id=None):
+	import re
+	
 	try:
 		parent_item = frappe.get_value("Website Item", {"medusa_id": medusa_id}, "name")
 
@@ -2169,6 +2172,27 @@ def get_website_variants(medusa_id, customer_id=None):
 				)
 				is_wishlisted = 1 if is_wishlisted else 0
 			
+			specifications = frappe.db.get_all(
+				"Item Website Specification",
+				filters={"parent": item["name"]},
+				fields=["label", "description"]
+			)
+
+			colour = ""
+			shape = ""
+			shade = ""
+
+			for spec in specifications:
+				label = spec.get("label", "").lower()
+				description = frappe.utils.strip_html(spec.get("description", ""))
+
+				if 'colo' in label:
+					colour = description
+				elif 'shape' in label:
+					shape = description
+				elif 'shade' in label:
+					shade = description
+			
 			modified_items.append(
 				{
 					"id": item["medusa_id"],
@@ -2176,7 +2200,10 @@ def get_website_variants(medusa_id, customer_id=None):
 					"title": item["web_item_name"],
 					"collection_title": item["item_group"],
 					"rating": item["custom_overall_rating"],
-					"is_wishlisted": is_wishlisted
+					"is_wishlisted": is_wishlisted,
+					"colour": colour,
+					"shape": shape,
+					"shade": shade
 				}
 			)
 
