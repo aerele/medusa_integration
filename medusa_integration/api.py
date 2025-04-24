@@ -1738,14 +1738,15 @@ def get_website_items(url=None, customer_id=None):
 			shade = ""
 
 			for spec in specifications:
-				if 'colo' in spec.get("label", "").lower():
-					colour = spec.description
-				
-				elif 'shape' in spec.get("label", "").lower():
-					shape = spec.description
-				
-				elif 'shade' in spec.get("label", "").lower():
-					shade = spec.description
+				label = spec.get("label", "").lower()
+				description = frappe.utils.strip_html(spec.get("description", ""))
+
+				if 'colo' in label:
+					colour = description
+				elif 'shape' in label:
+					shape = description
+				elif 'shade' in label:
+					shade = description
 
 			modified_items.append(
 				{
