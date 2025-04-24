@@ -1952,7 +1952,7 @@ def get_website_variants(medusa_id, customer_id=None):
 		variant_items = frappe.get_all(
 			"Website Item",
 			filters={"custom_parent_website_item": parent_item},
-			fields=["name", "web_item_name", "medusa_id", "item_group", "custom_overall_rating"]
+			fields=["name", "web_item_name", "medusa_id", "medusa_variant_id", "item_group", "custom_overall_rating"]
 		)
 
 		modified_items = []
@@ -1968,6 +1968,7 @@ def get_website_variants(medusa_id, customer_id=None):
 			modified_items.append(
 				{
 					"id": item["medusa_id"],
+					"variant_id": item["medusa_variant_id"],
 					"title": item["web_item_name"],
 					"collection_title": item["item_group"],
 					"rating": item["custom_overall_rating"],
