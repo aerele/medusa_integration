@@ -1714,7 +1714,10 @@ def get_website_items(url=None, customer_id=None):
 				},
 				"file_url",
 			)
-			thumbnail = f"{base_url}{image_url}" if image_url else None
+			if image_url:
+				thumbnail = image_url if image_url.startswith("https") else f"{base_url}{image_url}"
+			else:
+				thumbnail = None
 
 			is_wishlisted = 0
 			if customer_id:
@@ -2227,10 +2230,13 @@ def get_all_brands(item_group=None):
 				},
 				"file_url",
 			)
-			image_url = f"{base_url}{image_url}" if image_url else None
+			if image_url:
+				thumbnail = image_url if image_url.startswith("https") else f"{base_url}{image_url}"
+			else:
+				thumbnail = None
 
 			brand_list.append(
-				{"brand": brand.get("brand") or brand["name"], "image": image_url}
+				{"brand": brand.get("brand") or brand["name"], "image": thumbnail}
 			)
 
 		return {"top_categories": top_categories, "brand_list": brand_list}
@@ -2253,7 +2259,13 @@ def get_homepage_top_section():
 				{"attached_to_doctype": doctype, "attached_to_name": name},
 				"file_url",
 			)
-			return f"{base_url}{image_url}" if image_url else None
+
+			if image_url:
+				thumbnail = image_url if image_url.startswith("https") else f"{base_url}{image_url}"
+			else:
+				thumbnail = None
+			
+			return thumbnail
 
 		def fetch_first_layer_children(parent_group):
 			children = frappe.get_all(
@@ -2398,8 +2410,15 @@ def get_menu(parent=None, mobile_view=0):
 			{"attached_to_doctype": "Item Group", "attached_to_name": item_group_name},
 			"file_url",
 		)
+
 		base_url = frappe.utils.get_url()
-		return f"{base_url}{image_url}" if image_url else None
+
+		if image_url:
+			thumbnail = image_url if image_url.startswith("https") else f"{base_url}{image_url}"
+		else:
+			thumbnail = None
+		
+		return thumbnail
 
 	def fetch_child_groups(parent_group, depth=0, max_depth=1):
 		children = frappe.get_all(
@@ -2790,7 +2809,10 @@ def fetch_relevant_items():
 				},
 				"file_url",
 			)
-			thumbnail = f"{base_url}{image_url}" if image_url else None
+			if image_url:
+				thumbnail = image_url if image_url.startswith("https") else f"{base_url}{image_url}"
+			else:
+				thumbnail = None
 
 			item_data = frappe.get_doc("Website Item", website_item_name)
 
@@ -2962,7 +2984,10 @@ def fetch_items_from_homepage(item_field_name, customer_id=None):
 				},
 				"file_url",
 			)
-			thumbnail = f"{base_url}{image_url}" if image_url else None
+			if image_url:
+				thumbnail = image_url if image_url.startswith("https") else f"{base_url}{image_url}"
+			else:
+				thumbnail = None
 
 			website_item_details = frappe.db.get_value(
 				"Website Item",
@@ -3056,6 +3081,7 @@ def get_yt_videos_list():
 			)
 			website_item_details = None
 			image_url = None
+			base_url = frappe.utils.get_url()
 
 			if website_item_code:
 				website_item_details = frappe.db.get_value(
@@ -3073,6 +3099,10 @@ def get_yt_videos_list():
 					},
 					"file_url",
 				)
+				if image_url:
+					thumbnail = image_url if image_url.startswith("https") else f"{base_url}{image_url}"
+				else:
+					thumbnail = None
 
 			entry_data = {
 				"url": entry.url,
@@ -3085,9 +3115,7 @@ def get_yt_videos_list():
 				"has_variants": website_item_details.has_variants
 				if website_item_details
 				else None,
-				"thumbnail": f"https://medusa-erpnext-staging.aerele.in{image_url}"
-				if image_url
-				else None,
+				"thumbnail": thumbnail
 			}
 
 			entries_data.append(entry_data)
