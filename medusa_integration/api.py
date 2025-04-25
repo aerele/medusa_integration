@@ -1768,30 +1768,6 @@ def get_website_items(url=None, customer_id=None):
 				}
 			)
 		return modified_items
-	
-	def clean_entries(raw_list, skip_digit_check=False):
-		result = []
-		for entry in raw_list:
-			entry = frappe.utils.strip_html(entry)
-
-			entry = entry.strip()
-			split_parts = re.split(r"[,/]", entry)
-			
-			for part in split_parts:
-				value = part.strip()
-				
-				if len(value) < 2:
-					continue
-
-				if not skip_digit_check and re.search(r"\d", value):
-					continue
-
-				value = value.title()
-
-				if value and value not in result:
-					result.append(value)
-
-		return sorted(result)
 
 	try:
 		data = frappe.request.get_json()
@@ -2153,6 +2129,33 @@ def get_website_items(url=None, customer_id=None):
 		return {"status": "error", "message": str(e)}
 
 @frappe.whitelist(allow_guest=True)
+def clean_entries(raw_list, skip_digit_check=False):
+	import re
+
+	result = []
+	for entry in raw_list:
+		entry = frappe.utils.strip_html(entry)
+
+		entry = entry.strip()
+		split_parts = re.split(r"[,/]", entry)
+		
+		for part in split_parts:
+			value = part.strip()
+			
+			if not value or not re.search(r"\w", value):
+				continue
+			
+			if not skip_digit_check and re.search(r"\d", value):
+				continue
+			
+			value = value.title()
+
+			if value and value not in result:
+				result.append(value)
+
+	return sorted(result)
+
+@frappe.whitelist(allow_guest=True)
 def get_website_variants(medusa_id, customer_id=None):
 	import re
 	
@@ -2227,6 +2230,63 @@ def get_website_variants(medusa_id, customer_id=None):
 	except Exception as e:
 		frappe.log_error(title= "get_website_variants error", message=frappe.get_traceback())
 		return {"status": "error", "message": str(e)}
+
+@frappe.whitelist(allow_guest=True)
+def get_distinct_specs(medusa_ids: list):
+	if isinstance(medusa_ids, str):
+		medusa_ids = json.loads(medusa_ids)
+
+	website_items = frappe.get_all(
+		"Website Item",
+		filters={"medusa_id": ["in", medusa_ids]},
+		fields=["name"]
+	)
+
+	item_names = [item["name"] for item in website_items]
+
+	specifications = frappe.get_all(
+		"Item Website Specification",
+		filters={"parent": ["in", item_names]},
+		fields=["label", "description"]
+	)
+
+	colours = set()
+	shapes = set()
+	shades = set()
+	distinct_colours = distinct_shapes = distinct_shades = []
+
+	for spec in specifications:
+		raw_label = spec.get("label")
+		if not raw_label:
+			continue
+
+		label = raw_label.lower()
+		description = frappe.utils.strip_html(spec.get("description", ""))
+
+		if not label or not description:
+			continue
+
+		if "colo" in label:
+			colours.add(description)
+		elif "shape" in label:
+			shapes.add(description)
+		elif "shade" in label:
+			shades.add(description)
+	
+	if colours:		
+		distinct_colours = clean_entries(colours, skip_digit_check=False)
+	
+	if shapes:
+		distinct_shapes = clean_entries(shapes, skip_digit_check=True)
+	
+	if shades:
+		distinct_shades = clean_entries(shades, skip_digit_check=True)
+
+	return {
+		"distinct_colours": distinct_colours,
+		"distinct_shapes": distinct_shapes,
+		"distinct_shades": distinct_shades
+	}
 
 @frappe.whitelist(allow_guest=True)
 def get_all_brands(item_group=None):
