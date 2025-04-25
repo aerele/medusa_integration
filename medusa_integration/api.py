@@ -1738,7 +1738,11 @@ def get_website_items(url=None, customer_id=None):
 			shade = ""
 
 			for spec in specifications:
-				label = spec.get("label", "").lower()
+				raw_label = spec.get("label")
+				if not raw_label:
+					continue
+
+				label = raw_label.lower()
 				description = frappe.utils.strip_html(spec.get("description", ""))
 
 				if 'colo' in label:
@@ -1768,6 +1772,8 @@ def get_website_items(url=None, customer_id=None):
 	def clean_entries(raw_list, skip_digit_check=False):
 		result = []
 		for entry in raw_list:
+			entry = frappe.utils.strip_html(entry)
+
 			entry = entry.strip()
 			split_parts = re.split(r"[,/]", entry)
 			
@@ -1970,77 +1976,77 @@ def get_website_items(url=None, customer_id=None):
 			]
 		
 		distinct_colours = distinct_shapes = distinct_shades = []
-		if shapes or shades or colors:
-			filters_clause = "1=1"
-			params = {}
+		# if shapes or shades or colors:
+		filters_clause = "1=1"
+		params = {}
 
-			if collection_titles:
-				if not isinstance(collection_titles, list):
-					collection_titles = [collection_titles]
-				filters_clause += " AND item_group IN %(item_groups)s"
-				params["item_groups"] = tuple(collection_titles)
+		if collection_titles:
+			if not isinstance(collection_titles, list):
+				collection_titles = [collection_titles]
+			filters_clause += " AND item_group IN %(item_groups)s"
+			params["item_groups"] = tuple(collection_titles)
 
-			if brands:
-				if not isinstance(brands, list):
-					brands = [brands]
-				filters_clause += " AND brand IN %(brands)s"
-				params["brands"] = tuple(brands)
+		if brands:
+			if not isinstance(brands, list):
+				brands = [brands]
+			filters_clause += " AND brand IN %(brands)s"
+			params["brands"] = tuple(brands)
 
-			website_items = frappe.db.sql(
-				f"""
-				SELECT name FROM `tabWebsite Item`
-				WHERE {filters_clause}
+		website_items = frappe.db.sql(
+			f"""
+			SELECT name FROM `tabWebsite Item`
+			WHERE {filters_clause}
+			""",
+			params,
+			as_dict=True
+		)
+
+		item_names = [item["name"] for item in website_items]
+		all_colours = all_shapes = all_shades = []
+
+		if item_names:
+			distinct_colours = frappe.db.sql(
+				"""
+				SELECT DISTINCT description
+				FROM `tabItem Website Specification`
+				WHERE parent IN %(item_names)s AND LOWER(label) LIKE '%%colo%%'
 				""",
-				params,
-				as_dict=True
+				{"item_names": tuple(item_names)},
+				as_dict=True,
 			)
 
-			item_names = [item["name"] for item in website_items]
-			all_colours = all_shapes = all_shades = []
+			distinct_shapes = frappe.db.sql(
+				"""
+				SELECT DISTINCT description
+				FROM `tabItem Website Specification`
+				WHERE parent IN %(item_names)s AND LOWER(label) LIKE '%%shape%%'
+				""",
+				{"item_names": tuple(item_names)},
+				as_dict=True,
+			)
 
-			if item_names:
-				distinct_colours = frappe.db.sql(
-					"""
-					SELECT DISTINCT description
-					FROM `tabItem Website Specification`
-					WHERE parent IN %(item_names)s AND LOWER(label) LIKE '%%colo%%'
-					""",
-					{"item_names": tuple(item_names)},
-					as_dict=True,
-				)
+			distinct_shades = frappe.db.sql(
+				"""
+				SELECT DISTINCT description
+				FROM `tabItem Website Specification`
+				WHERE parent IN %(item_names)s AND LOWER(label) LIKE '%%shade%%'
+				""",
+				{"item_names": tuple(item_names)},
+				as_dict=True,
+			)
 
-				distinct_shapes = frappe.db.sql(
-					"""
-					SELECT DISTINCT description
-					FROM `tabItem Website Specification`
-					WHERE parent IN %(item_names)s AND LOWER(label) LIKE '%%shape%%'
-					""",
-					{"item_names": tuple(item_names)},
-					as_dict=True,
-				)
-
-				distinct_shades = frappe.db.sql(
-					"""
-					SELECT DISTINCT description
-					FROM `tabItem Website Specification`
-					WHERE parent IN %(item_names)s AND LOWER(label) LIKE '%%shade%%'
-					""",
-					{"item_names": tuple(item_names)},
-					as_dict=True,
-				)
-
-				all_colours = [d["description"] for d in distinct_colours if d["description"]]
-				all_shapes = [d["description"] for d in distinct_shapes if d["description"]]
-				all_shades = [d["description"] for d in distinct_shades if d["description"]]
-			
-			if all_colours:		
-				distinct_colours = clean_entries(all_colours, skip_digit_check=False)
-			
-			if all_shapes:
-				distinct_shapes = clean_entries(all_shapes, skip_digit_check=True)
-			
-			if all_shades:
-				distinct_shades = clean_entries(all_shades, skip_digit_check=True)
+			all_colours = [d["description"] for d in distinct_colours if d["description"]]
+			all_shapes = [d["description"] for d in distinct_shapes if d["description"]]
+			all_shades = [d["description"] for d in distinct_shades if d["description"]]
+		
+		if all_colours:		
+			distinct_colours = clean_entries(all_colours, skip_digit_check=False)
+		
+		if all_shapes:
+			distinct_shapes = clean_entries(all_shapes, skip_digit_check=True)
+		
+		if all_shades:
+			distinct_shades = clean_entries(all_shades, skip_digit_check=True)
 		
 		if availability:
 			filters["custom_in_stock"] = ["=", 1]
@@ -2183,7 +2189,11 @@ def get_website_variants(medusa_id, customer_id=None):
 			shade = ""
 
 			for spec in specifications:
-				label = spec.get("label", "").lower()
+				raw_label = spec.get("label")
+				if not raw_label:
+					continue
+
+				label = raw_label.lower()
 				description = frappe.utils.strip_html(spec.get("description", ""))
 
 				if 'colo' in label:
