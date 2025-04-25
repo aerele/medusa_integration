@@ -1685,9 +1685,6 @@ def get_website_items(url=None, customer_id=None):
 	import math
 
 	def fetch_items(filters, order_by, offset, page_size, customer_id):
-		"""Fetch paginated website items with filters and sorting."""
-		frappe.log_error(title="filters", message=filters)
-		# filters = {'name': ['in', ('WEB-ITM-1297',)]}
 		website_items = frappe.get_all(
 			"Website Item",
 			fields=[
@@ -1745,7 +1742,8 @@ def get_website_items(url=None, customer_id=None):
 					continue
 
 				label = raw_label.lower()
-				description = frappe.utils.strip_html(spec.get("description", ""))
+				description_raw = spec.get("description", "")
+				description = frappe.utils.strip_html(description_raw) if isinstance(description_raw, str) else str(description_raw)
 
 				if 'colo' in label:
 					colour = description
@@ -1954,7 +1952,6 @@ def get_website_items(url=None, customer_id=None):
 			]
 		
 		distinct_colours = distinct_shapes = distinct_shades = []
-		# if shapes or shades or colors:
 		filters_clause = "1=1"
 		params = {}
 
@@ -2211,7 +2208,8 @@ def get_website_variants(medusa_id, customer_id=None):
 					continue
 
 				label = raw_label.lower()
-				description = frappe.utils.strip_html(spec.get("description", ""))
+				description_raw = spec.get("description", "")
+				description = frappe.utils.strip_html(description_raw) if isinstance(description_raw, str) else str(description_raw)
 
 				if 'colo' in label:
 					colour = description
@@ -2275,7 +2273,8 @@ def get_distinct_specs(medusa_ids: list):
 			continue
 
 		label = raw_label.lower()
-		description = frappe.utils.strip_html(spec.get("description", ""))
+		description_raw = spec.get("description", "")
+		description = frappe.utils.strip_html(description_raw) if isinstance(description_raw, str) else str(description_raw)
 
 		if not label or not description:
 			continue
