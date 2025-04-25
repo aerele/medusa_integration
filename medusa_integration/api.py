@@ -1685,25 +1685,28 @@ def get_website_items(url=None, customer_id=None):
 	import math
 
 	def fetch_items(filters, order_by, offset, page_size, customer_id):
-		website_items = frappe.get_all(
-			"Website Item",
-			fields=[
-				"name",
-				"medusa_id",
-				"medusa_variant_id",
-				"web_item_name",
-				"item_group",
-				"custom_overall_rating",
-				"has_variants",
-			],
-			filters=filters,
-			order_by=order_by,
-			start=offset,
-			page_length=page_size,
-		)
+		modified_items = []
+		try:
+			website_items = frappe.get_all(
+				"Website Item",
+				fields=[
+					"name",
+					"medusa_id",
+					"medusa_variant_id",
+					"web_item_name",
+					"item_group",
+					"custom_overall_rating",
+					"has_variants",
+				],
+				filters=filters,
+				order_by=order_by,
+				start=offset,
+				page_length=page_size,
+			)
+		except Exception as e:
+			return modified_items
 
 		base_url = frappe.utils.get_url()
-		modified_items = []
 		for item in website_items:
 			image_url = frappe.db.get_value(
 				"File",
