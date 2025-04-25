@@ -1686,6 +1686,8 @@ def get_website_items(url=None, customer_id=None):
 
 	def fetch_items(filters, order_by, offset, page_size, customer_id):
 		"""Fetch paginated website items with filters and sorting."""
+		frappe.log_error(title="filters", message=filters)
+		# filters = {'name': ['in', ('WEB-ITM-1297',)]}
 		website_items = frappe.get_all(
 			"Website Item",
 			fields=[
@@ -2051,10 +2053,13 @@ def get_website_items(url=None, customer_id=None):
 				for i, color in enumerate(colors)
 			}
 			color_filters["label_pattern"] = "%colo%"
+			color_filters["item_names"] = tuple(item_names)
 
 			color_items = frappe.db.sql(f"""
 				SELECT parent FROM `tabItem Website Specification`
-				WHERE LOWER(label) LIKE %(label_pattern)s AND ({color_conditions})
+				WHERE LOWER(label) LIKE %(label_pattern)s
+				AND parent IN %(item_names)s
+				AND ({color_conditions})
 			""", color_filters, as_dict=True)
 
 			website_items_by_spec.extend([d["parent"] for d in color_items])
@@ -2070,10 +2075,13 @@ def get_website_items(url=None, customer_id=None):
 				for i, shape in enumerate(shapes)
 			}
 			filters["label_pattern"] = "%shape%"
+			filters["item_names"] = tuple(item_names)
 
 			shape_items = frappe.db.sql(f"""
 				SELECT parent FROM `tabItem Website Specification`
-				WHERE LOWER(label) LIKE %(label_pattern)s AND ({conditions})
+				WHERE LOWER(label) LIKE %(label_pattern)s
+				AND parent IN %(item_names)s
+				AND ({conditions})
 			""", filters, as_dict=True)
 
 			website_items_by_spec.extend([d["parent"] for d in shape_items])
@@ -2089,20 +2097,26 @@ def get_website_items(url=None, customer_id=None):
 				for i, shade in enumerate(shades)
 			}
 			filters["label_pattern"] = "%shade%"
+			filters["item_names"] = tuple(item_names)
 
 			shade_items = frappe.db.sql(f"""
 				SELECT parent FROM `tabItem Website Specification`
-				WHERE LOWER(label) LIKE %(label_pattern)s AND ({conditions})
+				WHERE LOWER(label) LIKE %(label_pattern)s
+				AND parent IN %(item_names)s
+				AND ({conditions})
 			""", filters, as_dict=True)
 
 			website_items_by_spec.extend([d["parent"] for d in shade_items])
 		
 		if website_items_by_spec:
 			filtered_item_names = list(set(website_items_by_spec))
-			filters = {
-				"name": ["in", filtered_item_names]
-			}
-			total_products = frappe.db.count("Website Item", filters=filters)
+			if filtered_item_names:
+				filters = {
+					"name": ["in", tuple(filtered_item_names)]
+				}
+				total_products = frappe.db.count("Website Item", filters=filters)
+			else:
+				total_products = 0
 		else:
 			total_products = base_filters_count
 
