@@ -1738,7 +1738,11 @@ def get_website_items(url=None, customer_id=None):
 			shade = ""
 
 			for spec in specifications:
-				label = spec.get("label", "").lower()
+				raw_label = spec.get("label")
+				if not raw_label:
+					continue
+
+				label = raw_label.lower()
 				description = frappe.utils.strip_html(spec.get("description", ""))
 
 				if 'colo' in label:
@@ -2183,7 +2187,11 @@ def get_website_variants(medusa_id, customer_id=None):
 			shade = ""
 
 			for spec in specifications:
-				label = spec.get("label", "").lower()
+				raw_label = spec.get("label")
+				if not raw_label:
+					continue
+
+				label = raw_label.lower()
 				description = frappe.utils.strip_html(spec.get("description", ""))
 
 				if 'colo' in label:
