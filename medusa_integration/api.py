@@ -1772,6 +1772,8 @@ def get_website_items(url=None, customer_id=None):
 	def clean_entries(raw_list, skip_digit_check=False):
 		result = []
 		for entry in raw_list:
+			entry = frappe.utils.strip_html(entry)
+
 			entry = entry.strip()
 			split_parts = re.split(r"[,/]", entry)
 			
