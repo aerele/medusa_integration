@@ -1958,6 +1958,10 @@ def get_website_items(url=None, customer_id=None):
 		filters_clause = "1=1"
 		params = {}
 
+		if item_group:
+			filters_clause += " AND item_group IN %(descendant_groups)s"
+			params["descendant_groups"] = tuple(descendant_groups)
+
 		if collection_titles:
 			if not isinstance(collection_titles, list):
 				collection_titles = [collection_titles]
