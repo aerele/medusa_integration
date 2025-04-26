@@ -745,43 +745,6 @@ def create_medusa_variant(product_id, item_code, backorder=False, country_code=N
 
 	return send_request(args).get("product").get("variants")[0].get("id")
 
-
-# def update_medusa_variant(product_id, variant_id, option_id):
-# 	payload = json.dumps({
-# 							"title": "Default",
-# 							"material": None,
-# 							"mid_code": None,
-# 							"hs_code": None,
-# 							"origin_country": "IN", # item.country_of_origin
-# 							"sku": None,
-# 							"ean": None,
-# 							"upc": None,
-# 							"barcode": None,
-# 							"inventory_quantity": 0,
-# 							"manage_inventory": True,
-# 							"allow_backorder": True,
-# 							"weight": None,
-# 							"width": None,
-# 							"height": None,
-# 							"length": None,
-# 							"prices": [],
-# 							"metadata": {},
-# 							"options": [
-# 								{
-# 								"option_id": option_id,
-# 								"value": "Default"
-# 								}
-# 							]
-# 	})
-# 	args = frappe._dict({
-# 							"method" : "POST",
-# 							"url" : f"{get_url()[0]}/admin/products/{product_id}/variants/{variant_id}",
-# 							"headers": get_headers(with_token=True),
-# 							"payload": payload,
-# 							"throw_message": "Error while updating Item Variant in Medusa"
-# 	})
-
-
 def create_medusa_option(product_id):
 	payload = json.dumps(
 		{
@@ -1435,11 +1398,7 @@ def export_quotation_on_update(doc, method):
 def export_sales_order(self, method):
 	sales_order = frappe.get_doc("Sales Order", self)
 
-	frappe.log_error(title="sales_order.status 1", message=sales_order.status)
-
 	sales_order.reload()
-
-	frappe.log_error(title="sales_order.status 2", message=sales_order.status)
 
 	customer_id = frappe.get_value(
 		"Customer", {"name": sales_order.customer}, "medusa_id"
