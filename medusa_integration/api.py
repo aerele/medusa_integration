@@ -3569,3 +3569,10 @@ def fetch_clearance_items():
 	
 	doc.save()
 	frappe.db.commit()
+@frappe.whitelist(allow_guest=True)
+def get_product_details_banner_item_group(item_group):
+	return frappe.get_cached_value(
+		"Product details banner",
+			{"parent": "Active Homepage Landing", "item_group": item_group.upper()},
+			"url",
+	)
