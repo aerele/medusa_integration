@@ -55,53 +55,6 @@ def update_existing_customer():
 		frappe.log_error(frappe.get_traceback(), "Update Existing Customer Error")
 		return {"error": str(e)}
 
-
-@frappe.whitelist(allow_guest=True)
-def banner_form():
-	data = json.loads(frappe.request.data)
-	medusa_id = data.get("customer_id")
-	form = data.get("form")
-
-	customer = frappe.db.get_value("Customer", {"medusa_id": medusa_id}, "name")
-
-	if customer:
-		opportunity_from = "Customer"
-		party_name = customer
-		print(party_name)
-	else:
-		lead = frappe.db.get_value("Lead", {"medusa_id": medusa_id}, "name")
-		if lead:
-			opportunity_from = "Lead"
-			party_name = lead
-		else:
-			return {
-				"status": "error",
-				"message": "Customer ID not found in Customer or Lead",
-			}
-
-	opportunity_type = "Sales" if form == "Setup Clinic" else "Support"
-	sales_stage = "Prospecting" if form == "Setup Clinic" else "Needs Analysis"
-	expected_closing = datetime.today() + timedelta(days=30)
-
-	opportunity = frappe.get_doc(
-		{
-			"doctype": "Opportunity",
-			"opportunity_type": opportunity_type,
-			"sales_stage": sales_stage,
-			"opportunity_from": opportunity_from,
-			"source": "Alfarsi Website",
-			"expected_closing": expected_closing.date(),
-			"party_name": party_name,
-			"status": "Open",
-		}
-	)
-
-	opportunity.insert(ignore_permissions=True)
-	frappe.db.commit()
-
-	return "Opportunity created successfully"
-
-
 @frappe.whitelist(allow_guest=True)
 def create_quotation():
 	data = json.loads(frappe.request.data)
