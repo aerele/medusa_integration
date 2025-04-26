@@ -2258,10 +2258,11 @@ def get_distinct_specs(medusa_ids: list):
 	website_items = frappe.get_all(
 		"Website Item",
 		filters={"medusa_id": ["in", medusa_ids]},
-		fields=["name"]
+		fields=["name", "medusa_id", "has_variants"]
 	)
 
 	item_names = [item["name"] for item in website_items]
+	has_variants_map = {item["medusa_id"]: item.get("has_variants", 0) for item in website_items}
 
 	specifications = frappe.get_all(
 		"Item Website Specification",
@@ -2305,7 +2306,8 @@ def get_distinct_specs(medusa_ids: list):
 	return {
 		"distinct_colours": distinct_colours,
 		"distinct_shapes": distinct_shapes,
-		"distinct_shades": distinct_shades
+		"distinct_shades": distinct_shades,
+		"has_variants_map": has_variants_map
 	}
 
 @frappe.whitelist(allow_guest=True)
