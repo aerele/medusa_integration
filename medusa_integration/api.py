@@ -2949,10 +2949,6 @@ def get_infection_control_items(customer_id=None):
 	return fetch_items_from_homepage("infection_control_items", customer_id)
 
 @frappe.whitelist(allow_guest=True)
-def get_clearance_items(customer_id=None):
-	return fetch_items_from_homepage("clearance_items", customer_id)
-
-@frappe.whitelist(allow_guest=True)
 def get_best_deals():
 	try:
 		active_best_deals = frappe.get_doc("Homepage Landing", "Active Homepage Landing")
@@ -3067,7 +3063,6 @@ def fetch_items_from_homepage(item_field_name, customer_id=None):
 	except Exception as e:
 		frappe.log_error(message=str(e), title="Fetch Homepage Items Failed")
 		return {"status": "error", "message": str(e)}
-
 
 @frappe.whitelist(allow_guest=True)
 def get_homepage_order_list():
@@ -3483,6 +3478,7 @@ def fetch_clearance_items():
 	
 	doc.save()
 	frappe.db.commit()
+
 @frappe.whitelist(allow_guest=True)
 def get_product_details_banner_item_group(item_group):
 	return frappe.get_cached_value(
@@ -3490,3 +3486,215 @@ def get_product_details_banner_item_group(item_group):
 			{"parent": "Active Homepage Landing", "item_group": item_group.upper()},
 			"url",
 	)
+
+@frappe.whitelist(allow_guest=True)
+def get_clearance_items(customer_id=None):
+	try:
+		data = frappe.request.get_json()
+
+		collection_titles = data.get("collection_title")
+		brands = data.get("brand")
+		availability = data.get("availability")
+		page = data.get("page", 1)
+		page_size = 20
+		offset = (int(page) - 1) * page_size
+		shapes = data.get("shape")
+		colors = data.get("colour")
+		shades = data.get("shade")
+		base_url = frappe.utils.get_url()
+
+		homepage_landing = frappe.get_doc("Homepage Landing", "Active Homepage Landing")
+		all_clearance_items = getattr(homepage_landing, "clearance_items", [])
+
+		clearance_item_names = [entry.website_item for entry in all_clearance_items]
+
+		if not clearance_item_names:
+			return []
+		
+		filters = {"name": ["in", clearance_item_names]}
+
+		if collection_titles:
+			if not isinstance(collection_titles, list):
+				collection_titles = [collection_titles]
+			
+			collection_descendants = []
+			for title in collection_titles:
+				descendants = frappe.db.get_descendants("Item Group", title)
+				collection_descendants.extend(descendants)
+				collection_descendants.append(title)
+
+			filters["item_group"] = ["in", list(set(collection_descendants))]
+
+		if brands:
+			if not isinstance(brands, list):
+				brands = [brands]
+			filters["brand"] = ["in", brands]
+		
+		if availability:
+			filters["custom_in_stock"] = ["=", 1]
+		
+		if shapes and not isinstance(shapes, list):
+			shapes = [shapes]
+
+		if colors and not isinstance(colors, list):
+			colors = [colors]
+		
+		if shades and not isinstance(shades, list):
+			shades = [shades]
+		
+		spec_sets = []
+
+		if colors:
+			color_conditions = " OR ".join([
+				f"LOWER(description) LIKE %(color_{i})s"
+				for i in range(len(colors))
+			])
+
+			color_filters = {f"color_{i}": f"%{color.lower()}%" for i, color in enumerate(colors)}
+			color_filters.update({
+				"label_pattern": "%colo%",
+				"item_names": tuple(clearance_item_names)
+			})
+
+			color_items = frappe.db.sql(f"""
+				SELECT DISTINCT parent FROM `tabItem Website Specification`
+				WHERE LOWER(label) LIKE %(label_pattern)s
+				AND parent IN %(item_names)s
+				AND ({color_conditions})
+			""", color_filters, as_dict=True)
+
+			spec_sets.append(set(d.parent for d in color_items))
+
+		if shapes:
+			shape_conditions = " OR ".join([
+				f"LOWER(description) LIKE %(shape_{i})s"
+				for i in range(len(shapes))
+			])
+
+			shape_filters = {f"shape_{i}": f"%{shape.lower()}%" for i, shape in enumerate(shapes)}
+			shape_filters.update({
+				"label_pattern": "%shape%",
+				"item_names": tuple(clearance_item_names)
+			})
+
+			shape_items = frappe.db.sql(f"""
+				SELECT DISTINCT parent FROM `tabItem Website Specification`
+				WHERE LOWER(label) LIKE %(label_pattern)s
+				AND parent IN %(item_names)s
+				AND ({shape_conditions})
+			""", shape_filters, as_dict=True)
+
+			spec_sets.append(set(d.parent for d in shape_items))
+
+		if shades:
+			shade_conditions = " OR ".join([
+				f"LOWER(description) LIKE %(shade_{i})s"
+				for i in range(len(shades))
+			])
+
+			shade_filters = {f"shade_{i}": f"%{shade.lower()}%" for i, shade in enumerate(shades)}
+			shade_filters.update({
+				"label_pattern": "%shade%",
+				"item_names": tuple(clearance_item_names)
+			})
+
+			shade_items = frappe.db.sql(f"""
+				SELECT DISTINCT parent FROM `tabItem Website Specification`
+				WHERE LOWER(label) LIKE %(label_pattern)s
+				AND parent IN %(item_names)s
+				AND ({shade_conditions})
+			""", shade_filters, as_dict=True)
+
+			spec_sets.append(set(d.parent for d in shade_items))
+		
+		if spec_sets:
+			final_spec_items = set.intersection(*spec_sets)
+			filters["name"] = ["in", list(final_spec_items)]
+
+		website_items = frappe.get_all(
+			"Website Item",
+			fields=[
+				"name",
+				"medusa_id",
+				"medusa_variant_id",
+				"web_item_name",
+				"item_group",
+				"custom_overall_rating",
+				"has_variants",
+			],
+			filters=filters,
+			order_by="modified desc",
+			start=offset,
+			page_length=page_size,
+		)
+
+		entries_data = []
+		for website_item_details in website_items:
+			image_url = frappe.db.get_value(
+				"File",
+				{
+					"attached_to_doctype": "Website Item",
+					"attached_to_name": website_item_details.name,
+				},
+				"file_url",
+			)
+			if image_url:
+				thumbnail = image_url if image_url.startswith("https") else f"{base_url}{image_url}"
+			else:
+				thumbnail = None
+
+			is_wishlisted = 0
+			if customer_id:
+				is_wishlisted = frappe.db.exists(
+					"Medusa Wishlist",
+					{"parent": website_item_details.name, "medusa_customer_id": customer_id},
+				)
+				is_wishlisted = 1 if is_wishlisted else 0
+
+			specifications = frappe.db.get_all(
+				"Item Website Specification",
+				filters={"parent": website_item_details.name},
+				fields=["label", "description"]
+			)
+
+			colour = ""
+			shape = ""
+			shade = ""
+
+			for spec in specifications:
+				raw_label = spec.get("label")
+				if not raw_label:
+					continue
+
+				label = raw_label.lower()
+				description_raw = spec.get("description", "")
+				description = frappe.utils.strip_html(description_raw) if isinstance(description_raw, str) else str(description_raw)
+
+				if 'colo' in label:
+					colour = description
+				elif 'shape' in label:
+					shape = description
+				elif 'shade' in label:
+					shade = description
+
+			entries_data.append(
+				{
+					"product_id": website_item_details.medusa_id,
+					"variant_id": website_item_details.medusa_variant_id,
+					"item_name": website_item_details.web_item_name,
+					"item_group": website_item_details.item_group,
+					"overall_rating": website_item_details.custom_overall_rating,
+					"thumbnail": thumbnail,
+					"is_wishlisted": is_wishlisted,
+					"has_variants": website_item_details.has_variants,
+					"colour": colour,
+					"shape": shape,
+					"shade": shade
+				}
+			)
+
+		return entries_data
+
+	except Exception as e:
+		frappe.log_error(message=str(e), title="Fetch Homepage Items Failed")
+		return {"status": "error", "message": str(e)}
