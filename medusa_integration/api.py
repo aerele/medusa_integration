@@ -55,53 +55,6 @@ def update_existing_customer():
 		frappe.log_error(frappe.get_traceback(), "Update Existing Customer Error")
 		return {"error": str(e)}
 
-
-@frappe.whitelist(allow_guest=True)
-def banner_form():
-	data = json.loads(frappe.request.data)
-	medusa_id = data.get("customer_id")
-	form = data.get("form")
-
-	customer = frappe.db.get_value("Customer", {"medusa_id": medusa_id}, "name")
-
-	if customer:
-		opportunity_from = "Customer"
-		party_name = customer
-		print(party_name)
-	else:
-		lead = frappe.db.get_value("Lead", {"medusa_id": medusa_id}, "name")
-		if lead:
-			opportunity_from = "Lead"
-			party_name = lead
-		else:
-			return {
-				"status": "error",
-				"message": "Customer ID not found in Customer or Lead",
-			}
-
-	opportunity_type = "Sales" if form == "Setup Clinic" else "Support"
-	sales_stage = "Prospecting" if form == "Setup Clinic" else "Needs Analysis"
-	expected_closing = datetime.today() + timedelta(days=30)
-
-	opportunity = frappe.get_doc(
-		{
-			"doctype": "Opportunity",
-			"opportunity_type": opportunity_type,
-			"sales_stage": sales_stage,
-			"opportunity_from": opportunity_from,
-			"source": "Alfarsi Website",
-			"expected_closing": expected_closing.date(),
-			"party_name": party_name,
-			"status": "Open",
-		}
-	)
-
-	opportunity.insert(ignore_permissions=True)
-	frappe.db.commit()
-
-	return "Opportunity created successfully"
-
-
 @frappe.whitelist(allow_guest=True)
 def create_quotation():
 	data = json.loads(frappe.request.data)
@@ -792,43 +745,6 @@ def create_medusa_variant(product_id, item_code, backorder=False, country_code=N
 
 	return send_request(args).get("product").get("variants")[0].get("id")
 
-
-# def update_medusa_variant(product_id, variant_id, option_id):
-# 	payload = json.dumps({
-# 							"title": "Default",
-# 							"material": None,
-# 							"mid_code": None,
-# 							"hs_code": None,
-# 							"origin_country": "IN", # item.country_of_origin
-# 							"sku": None,
-# 							"ean": None,
-# 							"upc": None,
-# 							"barcode": None,
-# 							"inventory_quantity": 0,
-# 							"manage_inventory": True,
-# 							"allow_backorder": True,
-# 							"weight": None,
-# 							"width": None,
-# 							"height": None,
-# 							"length": None,
-# 							"prices": [],
-# 							"metadata": {},
-# 							"options": [
-# 								{
-# 								"option_id": option_id,
-# 								"value": "Default"
-# 								}
-# 							]
-# 	})
-# 	args = frappe._dict({
-# 							"method" : "POST",
-# 							"url" : f"{get_url()[0]}/admin/products/{product_id}/variants/{variant_id}",
-# 							"headers": get_headers(with_token=True),
-# 							"payload": payload,
-# 							"throw_message": "Error while updating Item Variant in Medusa"
-# 	})
-
-
 def create_medusa_option(product_id):
 	payload = json.dumps(
 		{
@@ -1482,11 +1398,7 @@ def export_quotation_on_update(doc, method):
 def export_sales_order(self, method):
 	sales_order = frappe.get_doc("Sales Order", self)
 
-	frappe.log_error(title="sales_order.status 1", message=sales_order.status)
-
 	sales_order.reload()
-
-	frappe.log_error(title="sales_order.status 2", message=sales_order.status)
 
 	customer_id = frappe.get_value(
 		"Customer", {"name": sales_order.customer}, "medusa_id"
