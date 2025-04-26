@@ -57,7 +57,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-04-26 10:49:54.786165",
+ "modified": "2025-04-26 10:53:57.311063",
  "modified_by": "Administrator",
  "module": "Medusa Integration",
  "name": "Opportunity Contact",
@@ -73,6 +73,12 @@
    "report": 1,
    "role": "System Manager",
    "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "role": "Guest",
+   "select": 1,
    "write": 1
   }
  ],
