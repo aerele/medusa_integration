@@ -2951,6 +2951,7 @@ def fetch_relevant_items():
 				"thumbnail": thumbnail,
 				"rating": item_data.custom_overall_rating,
 				"isWishlisted": is_wishlisted,
+				"has_variants": item_data.has_variants,
 			}
 
 			results.append(item_entry)
@@ -3055,7 +3056,7 @@ def get_best_deals():
 				website_item_details = frappe.db.get_value(
 					"Website Item",
 					{"name": website_item_code},
-					["web_item_name", "medusa_id"],
+					["web_item_name", "medusa_id", "has_variants"],
 					as_dict=True,
 				)
 
@@ -3065,6 +3066,9 @@ def get_best_deals():
 				if website_item_details
 				else None,
 				"medusa_id": website_item_details.medusa_id,
+				"has_variants": website_item_details.has_variants
+				if website_item_details
+				else None,
 			}
 
 			entries_data.append(entry_data)
