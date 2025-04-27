@@ -1386,13 +1386,27 @@ def export_quotation_on_update(doc, method):
 			frappe.msgprint(
 				"Quotation price details sent to e-Commerce site successfully"
 			)
-		except Exception as e:
-			frappe.log_error(
-				f"Failed to export Quotation {doc.name}: {str(e)}",
-				"Quotation Export Error",
-			)
-			print(f"Error exporting Quotation {doc.name}: {str(e)}")
+			email_id = None
+			if doc.quotation_to and doc.party_name:
+				email_id = frappe.get_value(doc.quotation_to, {"name": doc.party_name}, "email_id")
 
+			if not email_id:
+				message = f"No email ID found for {doc.quotation_to} {doc.party_name}"
+				frappe.log_error(title="Unable to send mail to website user", message=message)
+				return
+
+			frappe.sendmail(
+				recipients=[email_id],
+				subject=f"Quotation {doc.name} - Price Received",
+				message=f"""Dear Customer,<br><br>
+				Your quotation <b>{doc.name}</b> has been updated with price details. 
+				Please review it on the <a href="https://medusa-fe.aerele.in/profile" target="_blank">site</a>.<br><br>
+				Thank you!""",
+				now=True
+			)
+		except Exception as e:
+			frappe.log_error(title="Error exporting quotation prices", message=frappe.get_traceback())
+			print(f"Error exporting Quotation {doc.name}: {str(e)}")
 
 @frappe.whitelist(allow_guest=True)
 def export_sales_order(self, method):
