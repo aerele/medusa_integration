@@ -3436,13 +3436,40 @@ def fetch_clearance_items():
 	if not website_items:
 		return
 	
-	doc = frappe.get_doc("Homepage Landing", "Active Homepage Landing")
-	doc.clearance_items = []
-
-	for item in website_items:
-		doc.append("clearance_items", {"website_item": item.get("name")})
+	fetched_website_items = set(item["name"] for item in website_items)
 	
-	doc.save()
+	expiring_doc = frappe.get_single('Expiring Items')
+
+	existing_items = {row.website_item: row for row in expiring_doc.expiring_items}
+
+	new_expiring_items = []
+
+	for website_item_name in fetched_website_items:
+		if website_item_name in existing_items:
+			new_expiring_items.append({
+				"website_item": website_item_name,
+				"show": existing_items[website_item_name].show
+			})
+		else:
+			new_expiring_items.append({
+				"website_item": website_item_name,
+				"show": 0
+			})
+
+	expiring_doc.expiring_items = []
+	for item in new_expiring_items:
+		expiring_doc.append("expiring_items", item)
+
+	expiring_doc.save()
+
+	homepage_doc = frappe.get_doc('Homepage Landing', 'Active Homepage Landing')
+	homepage_doc.clearance_items = []
+
+	for row in expiring_doc.expiring_items:
+		if row.show:
+			homepage_doc.append("clearance_items", {"website_item": row.website_item})
+
+	homepage_doc.save()
 	frappe.db.commit()
 
 @frappe.whitelist(allow_guest=True)
