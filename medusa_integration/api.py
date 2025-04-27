@@ -2793,9 +2793,8 @@ def fetch_relevant_items():
 		for recommended_item in relevant_items:
 			base_url = frappe.utils.get_url()
 			website_item_name = recommended_item
-			medusa_id = frappe.get_value(
-				"Website Item", {"name": website_item_name}, "medusa_id"
-			)
+			item_data = frappe.get_doc("Website Item", website_item_name)
+			medusa_id = item_data.medusa_id
 
 			if medusa_id in items_data:
 				continue
@@ -2812,8 +2811,6 @@ def fetch_relevant_items():
 				thumbnail = image_url if image_url.startswith("https") else f"{base_url}{image_url}"
 			else:
 				thumbnail = None
-
-			item_data = frappe.get_doc("Website Item", website_item_name)
 
 			is_wishlisted = 0
 			if cus_id:
@@ -2841,24 +2838,34 @@ def fetch_relevant_items():
 
 	try:
 		data = json.loads(frappe.request.data)
-		item_code = data.get("item_code")
+		product_id = data.get("product_id")
 		cus_id = data.get("cus_id")
 
-		website_item = frappe.get_doc("Website Item", {"item_code": item_code})
-		parent_route = frappe.db.get_value(
-			"Item Group", {"name": website_item.item_group}, "route"
-		)
+		website_item = frappe.get_doc("Website Item", {"medusa_id": product_id})
 
+		parent_website_item = website_item.custom_parent_website_item
+
+		variant_items = []
+		if parent_website_item:
+			variant_item_docs = frappe.get_all(
+				"Website Item",
+				filters={"custom_parent_website_item": parent_website_item},
+				fields=["name"]
+			)
+			variant_items = [item["name"] for item in variant_item_docs]
+
+		relevant_items = []
 		relevant_items = [
 			related_item.website_item for related_item in website_item.recommended_items
 		]
 
-		if relevant_items == []:
-			frappe.local.response["http_status_code"] = 404
-			return "No relevant items found"
+		variant_items_data = get_recommended_items_data(variant_items, cus_id)
 
 		relevant_items_data = get_recommended_items_data(relevant_items, cus_id)
-		recommended_items_data.extend(relevant_items_data)
+
+		parent_route = frappe.db.get_value(
+			"Item Group", {"name": website_item.item_group}, "route"
+		)
 
 		products = get_website_items(url=parent_route)
 		paginated_products = [
@@ -2867,13 +2874,16 @@ def fetch_relevant_items():
 			if p["id"] != website_item.medusa_id
 			and p["id"] not in {item["id"] for item in recommended_items_data}
 		]
+
+		recommended_items_data.extend(variant_items_data)
+		recommended_items_data.extend(relevant_items_data)
 		recommended_items_data.extend(paginated_products)
 
 		return recommended_items_data
+	
 	except Exception as e:
 		frappe.log_error(message=str(e), title=_("Fetch relevant products failed"))
 		return {"status": "error", "message": str(e)}
-
 
 @frappe.whitelist(allow_guest=True)
 def get_top_sellers(customer_id=None):
