@@ -1641,31 +1641,7 @@ def get_website_items(url=None, customer_id=None):
 				)
 				is_wishlisted = 1 if is_wishlisted else 0
 			
-			specifications = frappe.db.get_all(
-				"Item Website Specification",
-				filters={"parent": item["name"]},
-				fields=["label", "description"]
-			)
-
-			colour = ""
-			shape = ""
-			shade = ""
-
-			for spec in specifications:
-				raw_label = spec.get("label")
-				if not raw_label:
-					continue
-
-				label = raw_label.lower()
-				description_raw = spec.get("description", "")
-				description = frappe.utils.strip_html(description_raw) if isinstance(description_raw, str) else str(description_raw)
-
-				if 'colo' in label:
-					colour = description
-				elif 'shape' in label:
-					shape = description
-				elif 'shade' in label:
-					shade = description
+			colour, shape, shade = get_item_specifications(item["name"])
 
 			modified_items.append(
 				{
@@ -2111,31 +2087,7 @@ def get_website_variants(medusa_id, customer_id=None):
 				)
 				is_wishlisted = 1 if is_wishlisted else 0
 			
-			specifications = frappe.db.get_all(
-				"Item Website Specification",
-				filters={"parent": item["name"]},
-				fields=["label", "description"]
-			)
-
-			colour = ""
-			shape = ""
-			shade = ""
-
-			for spec in specifications:
-				raw_label = spec.get("label")
-				if not raw_label:
-					continue
-
-				label = raw_label.lower()
-				description_raw = spec.get("description", "")
-				description = frappe.utils.strip_html(description_raw) if isinstance(description_raw, str) else str(description_raw)
-
-				if 'colo' in label:
-					colour = description
-				elif 'shape' in label:
-					shape = description
-				elif 'shade' in label:
-					shade = description
+			colour, shape, shade = get_item_specifications(item["name"])
 			
 			modified_items.append(
 				{
@@ -3634,12 +3586,7 @@ def get_clearance_items(customer_id=None):
 			"Website Item",
 			fields=[
 				"name",
-				"medusa_id",
-				"medusa_variant_id",
-				"web_item_name",
 				"item_group",
-				"custom_overall_rating",
-				"has_variants",
 			],
 			filters=filters,
 		)
@@ -3647,31 +3594,7 @@ def get_clearance_items(customer_id=None):
 		total_data = []
 		for website_item_details in total_products:
 
-			specifications = frappe.db.get_all(
-				"Item Website Specification",
-				filters={"parent": website_item_details.name},
-				fields=["label", "description"]
-			)
-
-			colour = ""
-			shape = ""
-			shade = ""
-
-			for spec in specifications:
-				raw_label = spec.get("label")
-				if not raw_label:
-					continue
-
-				label = raw_label.lower()
-				description_raw = spec.get("description", "")
-				description = frappe.utils.strip_html(description_raw) if isinstance(description_raw, str) else str(description_raw)
-
-				if 'colo' in label:
-					colour = description
-				elif 'shape' in label:
-					shape = description
-				elif 'shade' in label:
-					shade = description
+			colour, shape, shade = get_item_specifications(website_item_details.name)
 
 			total_data.append(
 				{
@@ -3704,32 +3627,8 @@ def get_clearance_items(customer_id=None):
 					{"parent": website_item_details.name, "medusa_customer_id": customer_id},
 				)
 				is_wishlisted = 1 if is_wishlisted else 0
-
-			specifications = frappe.db.get_all(
-				"Item Website Specification",
-				filters={"parent": website_item_details.name},
-				fields=["label", "description"]
-			)
-
-			colour = ""
-			shape = ""
-			shade = ""
-
-			for spec in specifications:
-				raw_label = spec.get("label")
-				if not raw_label:
-					continue
-
-				label = raw_label.lower()
-				description_raw = spec.get("description", "")
-				description = frappe.utils.strip_html(description_raw) if isinstance(description_raw, str) else str(description_raw)
-
-				if 'colo' in label:
-					colour = description
-				elif 'shape' in label:
-					shape = description
-				elif 'shade' in label:
-					shade = description
+			
+			colour, shape, shade = get_item_specifications(website_item_details.name)
 
 			entries_data.append(
 				{
@@ -3788,3 +3687,32 @@ def get_clearance_items(customer_id=None):
 	except Exception as e:
 		frappe.log_error(message=frappe.get_traceback(), title="Fetch Clearance Items Failed")
 		return {"status": "error", "message": str(e)}
+
+def get_item_specifications(item_name):
+	specifications = frappe.db.get_all(
+		"Item Website Specification",
+		filters={"parent": item_name},
+		fields=["label", "description"]
+	)
+
+	colour = ""
+	shape = ""
+	shade = ""
+
+	for spec in specifications:
+		raw_label = spec.get("label")
+		if not raw_label:
+			continue
+
+		label = raw_label.lower()
+		description_raw = spec.get("description", "")
+		description = frappe.utils.strip_html(description_raw) if isinstance(description_raw, str) else str(description_raw)
+
+		if 'colo' in label:
+			colour = description
+		elif 'shape' in label:
+			shape = description
+		elif 'shade' in label:
+			shade = description
+
+	return colour, shape, shade
