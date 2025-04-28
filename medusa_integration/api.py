@@ -2878,6 +2878,7 @@ def fetch_relevant_items():
 				"medusa_id",
 				"medusa_variant_id",
 				"web_item_name",
+				"item_code",
 				"item_group",
 				"custom_overall_rating",
 				"has_variants",
@@ -2915,6 +2916,7 @@ def fetch_relevant_items():
 			
 			website_items_data.append(
 				{
+					"item_code": website_item_details.item_code,
 					"product_id": website_item_details.medusa_id,
 					"variant_id": website_item_details.medusa_variant_id,
 					"title": website_item_details.web_item_name,
@@ -2926,6 +2928,26 @@ def fetch_relevant_items():
 				}
 			)
 			added_product_ids.add(medusa_id)
+		
+		product_ids = [item["item_code"] for item in website_items_data]
+
+		sales_data = frappe.db.get_all(
+			"Sales Invoice Item",
+			fields=["item_code", "SUM(qty) as total_qty"],
+			filters={
+				"item_code": ["in", product_ids],
+				"docstatus": 1,
+			},
+			group_by="item_code",
+		)
+
+		sales_count_map = {entry["item_code"]: entry["total_qty"] for entry in sales_data}
+		frappe.log_error(title="test", message=sales_count_map)
+
+		for item in website_items_data:
+			item["sales_count"] = sales_count_map.get(item["item_code"], 0)
+
+		website_items_data.sort(key=lambda x: x["sales_count"], reverse=True)
 
 		recommended_items_data.extend(variant_items_data)
 		recommended_items_data.extend(relevant_items_data)
