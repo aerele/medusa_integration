@@ -2786,9 +2786,9 @@ def fetch_relevant_collection_products(cus_id=None):
 def fetch_relevant_items():
 	recommended_items_data = []
 	base_url = frappe.utils.get_url()
+	added_product_ids = set()
 
 	def get_recommended_items_data(relevant_items, cus_id):
-		items_data = set()
 		results = []
 
 		for recommended_item in relevant_items:
@@ -2796,7 +2796,7 @@ def fetch_relevant_items():
 			item_data = frappe.get_doc("Website Item", website_item_name)
 			medusa_id = item_data.medusa_id
 
-			if medusa_id in items_data:
+			if medusa_id in added_product_ids:
 				continue
 
 			image_url = frappe.db.get_value(
@@ -2832,7 +2832,7 @@ def fetch_relevant_items():
 			}
 
 			results.append(item_entry)
-			items_data.add(medusa_id)
+			added_product_ids.add(medusa_id)
 
 		return results
 
@@ -2887,6 +2887,11 @@ def fetch_relevant_items():
 
 		website_items_data = []
 		for website_item_details in website_items:
+			medusa_id = website_item_details.medusa_id
+
+			if not medusa_id or medusa_id in added_product_ids:
+				continue
+
 			image_url = frappe.db.get_value(
 				"File",
 				{
@@ -2920,13 +2925,14 @@ def fetch_relevant_items():
 					"has_variants": website_item_details.has_variants,
 				}
 			)
+			added_product_ids.add(medusa_id)
 
 		recommended_items_data.extend(variant_items_data)
 		recommended_items_data.extend(relevant_items_data)
 		recommended_items_data.extend(website_items_data)
 
 		recommended_items_data = [
-			item for item in recommended_items_data if item.get("id") != product_id
+			item for item in recommended_items_data if item.get("product_id") != product_id
 		]
 
 		return recommended_items_data
