@@ -3429,24 +3429,28 @@ def fetch_clearance_items():
 		filters={
 			"expiry_date": ["between", [today, expiry_limit]]
 		},
-		fields=["item"]
+		fields=["item", "expiry_date"]
 	)
 
 	if not batches:
 		return
 	
-	item_names = list(set(batch["item"] for batch in batches))
+	item_expiry_map = {batch["item"]: batch["expiry_date"] for batch in batches}
 
+	item_names = list(item_expiry_map.keys())
+	
 	website_items = frappe.get_all(
 		"Website Item",
 		filters={"item_code": ["in", item_names]},
-		fields=["name"]
+		fields=["name", "item_code"]
 	)
 
 	if not website_items:
 		return
 	
-	fetched_website_items = set(item["name"] for item in website_items)
+	fetched_website_items = [
+		{"name": item["name"], "item_code": item["item_code"]} for item in website_items
+	]
 	
 	expiring_doc = frappe.get_single('Expiring Items')
 
@@ -3454,17 +3458,23 @@ def fetch_clearance_items():
 
 	new_expiring_items = []
 
-	for website_item_name in fetched_website_items:
+	for item in fetched_website_items:
+		item_code = item["item_code"]
+		website_item_name = item["name"]
+		expiry_date = item_expiry_map.get(item_code)
+
 		if website_item_name in existing_items:
-			new_expiring_items.append({
-				"website_item": website_item_name,
-				"show": existing_items[website_item_name].show
-			})
+			show_flag = existing_items[website_item_name].show
 		else:
-			new_expiring_items.append({
-				"website_item": website_item_name,
-				"show": 0
-			})
+			show_flag = 0
+
+		new_expiring_items.append({
+			"website_item": website_item_name,
+			"expiry_date": expiry_date,
+			"show": show_flag
+		})
+	
+	new_expiring_items.sort(key=lambda x: x["expiry_date"])
 
 	expiring_doc.expiring_items = []
 	for item in new_expiring_items:
