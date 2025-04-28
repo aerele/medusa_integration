@@ -2840,6 +2840,7 @@ def fetch_relevant_items():
 		data = json.loads(frappe.request.data)
 		product_id = data.get("product_id")
 		cus_id = data.get("cus_id")
+		collection_title = data.get("item_group")
 
 		website_item = frappe.get_doc("Website Item", {"medusa_id": product_id})
 
@@ -2863,21 +2864,30 @@ def fetch_relevant_items():
 
 		relevant_items_data = get_recommended_items_data(relevant_items, cus_id)
 
-		parent_route = frappe.db.get_value(
-			"Item Group", {"name": website_item.item_group}, "route"
-		)
+		collection_descendants = []
+		descendants = frappe.db.get_descendants("Item Group", collection_title)
+		collection_descendants.extend(descendants)
+		collection_descendants.append(collection_title)
 
-		products = get_website_items(url=parent_route)
-		paginated_products = [
-			p
-			for p in products["paginatedProducts"]
-			if p["id"] != website_item.medusa_id
-			and p["id"] not in {item["id"] for item in recommended_items_data}
-		]
+		filters = {"item_group": ["in", list(set(collection_descendants))]}
+
+		website_items = frappe.get_all(
+			"Website Item",
+			fields=[
+				"name",
+				"medusa_id",
+				"medusa_variant_id",
+				"web_item_name",
+				"item_group",
+				"custom_overall_rating",
+				"has_variants",
+			],
+			filters=filters,
+		)
 
 		recommended_items_data.extend(variant_items_data)
 		recommended_items_data.extend(relevant_items_data)
-		recommended_items_data.extend(paginated_products)
+		recommended_items_data.extend(website_items)
 
 		return recommended_items_data
 	
