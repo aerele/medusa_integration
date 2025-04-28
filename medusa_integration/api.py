@@ -2785,18 +2785,18 @@ def fetch_relevant_collection_products(cus_id=None):
 @frappe.whitelist(allow_guest=True)
 def fetch_relevant_items():
 	recommended_items_data = []
+	base_url = frappe.utils.get_url()
+	added_product_ids = set()
 
 	def get_recommended_items_data(relevant_items, cus_id):
-		items_data = set()
 		results = []
 
 		for recommended_item in relevant_items:
-			base_url = frappe.utils.get_url()
 			website_item_name = recommended_item
 			item_data = frappe.get_doc("Website Item", website_item_name)
 			medusa_id = item_data.medusa_id
 
-			if medusa_id in items_data:
+			if medusa_id in added_product_ids:
 				continue
 
 			image_url = frappe.db.get_value(
@@ -2821,18 +2821,18 @@ def fetch_relevant_items():
 				is_wishlisted = 1 if is_wishlisted else 0
 
 			item_entry = {
-				"id": medusa_id,
+				"product_id": medusa_id,
 				"variant_id": item_data.medusa_variant_id,
 				"title": item_data.web_item_name,
 				"item_group": item_data.item_group,
 				"thumbnail": thumbnail,
 				"rating": item_data.custom_overall_rating,
-				"isWishlisted": is_wishlisted,
+				"is_wishlisted": is_wishlisted,
 				"has_variants": item_data.has_variants,
 			}
 
 			results.append(item_entry)
-			items_data.add(medusa_id)
+			added_product_ids.add(medusa_id)
 
 		return results
 
@@ -2840,6 +2840,7 @@ def fetch_relevant_items():
 		data = json.loads(frappe.request.data)
 		product_id = data.get("product_id")
 		cus_id = data.get("cus_id")
+		collection_title = data.get("item_group")
 
 		website_item = frappe.get_doc("Website Item", {"medusa_id": product_id})
 
@@ -2863,21 +2864,76 @@ def fetch_relevant_items():
 
 		relevant_items_data = get_recommended_items_data(relevant_items, cus_id)
 
-		parent_route = frappe.db.get_value(
-			"Item Group", {"name": website_item.item_group}, "route"
+		collection_descendants = []
+		descendants = frappe.db.get_descendants("Item Group", collection_title)
+		collection_descendants.extend(descendants)
+		collection_descendants.append(collection_title)
+
+		filters = {"item_group": ["in", list(set(collection_descendants))]}
+
+		website_items = frappe.get_all(
+			"Website Item",
+			fields=[
+				"name",
+				"medusa_id",
+				"medusa_variant_id",
+				"web_item_name",
+				"item_group",
+				"custom_overall_rating",
+				"has_variants",
+			],
+			filters=filters,
 		)
 
-		products = get_website_items(url=parent_route)
-		paginated_products = [
-			p
-			for p in products["paginatedProducts"]
-			if p["id"] != website_item.medusa_id
-			and p["id"] not in {item["id"] for item in recommended_items_data}
-		]
+		website_items_data = []
+		for website_item_details in website_items:
+			medusa_id = website_item_details.medusa_id
+
+			if not medusa_id or medusa_id in added_product_ids:
+				continue
+
+			image_url = frappe.db.get_value(
+				"File",
+				{
+					"attached_to_doctype": "Website Item",
+					"attached_to_name": website_item_details.name,
+				},
+				"file_url",
+			)
+			if image_url:
+				thumbnail = image_url if image_url.startswith("https") else f"{base_url}{image_url}"
+			else:
+				thumbnail = None
+
+			is_wishlisted = 0
+			if cus_id:
+				is_wishlisted = frappe.db.exists(
+					"Medusa Wishlist",
+					{"parent": website_item_details.name, "medusa_customer_id": cus_id},
+				)
+				is_wishlisted = 1 if is_wishlisted else 0
+			
+			website_items_data.append(
+				{
+					"product_id": website_item_details.medusa_id,
+					"variant_id": website_item_details.medusa_variant_id,
+					"title": website_item_details.web_item_name,
+					"item_group": website_item_details.item_group,
+					"thumbnail": thumbnail,
+					"rating": website_item_details.custom_overall_rating,
+					"is_wishlisted": is_wishlisted,
+					"has_variants": website_item_details.has_variants,
+				}
+			)
+			added_product_ids.add(medusa_id)
 
 		recommended_items_data.extend(variant_items_data)
 		recommended_items_data.extend(relevant_items_data)
-		recommended_items_data.extend(paginated_products)
+		recommended_items_data.extend(website_items_data)
+
+		recommended_items_data = [
+			item for item in recommended_items_data if item.get("product_id") != product_id
+		]
 
 		return recommended_items_data
 	
