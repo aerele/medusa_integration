@@ -1,0 +1,64 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-04-28 14:10:37.885659",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "dental_items",
+  "medical_items",
+  "infection_control_items",
+  "medical_laboratory_ivd_items"
+ ],
+ "fields": [
+  {
+   "fieldname": "dental_items",
+   "fieldtype": "Table",
+   "label": "Dental Items",
+   "options": "Product Collection Item"
+  },
+  {
+   "fieldname": "medical_items",
+   "fieldtype": "Table",
+   "label": "Medical Items",
+   "options": "Product Collection Item"
+  },
+  {
+   "fieldname": "infection_control_items",
+   "fieldtype": "Table",
+   "label": "Infection Control Items",
+   "options": "Product Collection Item"
+  },
+  {
+   "fieldname": "medical_laboratory_ivd_items",
+   "fieldtype": "Table",
+   "label": "Medical Laboratory IVD Items",
+   "options": "Product Collection Item"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2025-04-28 14:10:37.885659",
+ "modified_by": "Administrator",
+ "module": "Medusa Integration",
+ "name": "Product Collection",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

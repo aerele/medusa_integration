@@ -196,6 +196,7 @@ scheduler_events = {
 		"* * * * *": [
 			"medusa_integration.api.send_quotation_emails",
 			"medusa_integration.api.expire_otps",
+			"medusa_integration.api.add_top_selling_items_to_collection"
 		],
 		"0 1 * * *": [
 			"medusa_integration.api.fetch_clearance_items"
