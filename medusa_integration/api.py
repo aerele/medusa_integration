@@ -2785,13 +2785,13 @@ def fetch_relevant_collection_products(cus_id=None):
 @frappe.whitelist(allow_guest=True)
 def fetch_relevant_items():
 	recommended_items_data = []
+	base_url = frappe.utils.get_url()
 
 	def get_recommended_items_data(relevant_items, cus_id):
 		items_data = set()
 		results = []
 
 		for recommended_item in relevant_items:
-			base_url = frappe.utils.get_url()
 			website_item_name = recommended_item
 			item_data = frappe.get_doc("Website Item", website_item_name)
 			medusa_id = item_data.medusa_id
@@ -2821,13 +2821,13 @@ def fetch_relevant_items():
 				is_wishlisted = 1 if is_wishlisted else 0
 
 			item_entry = {
-				"id": medusa_id,
+				"product_id": medusa_id,
 				"variant_id": item_data.medusa_variant_id,
 				"title": item_data.web_item_name,
 				"item_group": item_data.item_group,
 				"thumbnail": thumbnail,
 				"rating": item_data.custom_overall_rating,
-				"isWishlisted": is_wishlisted,
+				"is_wishlisted": is_wishlisted,
 				"has_variants": item_data.has_variants,
 			}
 
@@ -2885,9 +2885,49 @@ def fetch_relevant_items():
 			filters=filters,
 		)
 
+		website_items_data = []
+		for website_item_details in website_items:
+			image_url = frappe.db.get_value(
+				"File",
+				{
+					"attached_to_doctype": "Website Item",
+					"attached_to_name": website_item_details.name,
+				},
+				"file_url",
+			)
+			if image_url:
+				thumbnail = image_url if image_url.startswith("https") else f"{base_url}{image_url}"
+			else:
+				thumbnail = None
+
+			is_wishlisted = 0
+			if cus_id:
+				is_wishlisted = frappe.db.exists(
+					"Medusa Wishlist",
+					{"parent": website_item_details.name, "medusa_customer_id": cus_id},
+				)
+				is_wishlisted = 1 if is_wishlisted else 0
+			
+			website_items_data.append(
+				{
+					"product_id": website_item_details.medusa_id,
+					"variant_id": website_item_details.medusa_variant_id,
+					"title": website_item_details.web_item_name,
+					"item_group": website_item_details.item_group,
+					"thumbnail": thumbnail,
+					"rating": website_item_details.custom_overall_rating,
+					"is_wishlisted": is_wishlisted,
+					"has_variants": website_item_details.has_variants,
+				}
+			)
+
 		recommended_items_data.extend(variant_items_data)
 		recommended_items_data.extend(relevant_items_data)
-		recommended_items_data.extend(website_items)
+		recommended_items_data.extend(website_items_data)
+
+		recommended_items_data = [
+			item for item in recommended_items_data if item.get("id") != product_id
+		]
 
 		return recommended_items_data
 	
