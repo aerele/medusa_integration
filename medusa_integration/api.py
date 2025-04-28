@@ -1618,6 +1618,7 @@ def get_website_items(url=None, customer_id=None):
 				fields=[
 					"name",
 					"medusa_id",
+					"item_code",
 					"medusa_variant_id",
 					"web_item_name",
 					"item_group",
@@ -1661,6 +1662,7 @@ def get_website_items(url=None, customer_id=None):
 				{
 					"id": item["medusa_id"],
 					"variant_id": item["medusa_variant_id"],
+					"item_code": item["item_code"],
 					"title": item["web_item_name"],
 					"collection_title": item["item_group"],
 					"thumbnail": thumbnail,
@@ -2781,6 +2783,59 @@ def fetch_relevant_collection_products(cus_id=None):
 		)
 		return {"status": "error", "message": str(e)}
 
+@frappe.whitelist()
+def add_top_selling_items_to_collection():
+	try:
+		collection = frappe.get_single("Product Collection")
+
+		collection.set("dental_items", [])
+		collection.set("medical_items", [])
+		collection.set("infection_control_items", [])
+		collection.set("medical_laboratory_ivd_items", [])
+
+		categories = {
+			"Dental": "dental_items",
+			"Medical": "medical_items",
+			"Infection Control": "infection_control_items",
+			"Medical Laboratory IVD": "medical_laboratory_ivd_items"
+		}
+
+		for group_name, child_table_field in categories.items():
+			top_products = get_top_selling_items(group_name)
+			for prod in top_products:
+				collection.append(child_table_field, {
+					"item_code": prod.item_code,
+					"item_name": prod.item_name,
+					"sales_count": prod.sales_qty
+				})
+
+		collection.save()
+		frappe.db.commit()
+
+		return {"status": "success", "message": "Top-selling products updated successfully."}
+
+	except Exception as e:
+		frappe.log_error(message=str(e), title="Add Top Selling Items to Collection Failed")
+		return {"status": "error", "message": str(e)}
+
+def get_top_selling_items(group_name):
+	item_group_descendants = []
+	descendants = frappe.db.get_descendants("Item Group", group_name)
+	if descendants:
+		item_group_descendants.extend(descendants)
+	item_group_descendants.append(group_name)
+
+	return frappe.db.sql("""
+		SELECT sii.item_code, i.item_name, SUM(sii.qty) as sales_qty
+		FROM `tabSales Invoice Item` sii
+		INNER JOIN `tabSales Invoice` si ON sii.parent = si.name
+		INNER JOIN `tabItem` i ON sii.item_code = i.name
+		WHERE si.docstatus = 1
+		  AND i.item_group IN %(group_names)s
+		GROUP BY sii.item_code
+		ORDER BY sales_qty DESC
+		LIMIT 20
+	""", {"group_names": tuple(item_group_descendants)}, as_dict=True)
 
 @frappe.whitelist(allow_guest=True)
 def fetch_relevant_items():
@@ -2931,18 +2986,20 @@ def fetch_relevant_items():
 		
 		product_ids = [item["item_code"] for item in website_items_data]
 
-		sales_data = frappe.db.get_all(
-			"Sales Invoice Item",
-			fields=["item_code", "SUM(qty) as total_qty"],
-			filters={
-				"item_code": ["in", product_ids],
-				"docstatus": 1,
-			},
-			group_by="item_code",
-		)
+		if product_ids:
+			sales_data = frappe.db.get_all(
+				"Sales Invoice Item",
+				fields=["item_code", "SUM(qty) as total_qty"],
+				filters={
+					"item_code": ["in", product_ids],
+					"docstatus": 1,
+				},
+				group_by="item_code",
+			)
+		else:
+			sales_data = []
 
 		sales_count_map = {entry["item_code"]: entry["total_qty"] for entry in sales_data}
-		frappe.log_error(title="test", message=sales_count_map)
 
 		for item in website_items_data:
 			item["sales_count"] = sales_count_map.get(item["item_code"], 0)
