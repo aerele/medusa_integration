@@ -3703,6 +3703,7 @@ def get_clearance_items(customer_id=None):
 			fields=[
 				"name",
 				"item_group",
+				"brand"
 			],
 			filters=filters,
 		)
@@ -3715,6 +3716,7 @@ def get_clearance_items(customer_id=None):
 			total_data.append(
 				{
 					"item_group": website_item_details.item_group,
+					"brand": website_item_details.brand,
 					"colour": colour,
 					"shape": shape,
 					"shade": shade
@@ -3767,6 +3769,7 @@ def get_clearance_items(customer_id=None):
 		shapes_set = set()
 		shades_set = set()
 		colours_set = set()
+		brands_set = set()
 		distinct_colours = distinct_shapes = distinct_shades = []
 
 		for entry in total_data:
@@ -3777,6 +3780,8 @@ def get_clearance_items(customer_id=None):
 				shades_set.add(entry.get("shade"))
 			if entry.get("colour"):
 				colours_set.add(entry.get("colour"))
+			if entry.get("brand"):
+				brands_set.add(entry.get("brand"))
 		
 		if colours_set:		
 			distinct_colours = clean_entries(list(colours_set), skip_digit_check=False)
@@ -3795,6 +3800,7 @@ def get_clearance_items(customer_id=None):
 			"current_page": int(page),
 			"items_in_page": len(entries_data),
 			"distinct_collection_titles": list(item_groups_set),
+			"distinct_brands": list(brands_set),
 			"distinct_colours": distinct_colours,
 			"distinct_shapes": distinct_shapes,
 			"distinct_shades": distinct_shades,
