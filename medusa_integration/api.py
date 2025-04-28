@@ -2755,8 +2755,9 @@ def fetch_relevant_collection_products(cus_id=None):
 		data = json.loads(frappe.request.data)
 		item_group = data.get("item_group")
 		second_part = ""
+		base_url = frappe.utils.get_url()
 
-		route = frappe.db.get_value("Item Group", {"name": item_group}, "route")
+		route = frappe.db.get_value("Item Group", {"name": item_group}, "custom_medusa_route")
 		parts = route.strip("/").split("/")
 		if len(parts) > 1:
 			second_part = parts[1].replace("-", "%")
@@ -2768,19 +2769,88 @@ def fetch_relevant_collection_products(cus_id=None):
 			else {"name": second_part},
 			"name",
 		)
+		collection = frappe.get_single("Product Collection")
 
-		parent_route = frappe.db.get_value(
-			"Item Group", {"name": parent_group}, "custom_medusa_route"
-		)
-		result = get_website_items(url=parent_route, customer_id=cus_id)
+		products_list = []
+		if parent_group == "DENTAL":
+			products_list = collection.dental_items
+		elif parent_group == "MEDICAL":
+			products_list = collection.medical_items
+		elif parent_group == "INFECTION CONTROL":
+			products_list = collection.infection_control_items
+		elif parent_group == "MEDICAL LABORATORY IVD":
+			products_list = collection.medical_laboratory_ivd_items
+
+		item_codes = [item.item_code for item in products_list]
+
+		if item_codes:
+			website_items = frappe.get_all(
+				"Website Item",
+				fields=[
+				"name",
+				"medusa_id",
+				"medusa_variant_id",
+				"web_item_name",
+				"item_code",
+				"item_group",
+				"custom_overall_rating",
+				"has_variants",
+			],
+				filters={"item_code": ["in", item_codes]}
+			)
+		else:
+			website_items = []
+		
+		website_items_data = []
+		sales_count_map = {item.item_code: item.sales_count for item in products_list}
+
+		for website_item_details in website_items:
+			medusa_id = website_item_details.medusa_id
+
+			image_url = frappe.db.get_value(
+				"File",
+				{
+					"attached_to_doctype": "Website Item",
+					"attached_to_name": website_item_details.name,
+				},
+				"file_url",
+			)
+			if image_url:
+				thumbnail = image_url if image_url.startswith("https") else f"{base_url}{image_url}"
+			else:
+				thumbnail = None
+
+			is_wishlisted = 0
+			if cus_id:
+				is_wishlisted = frappe.db.exists(
+					"Medusa Wishlist",
+					{"parent": website_item_details.name, "medusa_customer_id": cus_id},
+				)
+				is_wishlisted = 1 if is_wishlisted else 0
+			
+			website_items_data.append(
+				{
+					"product_id": website_item_details.medusa_id,
+					"variant_id": website_item_details.medusa_variant_id,
+					"title": website_item_details.web_item_name,
+					"item_group": website_item_details.item_group,
+					"thumbnail": thumbnail,
+					"rating": website_item_details.custom_overall_rating,
+					"is_wishlisted": is_wishlisted,
+					"has_variants": website_item_details.has_variants,
+					"sales_count": sales_count_map.get(website_item_details.item_code, 0)
+				}
+			)
+
+		website_items_data.sort(key=lambda x: x.get("sales_count", 0), reverse=True)
+
 		return {
 			"top_collection": parent_group,
-			"products": result.get("paginatedProducts"),
+			"products": website_items_data
 		}
+
 	except Exception as e:
-		frappe.log_error(
-			message=str(e), title="Fetch Relevant Collection Products Failed"
-		)
+		frappe.log_error(message=frappe.get_traceback(), title="Fetch Relevant Collection Products Failed")
 		return {"status": "error", "message": str(e)}
 
 @frappe.whitelist()
