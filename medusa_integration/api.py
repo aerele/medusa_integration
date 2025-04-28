@@ -3638,7 +3638,6 @@ def get_clearance_items(customer_id=None):
 				"has_variants",
 			],
 			filters=filters,
-			order_by="modified desc",
 			start=offset,
 			page_length=page_size,
 		)
@@ -3693,6 +3692,7 @@ def get_clearance_items(customer_id=None):
 
 			entries_data.append(
 				{
+					"website_item_name": website_item_details.name,
 					"product_id": website_item_details.medusa_id,
 					"variant_id": website_item_details.medusa_variant_id,
 					"item_name": website_item_details.web_item_name,
@@ -3731,6 +3731,8 @@ def get_clearance_items(customer_id=None):
 		if shades_set:
 			distinct_shades = clean_entries(list(shades_set), skip_digit_check=True)
 		
+		entries_data.sort(key=lambda x: clearance_item_names.index(x["website_item_name"]))
+
 		response = {
 			"product_count": len(total_products),
 			"total_pages": math.ceil(len(total_products) / page_size),
