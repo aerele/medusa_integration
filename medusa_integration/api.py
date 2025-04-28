@@ -3990,3 +3990,15 @@ def get_item_specifications(item_name):
 			shade = description
 
 	return colour, shape, shade
+
+@frappe.whitelist(allow_guest=True)
+def get_product_has_variants(medusa_id):
+	try:
+		has_variants = frappe.get_value("Website Item", {"medusa_id": medusa_id}, "has_variants")
+		if has_variants:
+			return {"status": "success", "has_variants": has_variants}
+		else:
+			return {"status": "empty"}
+	except Exception as e:
+		frappe.log_error(title="get_product_has_variants error", message=frappe.get_traceback())
+		return {"status": "error", "message": str(e)}
