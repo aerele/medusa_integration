@@ -9,6 +9,7 @@
  "field_order": [
   "website_item",
   "website_item_name",
+  "expiry_date",
   "show"
  ],
  "fields": [
@@ -32,12 +33,18 @@
    "fieldtype": "Check",
    "in_list_view": 1,
    "label": "Show in Website"
+  },
+  {
+   "fieldname": "expiry_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Expiry Date"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-04-27 17:11:26.715455",
+ "modified": "2025-04-28 09:14:00.897432",
  "modified_by": "Administrator",
  "module": "Medusa Integration",
  "name": "Expiring Items Table",
