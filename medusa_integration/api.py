@@ -3733,6 +3733,31 @@ def get_clearance_items(customer_id=None):
 		
 		filters = {"name": ["in", clearance_item_names]}
 
+		all_products = frappe.get_all(
+			"Website Item",
+			fields=[
+				"name",
+				"item_group",
+				"brand"
+			],
+			filters=filters,
+		)
+
+		all_data = []
+		for website_item_details in all_products:
+
+			colour, shape, shade = get_item_specifications(website_item_details.name)
+
+			all_data.append(
+				{
+					"item_group": website_item_details.item_group,
+					"brand": website_item_details.brand,
+					"colour": colour,
+					"shape": shape,
+					"shade": shade
+				}
+			)
+
 		if collection_titles:
 			if not isinstance(collection_titles, list):
 				collection_titles = [collection_titles]
@@ -3857,21 +3882,6 @@ def get_clearance_items(customer_id=None):
 			filters=filters,
 		)
 
-		total_data = []
-		for website_item_details in total_products:
-
-			colour, shape, shade = get_item_specifications(website_item_details.name)
-
-			total_data.append(
-				{
-					"item_group": website_item_details.item_group,
-					"brand": website_item_details.brand,
-					"colour": colour,
-					"shape": shape,
-					"shade": shade
-				}
-			)
-
 		entries_data = []
 		for website_item_details in website_items:
 			image_url = frappe.db.get_value(
@@ -3921,7 +3931,7 @@ def get_clearance_items(customer_id=None):
 		brands_set = set()
 		distinct_colours = distinct_shapes = distinct_shades = []
 
-		for entry in total_data:
+		for entry in all_data:
 			item_groups_set.add(entry.get("item_group"))
 			if entry.get("shape"):
 				shapes_set.add(entry.get("shape"))
