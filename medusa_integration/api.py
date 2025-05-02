@@ -1144,19 +1144,22 @@ def namecheck(self):
 def export_all_website_item():
 	doctype = "Website Item"
 	method = ""
-	record = frappe.get_all(doctype)  # frappe.get_all(doctype, limit = 5)
-	for r in record:
-		doc = frappe.get_doc(doctype, r)
-		if doc.published and not doc.medusa_id:
-			try:
-				print("Beginning to export: ", doc.name)
-				export_website_item(doc, method)
-			except frappe.ValidationError as e:
-				print(f"Skipping {doc.name} due to error: {str(e)}")
-			except Exception as e:
-				print(f"Unexpected error while exporting {doc.name}: {str(e)}")
-				raise e
+	
+	records = frappe.get_all(
+		doctype,
+		filters={
+			"published": 1,
+			"medusa_id": ["is", "not set"],
+		},
+		pluck="name"
+	)
 
+	for name in records:
+		doc = frappe.get_doc(doctype, name)
+		try:
+			export_website_item(doc, method)
+		except Exception:
+			frappe.log_error(title=f"Error exporting {doc.name} item", message=frappe.get_traceback())
 
 def update_all_website_item(method=None):
 	doctype = "Website Item"
@@ -1167,28 +1170,20 @@ def update_all_website_item(method=None):
 			try:
 				print("Beginning to update: ", doc.name)
 				update_website_item(doc, method)
-			except frappe.ValidationError as e:
-				print(f"Skipping {doc.name} due to error: {str(e)}")
 			except Exception as e:
-				print(f"Unexpected error while updating {doc.name}: {str(e)}")
-				raise e
-
+				frappe.log_error(title=f"Error updating {doc.name} item", message=frappe.get_traceback())
 
 def export_all_item_groups():
 	doctype = "Item Group"
-	groups = frappe.get_all(doctype)  # frappe.get_all(doctype, limit = 5)
+	groups = frappe.get_all(doctype)
 	for group in groups:
 		doc = frappe.get_doc(doctype, group)
 		if not doc.medusa_id:
 			try:
 				print("Beginning to export: ", doc.name)
 				export_item_group(doc)
-			except frappe.ValidationError as e:
-				print(f"Skipping {doc.name} due to error: {str(e)}")
 			except Exception as e:
-				print(f"Unexpected error while exporting {doc.name}: {str(e)}")
-				raise e
-
+				frappe.log_error(title=f"Error exporting {doc.name} item group", message=frappe.get_traceback())
 
 def export_all_website_images():
 	doctype = "File"
@@ -1197,20 +1192,21 @@ def export_all_website_images():
 		filters={
 			"attached_to_doctype": "Website Item",
 			"attached_to_field": ["in", ["image", "website_image"]],
+			"file_type": ["in", ["JPG", "JPEG", "PNG"]],
+			"medusa_id": ["is", "not set"],
 		},
 	)
+
 	for image in images:
 		doc = frappe.get_doc(doctype, image)
-		if not doc.medusa_id:
-			try:
-				print("Beginning to export: ", doc.name)
-				export_image_to_medusa(doc)
-			except frappe.ValidationError as e:
-				print(f"Skipping {doc.name} due to error: {str(e)}")
-			except Exception as e:
-				print(f"Unexpected error while exporting {doc.name}: {str(e)}")
-				raise e
+		try:
+			export_image_to_medusa(doc)
+		except Exception as e:
+			frappe.log_error(title=f"Error exporting {doc.name} image", message=frappe.get_traceback())
 
+def export_items_and_images():
+	export_all_website_item()
+	export_all_website_images()
 
 def export_all_medusa_price_list():
 	doctype = "Item Price"
