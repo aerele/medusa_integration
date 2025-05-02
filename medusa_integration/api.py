@@ -1813,7 +1813,37 @@ def get_website_items(url=None, customer_id=None):
 				as_dict=True,
 			)
 
-		if not (item_group == "Products" and brands and not collection_titles):
+		if item_group == "Products" and collection_titles:
+			item_groups = frappe.get_all(
+				"Item Group",
+				fields=["name", 'custom_medusa_route'],
+				filters={"name": ['in', collection_titles]},
+				order_by="name",
+			)
+			distinct_parent_item_groups = []
+
+			for group in item_groups:
+				route = group.get("custom_medusa_route", "")
+				if not route:
+					continue
+
+				parts = route.strip("/").split("/")
+				if len(parts) > 1:
+					second_part = parts[1].replace("-", "%")
+
+					matched_group = frappe.db.get_value(
+						"Item Group",
+						{"name": ["like", f"%{second_part}%"]} if "%" in second_part else {"name": second_part},
+						"name",
+					)
+
+					if matched_group:
+						distinct_parent_item_groups.append({
+							"title": matched_group,
+							"handle": re.sub(r"[^a-z0-9]+", "-", matched_group.lower()).strip("-"),
+						})
+		
+		elif not (item_group == "Products" and brands and not collection_titles):
 			immediate_descendants = frappe.get_all(
 				"Item Group",
 				fields=["name"],
@@ -1830,6 +1860,7 @@ def get_website_items(url=None, customer_id=None):
 				}
 				for group in immediate_descendants
 			]
+		
 		else:
 			for collection in distinct_collection_titles:
 				route = frappe.db.get_value(
