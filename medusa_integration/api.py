@@ -629,7 +629,33 @@ def export_website_item(self, method):
 				self.medusa_id, self.item_code, self.on_backorder, country_code
 			)
 			self.db_set("medusa_variant_id", medusa_var_id)
-			print(self.name, " exported successfully")
+
+			price_payload = json.dumps({
+				"name": self.web_item_name,
+				"description": "Standard Selling",
+				"type": "override",
+				"customer_groups": [],
+				"status": "active",
+				"starts_at": None,
+				"ends_at": None,
+				"prices": [
+					{
+						"amount": 1000,
+						"variant_id": medusa_var_id,
+						"currency_code": "omr",
+					}
+				],
+			})
+
+			price_args = frappe._dict({
+				"method": "POST",
+				"url": f"{get_url()[0]}/admin/price-lists",
+				"headers": get_headers(with_token=True),
+				"payload": price_payload,
+				"throw_message": f"Error while creating price list for Website Item {self.name}",
+			})
+
+			price_response = send_request(price_args).get("price_list")
 
 	except frappe.ValidationError as e:
 		if "Product with handle" in str(e) and "already exists" in str(e):
