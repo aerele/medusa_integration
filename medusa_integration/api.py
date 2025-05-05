@@ -426,6 +426,7 @@ def update_quotation():
 @frappe.whitelist(allow_guest=True)
 def update_quotation_new():
 	data = json.loads(frappe.request.data)
+	frappe.log_error(title="data", message=data)
 
 	medusa_quotation_id = data.get("quotation_id")
 	quotation_id = frappe.get_value("Quotation", {"medusa_quotation_id": medusa_quotation_id}, "name")
@@ -439,6 +440,7 @@ def update_quotation_new():
 	except frappe.DoesNotExistError:
 		return {"error": "Quotation not found for ID: {}".format(quotation_id)}
 
+	frappe.log_error(title="quote", message=quote)
 	quote.status = "Open"
 	quote.workflow_state = "Approved"
 	quote.order_type = "Sales"
@@ -447,6 +449,7 @@ def update_quotation_new():
 
 	quote.items = []
 	quote.taxes = []
+	frappe.log_error(title="items", message=items)
 	for item in items:
 		variant_id = item.get("variant_id")
 		item_details = frappe.get_value("Website Item", {"medusa_variant_id": variant_id}, ["item_code", "item_name", "description", "stock_uom"], as_dict=True)
@@ -483,6 +486,7 @@ def update_quotation_new():
 						})
 
 	quote.unapproved_items = []
+	frappe.log_error(title="unapproved_items", message=unapproved_items)
 	for item in unapproved_items:
 		variant_id = item.get("variant_id")
 		item_details = frappe.get_value("Website Item", {"medusa_variant_id": variant_id}, ["item_code", "stock_uom"], as_dict=True)
@@ -495,6 +499,7 @@ def update_quotation_new():
 		})
 	
 	quote.custom_increased_items = []
+	frappe.log_error(title="custom_increased_items", message=custom_increased_items)
 	for item in custom_increased_items:
 		variant_id = item.get("variant_id")
 		item_details = frappe.get_value("Website Item", {"medusa_variant_id": variant_id}, ["item_code", "stock_uom"], as_dict=True)
@@ -506,6 +511,7 @@ def update_quotation_new():
 	
 	quote.save()
 	quote.reload()
+	frappe.log_error(title="quote", message=quote)
 
 	export_quotation(self=quote, method='')
 
