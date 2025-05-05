@@ -629,7 +629,33 @@ def export_website_item(self, method):
 				self.medusa_id, self.item_code, self.on_backorder, country_code
 			)
 			self.db_set("medusa_variant_id", medusa_var_id)
-			print(self.name, " exported successfully")
+
+			price_payload = json.dumps({
+				"name": self.web_item_name,
+				"description": "Standard Selling",
+				"type": "override",
+				"customer_groups": [],
+				"status": "active",
+				"starts_at": None,
+				"ends_at": None,
+				"prices": [
+					{
+						"amount": 1000,
+						"variant_id": medusa_var_id,
+						"currency_code": "omr",
+					}
+				],
+			})
+
+			price_args = frappe._dict({
+				"method": "POST",
+				"url": f"{get_url()[0]}/admin/price-lists",
+				"headers": get_headers(with_token=True),
+				"payload": price_payload,
+				"throw_message": f"Error while creating price list for Website Item {self.name}",
+			})
+
+			price_response = send_request(price_args).get("price_list")
 
 	except frappe.ValidationError as e:
 		if "Product with handle" in str(e) and "already exists" in str(e):
@@ -926,6 +952,91 @@ def create_medusa_price_list(self, called_manually=False):
 			}
 		)
 		send_request(args)
+
+@frappe.whitelist(allow_guest=True)
+def sync_missing_prices_to_medusa():
+	website_items = frappe.get_all(
+		"Website Item",
+		filters={"medusa_id": ["is", "set"]},
+		fields=["item_code", "medusa_id", "web_item_name", "medusa_variant_id"]
+	)
+
+	item_code_to_data = {
+		item["item_code"]: item for item in website_items if item.get("medusa_variant_id")
+	}
+
+	item_codes = list(item_code_to_data.keys())
+
+	item_prices = frappe.get_all(
+		"Item Price",
+		filters={
+			"item_code": ["in", item_codes],
+			"customer": ["in", ["", None]],
+			"price_list": "Standard Selling",
+			"medusa_price_id": ["is", "not set"]
+		},
+		fields=["item_code", "price_list_rate", "medusa_price_id", "name"]
+	)
+
+	price_map = {}
+	for p in item_prices:
+		if p["item_code"] not in price_map:
+			price_map[p["item_code"]] = p
+	
+	items_to_sync = {}
+	for item_code, item in item_code_to_data.items():
+		price_data = price_map.get(item_code)
+
+		if not price_data or not price_data.get("medusa_price_id"):
+			items_to_sync[item_code] = item
+	
+	for item_code, item in items_to_sync.items():
+		medusa_id = item["medusa_id"]
+		variant_id = item["medusa_variant_id"]
+		web_item_name = item["web_item_name"]
+
+		item_price_data = price_map.get(item_code)
+
+		if item_price_data and item_price_data.get("medusa_price_id"):
+			continue
+
+		if item_price_data:
+			price = int(item_price_data["price_list_rate"] * 1000)
+		else:
+			price = 1000
+
+		payload = {
+			"name": web_item_name,
+			"description": "Standard Selling",
+			"type": "override",
+			"customer_groups": [],
+			"status": "active",
+			"starts_at": None,
+			"ends_at": None,
+			"prices": [
+				{
+					"amount": price,
+					"variant_id": variant_id,
+					"currency_code": "inr"
+				}
+			],
+		}
+
+		if get_url()[1]:
+			args = frappe._dict(
+				{
+					"method": "POST",
+					"url": f"{get_url()[0]}/admin/price-lists",
+					"headers": get_headers(with_token=True),
+					"payload": json.dumps(payload),
+					"throw_message": f"Error while exporting price for {item_code} to Medusa",
+				}
+			)
+			response = send_request(args).get("price_list")
+
+			if item_price_data:
+				frappe.db.set_value("Item Price", item_price_data["name"], "medusa_price_id", response["prices"][0]["id"])
+				frappe.db.commit()
 
 @frappe.whitelist(allow_guest=True)
 def fetch_all_customers(name=None):
