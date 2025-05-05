@@ -137,9 +137,6 @@ doc_events = {
 	"Item Price": {
 		"validate": "medusa_integration.api.create_medusa_price_list"
 	},
-	# "Customer": {
-	# 	"validate": "medusa_integration.api.create_medusa_customer"
-	# },
 	"Website Item": {
 	"validate": "medusa_integration.api.website_item_validate"
 	},
