@@ -419,6 +419,7 @@ def update_quotation():
 		quote.status = "Open"
 		quote.workflow_state = "Rejected"
 		quote.submit()
+		quote.cancel()
 
 	return {"message": "Quotation updated successfully", "Quotation ID": quote.name}
 
