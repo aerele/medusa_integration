@@ -1687,23 +1687,8 @@ def get_website_items(url=None, customer_id=None):
 		shades = data.get("shade")
 
 		parts = url.strip("/").split("/")
-		banner_url = "/".join(parts[:2]) if len(parts) > 1 else url
 
 		url_second_part = parts[1].replace("-", "%") if len(parts) > 1 else None
-
-		banner_item_group = (
-			frappe.db.get_value(
-				"Item Group",
-				{"name": ["like", f"%{url_second_part}%"]}
-				if "%" in url_second_part
-				else {"name": url_second_part}
-				if url_second_part
-				else None,
-				"name",
-			)
-			if url_second_part
-			else None
-		)
 
 		last_part = parts[-1].replace("-", "%")
 		second_part = set()
@@ -1737,8 +1722,6 @@ def get_website_items(url=None, customer_id=None):
 		distinct_parent_item_groups = []
 		distinct_collection_titles = []
 		distinct_brands = []
-
-		banner_details = get_product_details_banner(banner_item_group)
 
 		distinct_collection_titles = frappe.db.sql(
 			"""
@@ -2062,8 +2045,6 @@ def get_website_items(url=None, customer_id=None):
 			"total_pages": math.ceil(total_products / page_size),
 			"current_page": int(page),
 			"items_in_page": len(modified_items),
-			"banner": banner_details,
-			"banner_url": banner_url,
 			"distinct_parent_item_groups": distinct_parent_item_groups,
 			"distinct_collection_titles": distinct_collection_titles,
 			"distinct_brands": distinct_brands,
@@ -3391,22 +3372,70 @@ def get_testimonials():
 		frappe.log_error(message=str(e), title="Fetch Testimonials Failed")
 		return {"status": "error", "message": str(e)}
 
-
 @frappe.whitelist(allow_guest=True)
 def get_product_details_banner(item_group):
+	import re
+
 	try:
-		url = frappe.db.get_value(
+		base_url = frappe.utils.get_url()
+
+		def normalize_input(value):
+			return re.sub(r"[-_]+", " ", value).title()
+
+		normalized_group = normalize_input(item_group)
+
+		banner_entries = frappe.get_all(
 			"Product details banner",
-			{"parent": "Active Homepage Landing", "item_group": item_group},
-			"url",
+			filters={"parent": "Active Homepage Landing", "item_group": normalized_group},
+			fields=["link_doctype", "name1", "url"],
 		)
 
-		return url
+		if not banner_entries:
+			return {"status": "not_found", "message": f"No banner entries for {normalized_group}"}
+
+		result = []
+		for entry in banner_entries:
+			doctype = entry.link_doctype
+			name = entry.name1
+			banner_url = entry.url
+
+			if doctype == "Item Group":
+				url = frappe.db.get_value("Item Group", name, "custom_medusa_route")
+				result.append({
+					"type": doctype,
+					"title": name,
+					"item_group_url": url,
+					"banner_url" : banner_url
+				})
+
+			elif doctype == "Brand":
+				result.append({
+					"type": doctype,
+					"title": name,
+					"banner_url" : banner_url
+				})
+
+			elif doctype == "Website Item":
+				web_item = frappe.db.get_value(
+					"Website Item",
+					name,
+					["web_item_name", "has_variants", "medusa_id"],
+					as_dict=True,
+				)
+				if web_item:
+					result.append({
+						"type": doctype,
+						"title": web_item.web_item_name,
+						"product_id": web_item.medusa_id,
+						"has_variants": web_item.has_variants,
+						"banner_url" : banner_url
+					})
+
+		return {"status": "success", "banners": result}
 
 	except Exception as e:
-		frappe.log_error(message=str(e), title="Fetch URL by Item Group Failed")
+		frappe.log_error(message=frappe.get_traceback(), title="Fetch Product Details Page Banners Failed")
 		return {"status": "error", "message": str(e)}
-
 
 @frappe.whitelist(allow_guest=True)
 def get_homepage_banners():
