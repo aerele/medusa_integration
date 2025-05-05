@@ -1702,7 +1702,7 @@ def get_website_items(url=None, customer_id=None):
 				"name",
 			)
 			if url_second_part
-			else None
+			else "Products"
 		)
 
 		last_part = parts[-1].replace("-", "%")
@@ -3392,20 +3392,161 @@ def get_testimonials():
 		return {"status": "error", "message": str(e)}
 
 
+# @frappe.whitelist(allow_guest=True)
+# def get_product_details_banner(item_group):
+# 	try:
+# 		url = frappe.db.get_value(
+# 			"Product details banner",
+# 			{"parent": "Active Homepage Landing", "item_group": item_group},
+# 			"url",
+# 		)
+
+# 		return url
+
+# 	except Exception as e:
+# 		frappe.log_error(message=str(e), title="Fetch URL by Item Group Failed")
+# 		return {"status": "error", "message": str(e)}
+
+# import re
+
+# @frappe.whitelist(allow_guest=True)
+# def get_product_details_banner(item_group):
+# 	try:
+# 		# Normalize input: "medical-laboratory-ivd" → "Medical Laboratory IVD"
+# 		normalized_group = re.sub(r"[-_]+", " ", item_group).title()
+
+# 		if normalized_group == "Products":
+# 			records = frappe.get_all(
+# 				"Product details banner",
+# 				filters={"parent": "Active Homepage Landing", "item_group": normalized_group},
+# 				fields=["url"]
+# 			)
+# 			urls = [rec["url"] for rec in records if rec.get("url")]
+# 			return {"status": "success", "urls": urls}
+
+# 		else:
+# 			url = frappe.db.get_value(
+# 				"Product details banner",
+# 				{"parent": "Active Homepage Landing", "item_group": normalized_group},
+# 				"url",
+# 			)
+# 			return {"status": "success", "url": url} if url else {"status": "not_found"}
+
+# 	except Exception as e:
+# 		frappe.log_error(message=str(e), title="Fetch URL by Item Group Failed")
+# 		return {"status": "error", "message": str(e)}
+import re
+import frappe
+
 @frappe.whitelist(allow_guest=True)
 def get_product_details_banner(item_group):
 	try:
-		url = frappe.db.get_value(
+		base_url = frappe.utils.get_url()
+
+		def normalize_input(value):
+			return re.sub(r"[-_]+", " ", value).title()
+
+		# def fetch_image_url(doctype, name):
+		# 	image_url = frappe.db.get_value(
+		# 		"File",
+		# 		{"attached_to_doctype": doctype, "attached_to_name": name},
+		# 		"file_url",
+		# 	)
+		# 	if image_url:
+		# 		return image_url if image_url.startswith("https") else f"{base_url}{image_url}"
+		# 	return None
+
+		# def fetch_first_layer_children(parent_group):
+		# 	children = frappe.get_all(
+		# 		"Item Group",
+		# 		fields=["name"],
+		# 		filters={"parent_item_group": parent_group},
+		# 		order_by="name",
+		# 	)
+		# 	enriched = []
+		# 	for child in children:
+		# 		route = frappe.db.get_value("Item Group", child["name"], "custom_medusa_route")
+		# 		enriched.append({"title": child["name"], "url": route})
+		# 	return enriched
+
+		normalized_group = normalize_input(item_group)
+
+		banner_entries = frappe.get_all(
 			"Product details banner",
-			{"parent": "Active Homepage Landing", "item_group": item_group},
-			"url",
+			filters={"parent": "Active Homepage Landing", "item_group": normalized_group},
+			fields=["link_doctype", "name1", "url"],
 		)
 
-		return url
+		if not banner_entries:
+			return {"status": "not_found", "message": f"No banner entries for {normalized_group}"}
+
+		result = []
+		for entry in banner_entries:
+			doctype = entry.link_doctype
+			name = entry.name1
+			# thumbnail = fetch_image_url(doctype, name)
+			banner_url = entry.url
+
+			if doctype == "Item Group":
+				url = frappe.db.get_value("Item Group", name, "custom_medusa_route")
+				# sub_categories = fetch_first_layer_children(name)
+				result.append({
+					"type": doctype,
+					"title": name,
+					# "thumbnail": thumbnail,
+					"item_group_url": url,
+					# "sub_categories": sub_categories,
+					"banner_url" : banner_url
+				})
+
+			elif doctype == "Brand":
+				# item_groups = frappe.db.sql(
+				# 	"""
+				# 	SELECT DISTINCT w.item_group AS name
+				# 	FROM `tabWebsite Item` w
+				# 	WHERE w.brand = %(brand_name)s
+				# 	ORDER BY w.item_group ASC
+				# 	""",
+				# 	{"brand_name": name},
+				# 	as_dict=True,
+				# )
+				# categories = [
+				# 	{
+				# 		"name": g["name"],
+				# 		"url": frappe.db.get_value("Item Group", g["name"], "custom_medusa_route"),
+				# 	}
+				# 	for g in item_groups
+				# ]
+				result.append({
+					"type": doctype,
+					"title": name,
+					# "thumbnail": thumbnail,
+					# "categories": categories,
+					"banner_url" : banner_url
+				})
+
+			elif doctype == "Website Item":
+				web_item = frappe.db.get_value(
+					"Website Item",
+					name,
+					["web_item_name", "has_variants", "medusa_id"],
+					as_dict=True,
+				)
+				if web_item:
+					result.append({
+						"type": doctype,
+						"title": web_item.web_item_name,
+						"product_id": web_item.medusa_id,
+						"has_variants": web_item.has_variants,
+						"banner_url" : banner_url
+					})
+
+		return {"status": "success", "banners": result}
 
 	except Exception as e:
-		frappe.log_error(message=str(e), title="Fetch URL by Item Group Failed")
+		frappe.log_error(message=frappe.get_traceback(), title="Fetch Product Details Banner Failed")
 		return {"status": "error", "message": str(e)}
+
 
 
 @frappe.whitelist(allow_guest=True)

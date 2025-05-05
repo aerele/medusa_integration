@@ -6,8 +6,10 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
+  "item_group",
   "url",
-  "item_group"
+  "link_doctype",
+  "name1"
  ],
  "fields": [
   {
@@ -20,14 +22,28 @@
    "fieldname": "item_group",
    "fieldtype": "Link",
    "in_list_view": 1,
-   "label": "Item Group",
+   "label": "Main Item Group",
    "options": "Item Group"
+  },
+  {
+   "fieldname": "name1",
+   "fieldtype": "Dynamic Link",
+   "in_list_view": 1,
+   "label": "Name",
+   "options": "link_doctype"
+  },
+  {
+   "fieldname": "link_doctype",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Linked to",
+   "options": "Item Group\nBrand\nWebsite Item"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-01-27 12:14:51.819409",
+ "modified": "2025-05-05 12:12:18.571187",
  "modified_by": "Administrator",
  "module": "Medusa Integration",
  "name": "Product details banner",
