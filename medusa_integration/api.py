@@ -426,7 +426,6 @@ def update_quotation():
 @frappe.whitelist(allow_guest=True)
 def update_quotation_new():
 	data = json.loads(frappe.request.data)
-	frappe.log_error(title="data", message=data)
 
 	medusa_quotation_id = data.get("quotation_id")
 	quotation_id = frappe.get_value("Quotation", {"medusa_quotation_id": medusa_quotation_id}, "name")
@@ -440,7 +439,6 @@ def update_quotation_new():
 	except frappe.DoesNotExistError:
 		return {"error": "Quotation not found for ID: {}".format(quotation_id)}
 
-	frappe.log_error(title="quote", message=quote)
 	quote.status = "Open"
 	quote.workflow_state = "Approved"
 	quote.order_type = "Sales"
@@ -449,7 +447,6 @@ def update_quotation_new():
 
 	quote.items = []
 	quote.taxes = []
-	frappe.log_error(title="items", message=items)
 	for item in items:
 		variant_id = item.get("variant_id")
 		item_details = frappe.get_value("Website Item", {"medusa_variant_id": variant_id}, ["item_code", "item_name", "description", "stock_uom"], as_dict=True)
@@ -486,7 +483,6 @@ def update_quotation_new():
 						})
 
 	quote.unapproved_items = []
-	frappe.log_error(title="unapproved_items", message=unapproved_items)
 	for item in unapproved_items:
 		variant_id = item.get("variant_id")
 		item_details = frappe.get_value("Website Item", {"medusa_variant_id": variant_id}, ["item_code", "stock_uom"], as_dict=True)
@@ -499,7 +495,6 @@ def update_quotation_new():
 		})
 	
 	quote.custom_increased_items = []
-	frappe.log_error(title="custom_increased_items", message=custom_increased_items)
 	for item in custom_increased_items:
 		variant_id = item.get("variant_id")
 		item_details = frappe.get_value("Website Item", {"medusa_variant_id": variant_id}, ["item_code", "stock_uom"], as_dict=True)
@@ -511,7 +506,6 @@ def update_quotation_new():
 	
 	quote.save()
 	quote.reload()
-	frappe.log_error(title="quote", message=quote)
 
 	export_quotation(self=quote, method='')
 
@@ -997,9 +991,6 @@ def sync_missing_prices_to_medusa():
 
 		item_price_data = price_map.get(item_code)
 
-		if item_price_data and item_price_data.get("medusa_price_id"):
-			continue
-
 		if item_price_data:
 			price = int(item_price_data["price_list_rate"] * 1000)
 		else:
@@ -1268,9 +1259,8 @@ def export_all_item_groups():
 				frappe.log_error(title=f"Error exporting {doc.name} item group", message=frappe.get_traceback())
 
 def export_all_website_images():
-	doctype = "File"
 	images = frappe.get_all(
-		doctype,
+		"File",
 		filters={
 			"attached_to_doctype": "Website Item",
 			"attached_to_field": ["in", ["image", "website_image"]],
@@ -1280,7 +1270,7 @@ def export_all_website_images():
 	)
 
 	for image in images:
-		doc = frappe.get_doc(doctype, image)
+		doc = frappe.get_doc("File", image)
 		try:
 			export_image_to_medusa(doc)
 		except Exception as e:
