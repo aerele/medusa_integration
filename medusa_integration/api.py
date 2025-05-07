@@ -164,61 +164,6 @@ def create_quotation():
 
 	return {"message": "Quotation created successfully", "quotationId": quote.name}
 
-
-@frappe.whitelist(allow_guest=True)
-def create_sales_order():
-	try:
-		data = json.loads(frappe.request.data)
-		items = data.get("items", [])
-		delivery_date = datetime.today() + timedelta(days=1)
-
-		customer = data.get("customer")
-
-		company = data.get("company")
-
-		sales_order = frappe.new_doc("Sales Order")
-		sales_order.update(
-			{
-				"customer": customer,
-				"delivery_date": delivery_date,
-				"order_type": "Sales",
-				"company": company,
-				"workflow_state": "Draft",
-				"from_ecommerce": 1,
-				"items": [],
-				"conversion_rate": 1.0,
-			}
-		)
-
-		for item in items:
-			item_code = item.get("item_code")
-			qty = item.get("qty")
-			rate = item.get("rate")
-			amount = rate * qty
-
-			sales_order.append(
-				"items",
-				{
-					"item_code": item_code,
-					"qty": qty,
-					"rate": rate,
-					"base_net_rate": rate,
-					"amount": amount,
-					"conversion_factor": 1.0,
-				},
-			)
-
-		sales_order.insert(ignore_permissions=True)
-
-		return {
-			"message": "Sales Order created successfully",
-			"Sales Order ID": sales_order.name,
-		}
-
-	except Exception as e:
-		frappe.log_error(frappe.get_traceback(), "Sales Order Creation Error")
-		return {"error": str(e)}
-
 @frappe.whitelist(allow_guest=True)
 def update_quotation():
 	data = json.loads(frappe.request.data)
@@ -426,7 +371,6 @@ def update_quotation():
 @frappe.whitelist(allow_guest=True)
 def update_quotation_new():
 	data = json.loads(frappe.request.data)
-	frappe.log_error(title="data", message=data)
 
 	medusa_quotation_id = data.get("quotation_id")
 	quotation_id = frappe.get_value("Quotation", {"medusa_quotation_id": medusa_quotation_id}, "name")
@@ -440,7 +384,6 @@ def update_quotation_new():
 	except frappe.DoesNotExistError:
 		return {"error": "Quotation not found for ID: {}".format(quotation_id)}
 
-	frappe.log_error(title="quote", message=quote)
 	quote.status = "Open"
 	quote.workflow_state = "Approved"
 	quote.order_type = "Sales"
@@ -449,7 +392,6 @@ def update_quotation_new():
 
 	quote.items = []
 	quote.taxes = []
-	frappe.log_error(title="items", message=items)
 	for item in items:
 		variant_id = item.get("variant_id")
 		item_details = frappe.get_value("Website Item", {"medusa_variant_id": variant_id}, ["item_code", "item_name", "description", "stock_uom"], as_dict=True)
@@ -486,7 +428,6 @@ def update_quotation_new():
 						})
 
 	quote.unapproved_items = []
-	frappe.log_error(title="unapproved_items", message=unapproved_items)
 	for item in unapproved_items:
 		variant_id = item.get("variant_id")
 		item_details = frappe.get_value("Website Item", {"medusa_variant_id": variant_id}, ["item_code", "stock_uom"], as_dict=True)
@@ -499,7 +440,6 @@ def update_quotation_new():
 		})
 	
 	quote.custom_increased_items = []
-	frappe.log_error(title="custom_increased_items", message=custom_increased_items)
 	for item in custom_increased_items:
 		variant_id = item.get("variant_id")
 		item_details = frappe.get_value("Website Item", {"medusa_variant_id": variant_id}, ["item_code", "stock_uom"], as_dict=True)
@@ -511,7 +451,6 @@ def update_quotation_new():
 	
 	quote.save()
 	quote.reload()
-	frappe.log_error(title="quote", message=quote)
 
 	export_quotation(self=quote, method='')
 
@@ -593,9 +532,10 @@ def export_website_item(self, method):
 	specifications = []
 	if self.website_specifications:
 		for spec in self.website_specifications:
-			specifications.append(
-				{"label": spec.label, "description": spec.description}
-			)
+			if spec.label and spec.description:
+				specifications.append(
+					{"label": spec.label, "description": spec.description}
+				)
 
 	payload = {
 		"title": self.web_item_name,
@@ -997,9 +937,6 @@ def sync_missing_prices_to_medusa():
 
 		item_price_data = price_map.get(item_code)
 
-		if item_price_data and item_price_data.get("medusa_price_id"):
-			continue
-
 		if item_price_data:
 			price = int(item_price_data["price_list_rate"] * 1000)
 		else:
@@ -1268,9 +1205,8 @@ def export_all_item_groups():
 				frappe.log_error(title=f"Error exporting {doc.name} item group", message=frappe.get_traceback())
 
 def export_all_website_images():
-	doctype = "File"
 	images = frappe.get_all(
-		doctype,
+		"File",
 		filters={
 			"attached_to_doctype": "Website Item",
 			"attached_to_field": ["in", ["image", "website_image"]],
@@ -1280,7 +1216,7 @@ def export_all_website_images():
 	)
 
 	for image in images:
-		doc = frappe.get_doc(doctype, image)
+		doc = frappe.get_doc("File", image)
 		try:
 			export_image_to_medusa(doc)
 		except Exception as e:
@@ -4150,3 +4086,14 @@ def get_product_has_variants(medusa_id):
 	except Exception as e:
 		frappe.log_error(title="get_product_has_variants error", message=frappe.get_traceback())
 		return {"status": "error", "message": str(e)}
+
+@frappe.whitelist(allow_guest=True)
+def get_sales_order_name(medusa_order_id):
+
+	sales_order = frappe.get_value(
+		"Sales Order",
+		filters={"medusa_order_id": medusa_order_id},
+		fieldname="name"
+	)
+
+	return sales_order if sales_order else None
