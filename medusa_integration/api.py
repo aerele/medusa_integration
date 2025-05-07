@@ -164,61 +164,6 @@ def create_quotation():
 
 	return {"message": "Quotation created successfully", "quotationId": quote.name}
 
-
-@frappe.whitelist(allow_guest=True)
-def create_sales_order():
-	try:
-		data = json.loads(frappe.request.data)
-		items = data.get("items", [])
-		delivery_date = datetime.today() + timedelta(days=1)
-
-		customer = data.get("customer")
-
-		company = data.get("company")
-
-		sales_order = frappe.new_doc("Sales Order")
-		sales_order.update(
-			{
-				"customer": customer,
-				"delivery_date": delivery_date,
-				"order_type": "Sales",
-				"company": company,
-				"workflow_state": "Draft",
-				"from_ecommerce": 1,
-				"items": [],
-				"conversion_rate": 1.0,
-			}
-		)
-
-		for item in items:
-			item_code = item.get("item_code")
-			qty = item.get("qty")
-			rate = item.get("rate")
-			amount = rate * qty
-
-			sales_order.append(
-				"items",
-				{
-					"item_code": item_code,
-					"qty": qty,
-					"rate": rate,
-					"base_net_rate": rate,
-					"amount": amount,
-					"conversion_factor": 1.0,
-				},
-			)
-
-		sales_order.insert(ignore_permissions=True)
-
-		return {
-			"message": "Sales Order created successfully",
-			"Sales Order ID": sales_order.name,
-		}
-
-	except Exception as e:
-		frappe.log_error(frappe.get_traceback(), "Sales Order Creation Error")
-		return {"error": str(e)}
-
 @frappe.whitelist(allow_guest=True)
 def update_quotation():
 	data = json.loads(frappe.request.data)
