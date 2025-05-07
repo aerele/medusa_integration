@@ -4086,3 +4086,14 @@ def get_product_has_variants(medusa_id):
 	except Exception as e:
 		frappe.log_error(title="get_product_has_variants error", message=frappe.get_traceback())
 		return {"status": "error", "message": str(e)}
+
+@frappe.whitelist(allow_guest=True)
+def get_sales_order_name(medusa_order_id):
+
+	sales_order = frappe.get_value(
+		"Sales Order",
+		filters={"medusa_order_id": medusa_order_id},
+		fieldname="name"
+	)
+
+	return sales_order if sales_order else None
