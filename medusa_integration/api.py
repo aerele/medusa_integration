@@ -587,9 +587,10 @@ def export_website_item(self, method):
 	specifications = []
 	if self.website_specifications:
 		for spec in self.website_specifications:
-			specifications.append(
-				{"label": spec.label, "description": spec.description}
-			)
+			if spec.label and spec.description:
+				specifications.append(
+					{"label": spec.label, "description": spec.description}
+				)
 
 	payload = {
 		"title": self.web_item_name,
