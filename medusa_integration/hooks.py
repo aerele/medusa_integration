@@ -162,9 +162,9 @@ doc_events = {
 		"on_update": "medusa_integration.api.handle_payment_entry",
 		"on_submit": "medusa_integration.api.handle_payment_entry"
 	},
-	# "File": {
-	# 	"after_insert": "medusa_integration.api.file_validation_wrapper"
-	# }
+	"File": {
+		"after_insert": "medusa_integration.api.handle_file_upload"
+	}
 }
 
 # Scheduled Tasks
