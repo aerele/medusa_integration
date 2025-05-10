@@ -1000,101 +1000,6 @@ def fetch_all_customers(name=None):
 
 	return customers
 
-
-def file_validation_wrapper(self, method):
-	# namecheck(self)
-
-	upload_image_to_medusa(self)
-
-
-def upload_image_to_medusa(self):
-	try:
-		web_item = ""
-		if self.attached_to_doctype == "Website Item":
-			medusa_id = frappe.get_value(
-				"Website Item", {"name": self.attached_to_name}, "medusa_id"
-			)
-			print("Website item Medusa ID: ", medusa_id)
-			web_item = frappe.get_value(
-				"Website Item", {"name": self.attached_to_name}, "web_item_name"
-			)
-			print("Web Item Name: ", web_item)
-
-		# if medusa_id and not self.attached_to_field:
-		if medusa_id:
-			# frappe.log_error("medusa_id",medusa_id)
-			images = frappe.get_all(
-				"File",
-				filters={
-					"attached_to_doctype": self.attached_to_doctype,
-					"attached_to_name": self.attached_to_name,
-					"attached_to_field": ["is", "website_image"],
-					# "medusa_id": ["is", "not set"]
-				},
-			)
-			# frappe.log_error("images",images)
-			image_urls = []
-
-			for image in images:
-				doc = frappe.get_doc("File", image)
-				frappe.log_error("doc",doc)
-				image_path = doc.get_full_path()
-				frappe.log_error("image_path",image_path)
-				url = f"{get_url()[0]}/admin/uploads"
-				frappe.log_error("url",url)
-				headers = get_headers(with_token=True)
-				headers.pop(
-					"Content-Type", None
-				)  # Remove the Content-Type header to let requests set it
-				payload = {}
-				with open(image_path, "rb") as image_file:
-					files = {"files": (image_path, image_file, "image/jpeg")}
-					frappe.log_error("files",files)
-					response = requests.post(
-						url, headers=headers, data=payload, files=files
-					)
-					frappe.log_error("response1", response)
-					if response.status_code == 200:
-						uploaded_image_url = response.json().get("uploads")[0].get("url")
-						print("Image uploaded")
-						print("Image URL: ", uploaded_image_url)
-						image_urls.append(uploaded_image_url)
-					else:
-						frappe.throw("Failed to upload image to Medusa")
-
-			attach_image_to_product(image_urls, medusa_id)
-			self.db_set("medusa_id", medusa_id)
-			frappe.db.commit()
-		
-		elif medusa_id and self.attached_to_field == "website_image":
-			image_url = ""
-			image_path = self.get_full_path()
-			url = f"{get_url()[0]}/admin/uploads"
-			headers = get_headers(with_token=True)
-			headers.pop(
-				"Content-Type", None
-			)  # Remove the Content-Type header to let requests set it
-			payload = {}
-			with open(image_path, "rb") as image_file:
-				files = {"files": (image_path, image_file, "image/jpeg")}
-				response = requests.post(url, headers=headers, data=payload, files=files)
-				frappe.log_error("response", response)
-				if response.status_code == 200:
-					uploaded_image_url = response.json().get("uploads")[0].get("url")
-					print("Image uploaded")
-					image_url = uploaded_image_url
-				else:
-					frappe.throw("Failed to upload image to Medusa")
-
-			attach_thumbnail_to_product(image_url, medusa_id)
-			self.db_set("medusa_id", medusa_id)
-			frappe.db.commit()
-		
-	except Exception as e:
-		# print(f"Unexpected error while exporting {doc.name}: {str(e)}")
-		frappe.log_error("Image export error", frappe.get_traceback())
-		raise e
-
 def attach_thumbnail_to_product(image_url, product_id):
 	url = f"{get_url()[0]}/admin/products/{product_id}"
 	headers = get_headers(with_token=True)
@@ -1110,7 +1015,6 @@ def attach_thumbnail_to_product(image_url, product_id):
 		}
 	)
 	send_request(args)
-
 
 def attach_image_to_product(image_url, product_id):
 	url = f"{get_url()[0]}/admin/products/{product_id}"
@@ -1137,12 +1041,8 @@ def attach_image_to_product(image_url, product_id):
 		}
 	)
 	data = send_request(args)
-	frappe.log_error("data", data)
-
 
 def export_image_to_medusa(doc):
-	import mimetypes
-	import os
 
 	try:
 		medusa_id = frappe.get_value(
@@ -1151,10 +1051,6 @@ def export_image_to_medusa(doc):
 
 		if medusa_id and not doc.attached_to_field:
 			image_path = doc.get_full_path()
-			filename = os.path.basename(image_path)
-			mime_type, _ = mimetypes.guess_type(image_path)
-			if not mime_type:
-				mime_type = "application/octet-stream"
 			
 			url = f"{get_url()[0]}/admin/uploads"
 			headers = get_headers(with_token=True)
@@ -1163,22 +1059,17 @@ def export_image_to_medusa(doc):
 			image_url = []
 
 			with open(image_path, "rb") as image_file:
-				# files = {"files": (image_path, image_file, "image/jpeg")}
-				files = {
-					"files": (filename, image_file, mime_type)
-				}
+				files = {"files": (image_path, image_file, "image/jpeg")}
 				response = requests.post(url, headers=headers, data=payload, files=files)
 
 				if response.status_code == 200:
 					uploaded_image_url = response.json().get("uploads")[0].get("url")
 					image_url.append(uploaded_image_url)
-					frappe.log_error("uploaded_image_url",uploaded_image_url)
 
 				else:
 					frappe.throw("Failed to upload image to Medusa")
 
 			attach_image_to_product(image_url, medusa_id)
-			print("Completed image attach")
 			doc.db_set("medusa_id", medusa_id)
 			frappe.db.commit()
 		
@@ -1187,18 +1078,17 @@ def export_image_to_medusa(doc):
 			image_path = doc.get_full_path()
 			url = f"{get_url()[0]}/admin/uploads"
 			headers = get_headers(with_token=True)
-			headers.pop(
-				"Content-Type", None
-			)  # Remove the Content-Type header to let requests set it
+			headers.pop("Content-Type", None)
 			payload = {}
+
 			with open(image_path, "rb") as image_file:
 				files = {"files": (image_path, image_file, "image/jpeg")}
 				response = requests.post(url, headers=headers, data=payload, files=files)
-				frappe.log_error("response", response)
+
 				if response.status_code == 200:
 					uploaded_image_url = response.json().get("uploads")[0].get("url")
-					print("Image uploaded")
 					image_url = uploaded_image_url
+				
 				else:
 					frappe.throw("Failed to upload image to Medusa")
 
@@ -1211,18 +1101,11 @@ def export_image_to_medusa(doc):
 		raise e
 
 def handle_file_upload(doc, method):
-    # only process if attached to Website Item
     if doc.attached_to_doctype == "Website Item" and doc.file_type in ["JPG", "JPEG", "PNG"] and not doc.medusa_id:
         try:
             export_image_to_medusa(doc)
         except Exception:
-            frappe.log_error(title=f"Error exporting {doc.name} image (hook)", message=frappe.get_traceback())
-
-
-def namecheck(self):
-	if " " in self.file_name:
-		frappe.throw("Invalid name format!<br>File name cannot contain spaces")
-
+            frappe.log_error(title=f"Error exporting {doc.name} image file", message=frappe.get_traceback())
 
 def export_all_website_item():
 	doctype = "Website Item"
@@ -1251,7 +1134,6 @@ def update_all_website_item(method=None):
 		doc = frappe.get_doc(doctype, r)
 		if doc.medusa_id:
 			try:
-				print("Beginning to update: ", doc.name)
 				update_website_item(doc, method)
 			except Exception as e:
 				frappe.log_error(title=f"Error updating {doc.name} item", message=frappe.get_traceback())
@@ -1263,7 +1145,6 @@ def export_all_item_groups():
 		doc = frappe.get_doc(doctype, group)
 		if not doc.medusa_id:
 			try:
-				print("Beginning to export: ", doc.name)
 				export_item_group(doc)
 			except Exception as e:
 				frappe.log_error(title=f"Error exporting {doc.name} item group", message=frappe.get_traceback())
@@ -1277,17 +1158,16 @@ def export_all_website_images():
 			"medusa_id": ["is", "not set"],
 		},
 	)
-	frappe.log_error("files", images)
 
 	for image in images:
 		doc = frappe.get_doc("File", image)
 		try:
 			export_image_to_medusa(doc)
 		except Exception as e:
-			frappe.log_error(title=f"Error exporting {doc.name} image", message=frappe.get_traceback())
+			frappe.log_error(title=f"Error exporting {doc.name} image file", message=frappe.get_traceback())
 
 def export_items_and_images():
-	# export_all_website_item()
+	export_all_website_item()
 	export_all_website_images()
 
 def export_all_medusa_price_list():
@@ -1297,24 +1177,17 @@ def export_all_medusa_price_list():
 		doc = frappe.get_doc(doctype, r)
 		is_diabled = frappe.get_value("Item", {"item_code": doc.item_code}, "disabled")
 		if is_diabled:
-			print(f"skipping {doc.name} due to disabled item {doc.item_code}")
 			continue
 		if not doc.medusa_id:
 			try:
-				print("Beginning to export: ", doc.name)
 				create_medusa_price_list(doc, called_manually=True)
-			except frappe.ValidationError as e:
-				print(f"Skipping {doc.name} due to error: {str(e)}")
 			except Exception as e:
-				print(f"Unexpected error while exporting {doc.name}: {str(e)}")
 				raise e
-
 
 def clear_all_item_group_id():  # For Item Group
 	item_groups = frappe.get_all(
 		"Item Group", filters={"medusa_id": ["!=", ""]}, fields=["name"]
 	)
-	print(item_groups)
 
 	for item_group in item_groups:
 		frappe.db.set_value("Item Group", item_group.name, "medusa_id", "")
@@ -1326,7 +1199,6 @@ def clear_all_website_item_id():  # For website items
 	items = frappe.get_all(
 		"Website Item", filters={"medusa_id": ["!=", ""]}, fields=["name"]
 	)
-	print(items)
 
 	for item in items:
 		frappe.db.set_value(
@@ -1338,7 +1210,6 @@ def clear_all_website_item_id():  # For website items
 
 def clear_all_website_image_id():  # For website images
 	images = frappe.get_all("File", filters={"medusa_id": ["!=", ""]}, fields=["name"])
-	print(images)
 
 	for image in images:
 		frappe.db.set_value("File", image.name, {"medusa_id": ""})
@@ -1350,7 +1221,6 @@ def clear_all_item_price_id():  # For item price
 	item_prices = frappe.get_all(
 		"Item Price", filters={"medusa_id": ["!=", ""]}, fields=["name"]
 	)
-	print(item_prices)
 
 	for item_price in item_prices:
 		frappe.db.set_value(
@@ -1484,7 +1354,6 @@ def export_quotation_on_update(doc, method):
 			)
 		except Exception as e:
 			frappe.log_error(title="Error exporting quotation prices", message=frappe.get_traceback())
-			print(f"Error exporting Quotation {doc.name}: {str(e)}")
 
 @frappe.whitelist(allow_guest=True)
 def export_sales_order(self, method):
@@ -1542,15 +1411,11 @@ def export_sales_order(self, method):
 			response = send_request(args)
 
 			if response.message == "Order updated successfully":
-				print(f"Sales Order {sales_order.name} exported to Medusa successfully")
+				frappe.msgprint("Sales order details updated in e-commerce site successfully")
 			else:
-				print(
-					f"Error: Sales Order export failed for {sales_order.name}: {response.get('error')}"
-				)
+				frappe.throw("Error updating sales order on e-commerce site")
 	except Exception as e:
-		print(f"Error exporting Sales Order {sales_order.name}: {str(e)}")
-		raise e
-
+		frappe.log_error("Error updating sales order", frappe.get_traceback())
 
 def export_sales_order_on_update(doc, method):
 	if doc.from_ecommerce == 1:
@@ -1562,8 +1427,6 @@ def export_sales_order_on_update(doc, method):
 				f"Failed to export Sales Order {doc.name}: {str(e)}",
 				"Sales Order Export Error",
 			)
-			print(f"Error exporting Sales Order {doc.name}: {str(e)}")
-
 
 def export_sales_invoice_on_update(doc, method):
 	try:
@@ -1597,7 +1460,6 @@ def export_sales_invoice_on_update(doc, method):
 			f"Failed to export Sales Invoice {doc.name}: {str(e)}",
 			"Sales Invoice Export Error",
 		)
-		print(f"Error exporting Sales Invoice {doc.name}: {str(e)}")
 
 def export_delivery_note_on_update(doc, method):
 	try:
@@ -1631,7 +1493,6 @@ def export_delivery_note_on_update(doc, method):
 			f"Failed to export Delivery Note {doc.name}: {str(e)}",
 			"Delivery Note Export Error",
 		)
-		print(f"Error exporting Delivery Note {doc.name}: {str(e)}")
 
 def handle_payment_entry(doc, method):
 	linked_invoices = frappe.db.sql(
@@ -1668,7 +1529,7 @@ def send_quotation_emails():
 		"Email Queue",
 		filters={
 			"status": "Not Sent",
-			"reference_doctype": "Quotation",  # Need to update. Add sender email filter
+			"reference_doctype": "Quotation",
 		},
 		pluck="name",
 	)
