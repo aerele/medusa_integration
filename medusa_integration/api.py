@@ -1166,6 +1166,82 @@ def export_items_and_images():
 	export_all_website_item()
 	export_all_website_images()
 
+def export_items_and_images_custom():
+	# Export Items
+	total_items = frappe.db.count("Website Item", {"published": 1, "medusa_id": ["is", "not set"]})
+	batch_size = total_items // 4 + 1
+
+	for i in range(4):
+		frappe.enqueue(
+			"medusa_integration.api.export_items_batch",
+			queue="long",
+			timeout=28800,
+			is_async=True,
+			job_name=f"export_items_batch_{i}",
+			batch_index=i,
+			batch_size=batch_size
+		)
+
+	# Export Images
+	total_images = frappe.db.count("File", {
+		"attached_to_doctype": "Website Item",
+		"file_type": ["in", ["JPG", "JPEG", "PNG"]],
+		"medusa_id": ["is", "not set"]
+	})
+	image_batch_size = total_images // 4 + 1
+
+	for i in range(4):
+		frappe.enqueue(
+			"medusa_integration.api.export_images_batch",
+			queue="long",
+			timeout=28800,
+			is_async=True,
+			job_name=f"export_images_batch_{i}",
+			batch_index=i,
+			batch_size=image_batch_size
+		)
+
+def export_items_batch(batch_index, batch_size):
+	start = batch_index * batch_size
+	records = frappe.get_all(
+		"Website Item",
+		filters={
+			"published": 1,
+			"medusa_id": ["is", "not set"],
+		},
+		pluck="name",
+		start=start,
+		page_length=batch_size
+	)
+
+	for name in records:
+		doc = frappe.get_doc("Website Item", name)
+		try:
+			export_website_item(doc)
+		except Exception:
+			frappe.log_error(title=f"Error exporting {doc.name} item", message=frappe.get_traceback())
+
+def export_images_batch(batch_index, batch_size):
+	start = batch_index * batch_size
+	images = frappe.get_all(
+		"File",
+		filters={
+			"attached_to_doctype": "Website Item",
+			"file_type": ["in", ["JPG", "JPEG", "PNG"]],
+			"medusa_id": ["is", "not set"],
+		},
+		start=start,
+		page_length=batch_size
+	)
+
+	for image in images:
+		doc = frappe.get_doc("File", image.name)
+		try:
+			export_image_to_medusa(doc)
+		except Exception:
+			frappe.log_error(title=f"Error exporting {doc.name} image file", message=frappe.get_traceback())
+
+
 def export_all_medusa_price_list():
 	doctype = "Item Price"
 	record = frappe.get_all(doctype)

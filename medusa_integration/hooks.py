@@ -188,7 +188,7 @@ scheduler_events = {
 		"0 1 * * *": [
 			"medusa_integration.api.fetch_clearance_items",
 			"medusa_integration.api.add_top_selling_items_to_collection",
-			"medusa_integration.api.export_items_and_images",
+			"medusa_integration.api.export_items_and_images_custom",
 			"medusa_integration.api.sync_missing_prices_to_medusa"
 		]
 	}
