@@ -3442,65 +3442,6 @@ def create_product_suggestion(
 		frappe.log_error(frappe.get_traceback(), "Product Suggestion Creation Failed")
 		return {"status": "error", "message": str(e)}
 
-
-# @frappe.whitelist(allow_guest=True)
-# def sign_up(
-# 	email,
-# 	first_name,
-# 	last_name,
-# 	t_c_acceptance,
-# 	mobile,
-# 	otp,
-# 	organization_name,
-# 	erp_customer_id=None,
-# ):
-# 	validate_otp = verify_otp(email=email, user_otp=otp)
-# 	if validate_otp.get("otp_name"):
-# 		otp_doc = frappe.get_doc("Email OTP", validate_otp.get("otp_name"))
-# 		if otp_doc.logged_in:
-# 			return "This email is already registered. Kindly login"
-# 		else:
-# 			password = str(random.randrange(10**11, (10**12) - 1))
-# 			otp_doc.password = password
-# 			url = f"{get_url()[0]}/store/signup"
-
-# 			payload = json.dumps(
-# 				{
-# 					"email": email,
-# 					"first_name": first_name,
-# 					"last_name": last_name,
-# 					"password": password,
-# 					"t_c_acceptance": t_c_acceptance,
-# 					"organization_name": organization_name,
-# 					"mobile": mobile,
-# 					"erp_customer_id": erp_customer_id,
-# 				}
-# 			)
-
-# 			headers = {"Content-Type": "application/json"}
-
-# 			incoming_origin = frappe.get_request_header("Origin")
-# 			incoming_referer = frappe.get_request_header("Referer")
-
-# 			if incoming_origin:
-# 				headers["Origin"] = incoming_origin
-# 			if incoming_referer:
-# 				headers["Referer"] = incoming_referer
-			
-# 			response = requests.request("POST", url, headers=headers, data=payload)
-# 			return_data =response.json()
-
-# 			if return_data.get("error"):
-# 				return return_data.get("error")
-			
-# 			otp_doc.logged_in =1
-# 			otp_doc.save(ignore_permissions=True)
-# 			frappe.db.commit()
-
-# 			return return_data
-# 	else:
-# 		return validate_otp.get("message")
-
 @frappe.whitelist(allow_guest=True)
 def sign_up(
 	email,
@@ -3512,19 +3453,52 @@ def sign_up(
 	organization_name,
 	erp_customer_id=None,
 ):
-	headers = {"Content-Type": "application/json"}
+	validate_otp = verify_otp(email=email, user_otp=otp)
+	if validate_otp.get("otp_name"):
+		otp_doc = frappe.get_doc("Email OTP", validate_otp.get("otp_name"))
+		if otp_doc.logged_in:
+			return "This email is already registered. Kindly login"
+		else:
+			password = str(random.randrange(10**11, (10**12) - 1))
+			otp_doc.password = password
+			url = f"{get_url()[0]}/store/signup"
 
-	incoming_origin = frappe.get_request_header("Origin")
-	incoming_referer = frappe.get_request_header("Referer")
-	if incoming_origin:
-		headers["Origin"] = incoming_origin
-	if incoming_referer:
-		headers["Referer"] = incoming_referer
-	url = f"{get_url()[0]}/store/signup"
-	frappe.log_error("headers", headers)
-	payload = {}
-	response = requests.request("POST", url, headers=headers, data=payload)
-	return
+			payload = json.dumps(
+				{
+					"email": email,
+					"first_name": first_name,
+					"last_name": last_name,
+					"password": password,
+					"t_c_acceptance": t_c_acceptance,
+					"organization_name": organization_name,
+					"mobile": mobile,
+					"erp_customer_id": erp_customer_id,
+				}
+			)
+
+			headers = {"Content-Type": "application/json"}
+
+			incoming_origin = frappe.get_request_header("Origin")
+			incoming_referer = frappe.get_request_header("Referer")
+
+			if incoming_origin:
+				headers["Origin"] = incoming_origin
+			if incoming_referer:
+				headers["Referer"] = incoming_referer
+			
+			response = requests.request("POST", url, headers=headers, data=payload)
+			return_data =response.json()
+
+			if return_data.get("error"):
+				return return_data.get("error")
+			
+			otp_doc.logged_in =1
+			otp_doc.save(ignore_permissions=True)
+			frappe.db.commit()
+
+			return return_data
+	else:
+		return validate_otp.get("message")
 
 @frappe.whitelist(allow_guest=True)
 def login(email, password=None, otp=None):
