@@ -2,7 +2,7 @@ import frappe
 
 def get_url():
 	doc = frappe.get_doc("Medusa Configuration", "Medusa Configuration")
-	return doc.url, doc.enable
+	return doc.url, doc.enable, doc.frontend_url
 
 def get_headers(with_token=False, expired=False):
 	doc = frappe.get_doc("Medusa Configuration", "Medusa Configuration")
