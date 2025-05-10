@@ -9,9 +9,6 @@ from alfarsi_erpnext.alfarsi_erpnext.customer import fetch_standard_price
 from frappe.utils import now_datetime, add_to_date
 import random
 
-medusa_base_url = "https://medusa-be.aerele.in"
-
-
 @frappe.whitelist(allow_guest=True)
 def create_lead():
 	data = json.loads(frappe.request.data)
@@ -1039,7 +1036,7 @@ def attach_image_to_product(image_url, product_id):
 			"throw_message": "Error while attaching image to the Medusa product",
 		}
 	)
-	data = send_request(args)
+	send_request(args)
 
 def export_image_to_medusa(doc):
 
@@ -1325,7 +1322,6 @@ def export_quotation(self, method):
 		print(f"Error exporting Quotation {quotation.name}: {str(e)}")
 		raise e
 
-
 def export_quotation_on_update(doc, method):
 	if doc.workflow_state == "Ready for Customer Review" and doc.from_ecommerce == 1:
 		try:
@@ -1347,7 +1343,7 @@ def export_quotation_on_update(doc, method):
 				subject=f"Quotation {doc.name} - Price Received",
 				message=f"""Dear Customer,<br><br>
 				Your quotation <b>{doc.name}</b> has been updated with price details. 
-				Please review it on the <a href="https://medusa-fe.aerele.in/profile" target="_blank">site</a>.<br><br>
+				Please review it on the <a href="{get_url()[2]}/profile" target="_blank">site</a>.<br><br>
 				Thank you!""",
 				now=True
 			)
@@ -3466,7 +3462,7 @@ def sign_up(
 		else:
 			password = str(random.randrange(10**11, (10**12) - 1))
 			otp_doc.password = password
-			url = f"{medusa_base_url}/store/signup"
+			url = f"{get_url()[0]}/store/signup"
 			payload = json.dumps(
 				{
 					"email": email,
@@ -3497,7 +3493,7 @@ def login(email, password=None, otp=None):
 	headers = {
 		"Content-Type": "application/json",
 	}
-	url = f"{medusa_base_url}/store/login"
+	url = f"{get_url()[0]}/store/login"
 	if password:
 		payload = json.dumps({"email": email, "password": password})
 		response = requests.request("POST", url, headers=headers, data=payload)
