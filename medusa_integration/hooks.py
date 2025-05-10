@@ -128,21 +128,12 @@ doctype_js = {
 # Hook on document methods and events
 
 doc_events = {
-	# "Item": {
-	# 	"validate": "medusa_integration.api.export_item"
-	# },
-	# "Item Group": {
-	# 	"validate": "medusa_integration.api.create_medusa_collection"
-	# },
 	"Item Price": {
 		"validate": "medusa_integration.api.create_medusa_price_list"
 	},
 	"Website Item": {
-	"validate": "medusa_integration.api.website_item_validate"
+		"validate": "medusa_integration.api.website_item_validate"
 	},
- 	# "Brand": {
-	# 	"validate": "medusa_integration.api.export_brand"
-	# },
 	"Quotation": {
 		"on_update": "medusa_integration.api.export_quotation_on_update"
 	},
@@ -163,7 +154,7 @@ doc_events = {
 		"on_submit": "medusa_integration.api.handle_payment_entry"
 	},
 	"File": {
-		"after_insert": "medusa_integration.api.handle_file_upload"
+		"after_insert": "medusa_integration.api.upload_image_to_medusa"
 	}
 }
 
