@@ -1001,43 +1001,74 @@ def fetch_all_customers(name=None):
 	return customers
 
 
-def file_validation_wrapper(self):
-	namecheck(self)
+def file_validation_wrapper(self, method):
+	# namecheck(self)
 
 	upload_image_to_medusa(self)
 
 
 def upload_image_to_medusa(self):
-	web_item = ""
-	if self.attached_to_doctype == "Website Item":
-		medusa_id = frappe.get_value(
-			"Website Item", {"name": self.attached_to_name}, "medusa_id"
-		)
-		print("Website item Medusa ID: ", medusa_id)
-		web_item = frappe.get_value(
-			"Website Item", {"name": self.attached_to_name}, "web_item_name"
-		)
-		print("Web Item Name: ", web_item)
-	elif self.attached_to_doctype == "Item":
-		medusa_id = frappe.get_value(
-			"Item", {"item_name": self.attached_to_name}, "medusa_id"
-		)
-		print("item Medusa ID: ", medusa_id)
+	try:
+		web_item = ""
+		if self.attached_to_doctype == "Website Item":
+			medusa_id = frappe.get_value(
+				"Website Item", {"name": self.attached_to_name}, "medusa_id"
+			)
+			print("Website item Medusa ID: ", medusa_id)
+			web_item = frappe.get_value(
+				"Website Item", {"name": self.attached_to_name}, "web_item_name"
+			)
+			print("Web Item Name: ", web_item)
 
-	if medusa_id and self.attached_to_field not in ["image", "website_image"]:
-		images = frappe.get_all(
-			"File",
-			filters={
-				"attached_to_doctype": self.attached_to_doctype,
-				"attached_to_name": self.attached_to_name,
-				"attached_to_field": ["not in", ["image", "website_image"]],
-			},
-		)
-		image_urls = []
+		# if medusa_id and not self.attached_to_field:
+		if medusa_id:
+			# frappe.log_error("medusa_id",medusa_id)
+			images = frappe.get_all(
+				"File",
+				filters={
+					"attached_to_doctype": self.attached_to_doctype,
+					"attached_to_name": self.attached_to_name,
+					"attached_to_field": ["is", "website_image"],
+					# "medusa_id": ["is", "not set"]
+				},
+			)
+			# frappe.log_error("images",images)
+			image_urls = []
 
-		for image in images:
-			doc = frappe.get_doc("File", image)
-			image_path = doc.get_full_path()
+			for image in images:
+				doc = frappe.get_doc("File", image)
+				frappe.log_error("doc",doc)
+				image_path = doc.get_full_path()
+				frappe.log_error("image_path",image_path)
+				url = f"{get_url()[0]}/admin/uploads"
+				frappe.log_error("url",url)
+				headers = get_headers(with_token=True)
+				headers.pop(
+					"Content-Type", None
+				)  # Remove the Content-Type header to let requests set it
+				payload = {}
+				with open(image_path, "rb") as image_file:
+					files = {"files": (image_path, image_file, "image/jpeg")}
+					frappe.log_error("files",files)
+					response = requests.post(
+						url, headers=headers, data=payload, files=files
+					)
+					frappe.log_error("response1", response)
+					if response.status_code == 200:
+						uploaded_image_url = response.json().get("uploads")[0].get("url")
+						print("Image uploaded")
+						print("Image URL: ", uploaded_image_url)
+						image_urls.append(uploaded_image_url)
+					else:
+						frappe.throw("Failed to upload image to Medusa")
+
+			attach_image_to_product(image_urls, medusa_id)
+			self.db_set("medusa_id", medusa_id)
+			frappe.db.commit()
+		
+		elif medusa_id and self.attached_to_field == "website_image":
+			image_url = ""
+			image_path = self.get_full_path()
 			url = f"{get_url()[0]}/admin/uploads"
 			headers = get_headers(with_token=True)
 			headers.pop(
@@ -1046,40 +1077,23 @@ def upload_image_to_medusa(self):
 			payload = {}
 			with open(image_path, "rb") as image_file:
 				files = {"files": (image_path, image_file, "image/jpeg")}
-				response = requests.post(
-					url, headers=headers, data=payload, files=files
-				)
+				response = requests.post(url, headers=headers, data=payload, files=files)
+				frappe.log_error("response", response)
 				if response.status_code == 200:
 					uploaded_image_url = response.json().get("uploads")[0].get("url")
 					print("Image uploaded")
-					print("Image URL: ", uploaded_image_url)
-					image_urls.append(uploaded_image_url)
+					image_url = uploaded_image_url
 				else:
 					frappe.throw("Failed to upload image to Medusa")
 
-		attach_image_to_product(image_urls, medusa_id)
-
-	elif medusa_id and self.attached_to_field in ["image", "website_image"]:
-		image_url = ""
-		image_path = self.get_full_path()
-		url = f"{get_url()[0]}/admin/uploads"
-		headers = get_headers(with_token=True)
-		headers.pop(
-			"Content-Type", None
-		)  # Remove the Content-Type header to let requests set it
-		payload = {}
-		with open(image_path, "rb") as image_file:
-			files = {"files": (image_path, image_file, "image/jpeg")}
-			response = requests.post(url, headers=headers, data=payload, files=files)
-			if response.status_code == 200:
-				uploaded_image_url = response.json().get("uploads")[0].get("url")
-				print("Image uploaded")
-				image_url = uploaded_image_url
-			else:
-				frappe.throw("Failed to upload image to Medusa")
-
-		attach_thumbnail_to_product(image_url, medusa_id)
-
+			attach_thumbnail_to_product(image_url, medusa_id)
+			self.db_set("medusa_id", medusa_id)
+			frappe.db.commit()
+		
+	except Exception as e:
+		# print(f"Unexpected error while exporting {doc.name}: {str(e)}")
+		frappe.log_error("Image export error", frappe.get_traceback())
+		raise e
 
 def attach_thumbnail_to_product(image_url, product_id):
 	url = f"{get_url()[0]}/admin/products/{product_id}"
@@ -1107,7 +1121,7 @@ def attach_image_to_product(image_url, product_id):
 	existing_images = response.json().get("product", {}).get("images", [])
 	existing_image_urls = [img.get("url") for img in existing_images if "url" in img]
 
-	updated_image_urls = existing_image_urls + [image_url]
+	updated_image_urls = existing_image_urls + image_url
 
 	updated_image_urls = list(set(updated_image_urls))
 
@@ -1122,37 +1136,87 @@ def attach_image_to_product(image_url, product_id):
 			"throw_message": "Error while attaching image to the Medusa product",
 		}
 	)
-	send_request(args)
+	data = send_request(args)
+	frappe.log_error("data", data)
 
 
-def export_image_to_medusa(self):
-	medusa_id = frappe.get_value(
-		"Website Item", {"name": self.attached_to_name}, "medusa_id"
-	)
+def export_image_to_medusa(doc):
+	import mimetypes
+	import os
 
-	if medusa_id:
-		image_path = self.get_full_path()
-		url = f"{get_url()[0]}/admin/uploads"
-		headers = get_headers(with_token=True)
-		headers.pop("Content-Type", None)
-		payload = {}
-		image_url = []
+	try:
+		medusa_id = frappe.get_value(
+			"Website Item", {"name": doc.attached_to_name}, "medusa_id"
+		)
 
-		with open(image_path, "rb") as image_file:
-			files = {"files": (image_path, image_file, "image/jpeg")}
-			response = requests.post(url, headers=headers, data=payload, files=files)
+		if medusa_id and not doc.attached_to_field:
+			image_path = doc.get_full_path()
+			filename = os.path.basename(image_path)
+			mime_type, _ = mimetypes.guess_type(image_path)
+			if not mime_type:
+				mime_type = "application/octet-stream"
+			
+			url = f"{get_url()[0]}/admin/uploads"
+			headers = get_headers(with_token=True)
+			headers.pop("Content-Type", None)
+			payload = {}
+			image_url = []
 
-			if response.status_code == 200:
-				uploaded_image_url = response.json().get("uploads")[0].get("url")
-				print("Image uploaded")
-				image_url.append(uploaded_image_url)
+			with open(image_path, "rb") as image_file:
+				# files = {"files": (image_path, image_file, "image/jpeg")}
+				files = {
+					"files": (filename, image_file, mime_type)
+				}
+				response = requests.post(url, headers=headers, data=payload, files=files)
 
-			else:
-				frappe.throw("Failed to upload image to Medusa")
+				if response.status_code == 200:
+					uploaded_image_url = response.json().get("uploads")[0].get("url")
+					image_url.append(uploaded_image_url)
+					frappe.log_error("uploaded_image_url",uploaded_image_url)
 
-		attach_image_to_product(image_url, medusa_id)
-		print("Completed image attach")
-		self.db_set("medusa_id", medusa_id)
+				else:
+					frappe.throw("Failed to upload image to Medusa")
+
+			attach_image_to_product(image_url, medusa_id)
+			print("Completed image attach")
+			doc.db_set("medusa_id", medusa_id)
+			frappe.db.commit()
+		
+		elif medusa_id and doc.attached_to_field == "website_image":
+			image_url = ""
+			image_path = doc.get_full_path()
+			url = f"{get_url()[0]}/admin/uploads"
+			headers = get_headers(with_token=True)
+			headers.pop(
+				"Content-Type", None
+			)  # Remove the Content-Type header to let requests set it
+			payload = {}
+			with open(image_path, "rb") as image_file:
+				files = {"files": (image_path, image_file, "image/jpeg")}
+				response = requests.post(url, headers=headers, data=payload, files=files)
+				frappe.log_error("response", response)
+				if response.status_code == 200:
+					uploaded_image_url = response.json().get("uploads")[0].get("url")
+					print("Image uploaded")
+					image_url = uploaded_image_url
+				else:
+					frappe.throw("Failed to upload image to Medusa")
+
+			attach_thumbnail_to_product(image_url, medusa_id)
+			doc.db_set("medusa_id", medusa_id)
+			frappe.db.commit()
+	
+	except Exception as e:
+		frappe.log_error("Image export error", frappe.get_traceback())
+		raise e
+
+def handle_file_upload(doc, method):
+    # only process if attached to Website Item
+    if doc.attached_to_doctype == "Website Item" and doc.file_type in ["JPG", "JPEG", "PNG"] and not doc.medusa_id:
+        try:
+            export_image_to_medusa(doc)
+        except Exception:
+            frappe.log_error(title=f"Error exporting {doc.name} image (hook)", message=frappe.get_traceback())
 
 
 def namecheck(self):
@@ -1209,11 +1273,11 @@ def export_all_website_images():
 		"File",
 		filters={
 			"attached_to_doctype": "Website Item",
-			"attached_to_field": ["in", ["image", "website_image"]],
 			"file_type": ["in", ["JPG", "JPEG", "PNG"]],
 			"medusa_id": ["is", "not set"],
 		},
 	)
+	frappe.log_error("files", images)
 
 	for image in images:
 		doc = frappe.get_doc("File", image)
@@ -1223,7 +1287,7 @@ def export_all_website_images():
 			frappe.log_error(title=f"Error exporting {doc.name} image", message=frappe.get_traceback())
 
 def export_items_and_images():
-	export_all_website_item()
+	# export_all_website_item()
 	export_all_website_images()
 
 def export_all_medusa_price_list():
