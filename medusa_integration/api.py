@@ -3505,15 +3505,27 @@ def login(email, password=None, otp=None):
 	headers = {
 		"Content-Type": "application/json",
 	}
+
+	incoming_origin = frappe.get_request_header("Origin")
+	incoming_referer = frappe.get_request_header("Referer")
+
+	if incoming_origin:
+		headers["Origin"] = incoming_origin
+	if incoming_referer:
+		headers["Referer"] = incoming_referer
+	
 	url = f"{get_url()[0]}/store/login"
+
 	if password:
 		payload = json.dumps({"email": email, "password": password})
 		response = requests.request("POST", url, headers=headers, data=payload)
 		return response.json()
+	
 	elif otp:
 		validate_otp = verify_otp(email=email, user_otp=otp)
 		if validate_otp.get("otp_name"):
 			otp_doc = frappe.get_doc("Email OTP", validate_otp.get("otp_name"))
+
 			if otp_doc.logged_in and otp_doc.password:
 				payload = json.dumps(
 					{"email": email, "password": otp_doc.get_password("password")}
@@ -3526,11 +3538,12 @@ def login(email, password=None, otp=None):
 
 			else:
 				return "Please kindly register first"
+		
 		else:
 			return validate_otp.get("message")
+	
 	else:
 		return "Login Need Otp or Password"
-
 
 @frappe.whitelist(allow_guest=True)
 def send_otp(email,isLogin):
