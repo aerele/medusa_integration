@@ -3521,6 +3521,7 @@ def sign_up(
 	if incoming_referer:
 		headers["Referer"] = incoming_referer
 	url = f"{get_url()[0]}/store/signup"
+	frappe.log_error("headers", headers)
 	payload = {}
 	response = requests.request("POST", url, headers=headers, data=payload)
 	return
