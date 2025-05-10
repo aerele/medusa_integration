@@ -931,7 +931,6 @@ def sync_missing_prices_to_medusa():
 			items_to_sync[item_code] = item
 	
 	for item_code, item in items_to_sync.items():
-		medusa_id = item["medusa_id"]
 		variant_id = item["medusa_variant_id"]
 		web_item_name = item["web_item_name"]
 
@@ -1100,12 +1099,12 @@ def export_image_to_medusa(doc):
 		frappe.log_error("Image export error", frappe.get_traceback())
 		raise e
 
-def handle_file_upload(doc, method):
-    if doc.attached_to_doctype == "Website Item" and doc.file_type in ["JPG", "JPEG", "PNG"] and not doc.medusa_id:
-        try:
-            export_image_to_medusa(doc)
-        except Exception:
-            frappe.log_error(title=f"Error exporting {doc.name} image file", message=frappe.get_traceback())
+def upload_image_to_medusa(doc, method):
+	if doc.attached_to_doctype == "Website Item" and doc.file_type in ["JPG", "JPEG", "PNG"] and not doc.medusa_id:
+		try:
+			export_image_to_medusa(doc)
+		except Exception:
+			frappe.log_error(title=f"Error uploading {doc.name} image file", message=frappe.get_traceback())
 
 def export_all_website_item():
 	doctype = "Website Item"
