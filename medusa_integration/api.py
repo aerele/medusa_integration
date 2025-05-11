@@ -1237,7 +1237,7 @@ def export_images_batch(batch_index, batch_size):
 	for image in images:
 		doc = frappe.get_doc("File", image.name)
 		try:
-			export_image_to_medusa(doc, method="")
+			export_image_to_medusa(doc)
 		except Exception:
 			frappe.log_error(title=f"Error exporting {doc.name} image file", message=frappe.get_traceback())
 
