@@ -1217,7 +1217,7 @@ def export_items_batch(batch_index, batch_size):
 	for name in records:
 		doc = frappe.get_doc("Website Item", name)
 		try:
-			export_website_item(doc)
+			export_website_item(doc, method="")
 		except Exception:
 			frappe.log_error(title=f"Error exporting {doc.name} item", message=frappe.get_traceback())
 
@@ -1237,7 +1237,7 @@ def export_images_batch(batch_index, batch_size):
 	for image in images:
 		doc = frappe.get_doc("File", image.name)
 		try:
-			export_image_to_medusa(doc)
+			export_image_to_medusa(doc, method="")
 		except Exception:
 			frappe.log_error(title=f"Error exporting {doc.name} image file", message=frappe.get_traceback())
 
