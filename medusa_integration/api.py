@@ -1634,6 +1634,7 @@ def get_website_items(url=None, customer_id=None):
 					"item_group",
 					"custom_overall_rating",
 					"has_variants",
+					"website_image"
 				],
 				filters=filters,
 				order_by=order_by,
@@ -1653,8 +1654,11 @@ def get_website_items(url=None, customer_id=None):
 				},
 				"file_url",
 			)
+			website_image_url = item.get("website_image")
 			if image_url:
 				thumbnail = image_url if image_url.startswith("https") else f"{base_url}{image_url}"
+			elif website_image_url:
+				thumbnail = website_image_url if website_image_url.startswith("https") else f"{base_url}{website_image_url}"
 			else:
 				thumbnail = None
 
