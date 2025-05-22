@@ -3626,6 +3626,7 @@ def sign_up(
 			return_data =response.json()
 
 			if return_data.get("error"):
+				frappe.local.response['http_status_code'] = 401
 				return return_data.get("error")
 			
 			otp_doc.logged_in =1
@@ -3669,6 +3670,7 @@ def login(email, password=None, otp=None):
 				response = requests.request("POST", url, headers=headers, data=payload)
 				return_data =response.json()
 				if return_data.get("error"):
+					frappe.local.response['http_status_code'] = 401
 					return return_data.get("error")
 				return return_data
 
