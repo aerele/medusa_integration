@@ -2157,6 +2157,38 @@ def get_website_variants(medusa_id, customer_id=None):
 		return {"status": "error", "message": str(e)}
 
 @frappe.whitelist(allow_guest=True)
+def get_website_image(medusa_id):
+	try:
+		website_image_url = frappe.get_value("Website Item", {"medusa_id": medusa_id}, "website_image")
+		base_url = frappe.utils.get_url()
+
+		# image_url = frappe.db.get_value(
+		# 	"File",
+		# 	{
+		# 		"attached_to_doctype": "Website Item",
+		# 		"attached_to_name": item.name,
+		# 	},
+		# 	"file_url"
+		# )
+
+		# if image_url:
+		# 	thumbnail = image_url if image_url.startswith("http") else f"{base_url}{image_url}"
+
+		if website_image_url:
+			thumbnail = website_image_url if website_image_url.startswith("http") else f"{base_url}{website_image_url}"
+		else:
+			thumbnail = None
+
+		return {
+			"status": "success" if thumbnail else "empty",
+			"image": thumbnail
+		}
+	
+	except Exception:
+		frappe.log_error("Error getting website image", frappe.get_traceback())
+		return {"status": "error", "message": "Internal Server Error"}
+
+@frappe.whitelist(allow_guest=True)
 def get_distinct_specs(medusa_ids: list):
 	if isinstance(medusa_ids, str):
 		medusa_ids = json.loads(medusa_ids)
@@ -2286,6 +2318,11 @@ def get_homepage_top_section():
 				{"attached_to_doctype": doctype, "attached_to_name": name},
 				"file_url",
 			)
+
+			if doctype == "Website Item" and not image_url:
+				website_image = frappe.db.get_value("Website Item", name, "website_image")
+				if website_image:
+					image_url = website_image
 
 			if image_url:
 				thumbnail = image_url if image_url.startswith("https") else f"{base_url}{image_url}"
@@ -2821,6 +2858,7 @@ def fetch_relevant_collection_products(cus_id=None):
 				"item_group",
 				"custom_overall_rating",
 				"has_variants",
+				"website_image"
 			],
 				filters={"item_code": ["in", item_codes]}
 			)
@@ -2831,8 +2869,6 @@ def fetch_relevant_collection_products(cus_id=None):
 		sales_count_map = {item.item_code: item.sales_count for item in products_list}
 
 		for website_item_details in website_items:
-			medusa_id = website_item_details.medusa_id
-
 			image_url = frappe.db.get_value(
 				"File",
 				{
@@ -2841,8 +2877,11 @@ def fetch_relevant_collection_products(cus_id=None):
 				},
 				"file_url",
 			)
+			website_image_url = website_item_details.get("website_image")
 			if image_url:
 				thumbnail = image_url if image_url.startswith("https") else f"{base_url}{image_url}"
+			elif website_image_url:
+				thumbnail = website_image_url if website_image_url.startswith("https") else f"{base_url}{website_image_url}"
 			else:
 				thumbnail = None
 
@@ -2958,8 +2997,12 @@ def fetch_relevant_items():
 				},
 				"file_url",
 			)
+			website_image_url = item_data.website_image
+
 			if image_url:
 				thumbnail = image_url if image_url.startswith("https") else f"{base_url}{image_url}"
+			elif website_image_url:
+				thumbnail = website_image_url if website_image_url.startswith("https") else f"{base_url}{website_image_url}"
 			else:
 				thumbnail = None
 
@@ -3033,6 +3076,7 @@ def fetch_relevant_items():
 				"item_group",
 				"custom_overall_rating",
 				"has_variants",
+				"website_image"
 			],
 			filters=filters,
 		)
@@ -3052,8 +3096,12 @@ def fetch_relevant_items():
 				},
 				"file_url",
 			)
+			website_image_url = website_item_details.get("website_image")
+
 			if image_url:
 				thumbnail = image_url if image_url.startswith("https") else f"{base_url}{image_url}"
+			elif website_image_url:
+				thumbnail = website_image_url if website_image_url.startswith("https") else f"{base_url}{website_image_url}"
 			else:
 				thumbnail = None
 
@@ -3216,19 +3264,6 @@ def fetch_items_from_homepage(item_field_name, customer_id=None):
 		for entry in random_entries:
 			website_item_code = entry.website_item
 
-			image_url = frappe.db.get_value(
-				"File",
-				{
-					"attached_to_doctype": "Website Item",
-					"attached_to_name": website_item_code,
-				},
-				"file_url",
-			)
-			if image_url:
-				thumbnail = image_url if image_url.startswith("https") else f"{base_url}{image_url}"
-			else:
-				thumbnail = None
-
 			website_item_details = frappe.db.get_value(
 				"Website Item",
 				{"name": website_item_code},
@@ -3239,9 +3274,27 @@ def fetch_items_from_homepage(item_field_name, customer_id=None):
 					"item_group",
 					"custom_overall_rating",
 					"has_variants"
+					"website_image"
 				],
 				as_dict=True,
 			)
+
+			image_url = frappe.db.get_value(
+				"File",
+				{
+					"attached_to_doctype": "Website Item",
+					"attached_to_name": website_item_code,
+				},
+				"file_url",
+			)
+			website_image_url = website_item_details.get("website_image")
+
+			if image_url:
+				thumbnail = image_url if image_url.startswith("https") else f"{base_url}{image_url}"
+			elif website_image_url:
+				thumbnail = website_image_url if website_image_url.startswith("https") else f"{base_url}{website_image_url}"
+			else:
+				thumbnail = None
 
 			is_wishlisted = 0
 			if customer_id:
@@ -3326,7 +3379,7 @@ def get_yt_videos_list():
 				website_item_details = frappe.db.get_value(
 					"Website Item",
 					{"name": website_item_code},
-					["web_item_name", "medusa_id", "has_variants"],
+					["web_item_name", "medusa_id", "has_variants", "website_image"],
 					as_dict=True,
 				)
 
@@ -3338,8 +3391,11 @@ def get_yt_videos_list():
 					},
 					"file_url",
 				)
+				website_image_url = website_item_details.get("website_image")
 				if image_url:
 					thumbnail = image_url if image_url.startswith("https") else f"{base_url}{image_url}"
+				elif website_image_url:
+					thumbnail = website_image_url if website_image_url.startswith("https") else f"{base_url}{website_image_url}"
 				else:
 					thumbnail = None
 
@@ -3965,6 +4021,7 @@ def get_clearance_items(customer_id=None):
 				"item_group",
 				"custom_overall_rating",
 				"has_variants",
+				"website_image"
 			],
 			filters=filters,
 			start=offset,
@@ -3991,8 +4048,11 @@ def get_clearance_items(customer_id=None):
 				},
 				"file_url",
 			)
+			website_image_url = website_item_details.get("website_image")
 			if image_url:
 				thumbnail = image_url if image_url.startswith("https") else f"{base_url}{image_url}"
+			elif website_image_url:
+				thumbnail = website_image_url if website_image_url.startswith("https") else f"{base_url}{website_image_url}"
 			else:
 				thumbnail = None
 
