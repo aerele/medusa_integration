@@ -757,7 +757,7 @@ def export_item_group(self):
 
 		self.db_set("medusa_id", send_request(args).get("collection").get("id"))
 		print(self.name, " exported successfully")
-
+	update_all_item_groups()
 
 def create_medusa_price_list(self, called_manually=False):
 	medusa_variant_id = frappe.db.get_value(
