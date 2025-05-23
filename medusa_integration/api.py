@@ -3273,7 +3273,7 @@ def fetch_items_from_homepage(item_field_name, customer_id=None):
 					"web_item_name",
 					"item_group",
 					"custom_overall_rating",
-					"has_variants"
+					"has_variants",
 					"website_image"
 				],
 				as_dict=True,
