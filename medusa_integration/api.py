@@ -3624,7 +3624,6 @@ def sign_up(
 			
 			response = requests.request("POST", url, headers=headers, data=payload)
 			frappe.log_error("response text", response.text)
-			frappe.log_error("response", response)
 			return_data =response.json()
 
 			if return_data.get("error"):
