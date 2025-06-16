@@ -2733,7 +2733,9 @@ def handle_wishlist(item_codes, customer_id, is_add=0, is_remove=0):
 							"custom_medusa_wishlist",
 							{"medusa_customer_id": customer_id},
 						)
-						website_item.save(ignore_permissions=True)
+						from frappe import set_user
+						with set_user("Administrator"):
+							website_item.save(ignore_permissions=True)
 						frappe.db.commit()
 						response.append(
 							{
@@ -2748,7 +2750,9 @@ def handle_wishlist(item_codes, customer_id, is_add=0, is_remove=0):
 						website_item.custom_medusa_wishlist.remove(
 							existing_wishlist_entry
 						)
-						website_item.save(ignore_permissions=True)
+						from frappe import set_user
+						with set_user("Administrator"):
+							website_item.save(ignore_permissions=True)
 						frappe.db.commit()
 						response.append(
 							{
