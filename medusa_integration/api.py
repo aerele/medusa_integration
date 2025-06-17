@@ -4239,7 +4239,7 @@ def get_sales_order_name(medusa_order_id):
 @frappe.whitelist(allow_guest=True)
 def send_password_reset_email(email, token):
 	try:
-		reset_link = f"https://hospitalshop.com/confirm_password?token={token}"
+		reset_link = f"{get_url()[2]}/confirm_password?token={token}"
 
 		html_message = f"""
 		<html>
