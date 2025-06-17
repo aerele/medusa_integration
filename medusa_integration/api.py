@@ -1416,11 +1416,15 @@ def export_quotation_on_update(doc, method):
 
 			frappe.sendmail(
 				recipients=[email_id],
-				subject=f"Quotation {doc.name} - Price Received",
-				message=f"""Dear Customer,<br><br>
-				Your quotation <b>{doc.name}</b> has been updated with price details. 
-				Please review it on the <a href="{get_url()[2]}/profile" target="_blank">site</a>.<br><br>
-				Thank you!""",
+				subject=f"Here is your Quotation {doc.name}",
+				message=f"""Hello {doc.customer_name}<br><br>
+				Here is the quotation for the items you have requested for review and approval.<br>
+				Review it on the <a href="{get_url()[2]}/profile" target="_blank">website</a>.<br><br>
+				Please note, you are able to approve the full full quotation in one click, or select particular items for your order.<br><br>
+				You can track progress of your order from 'My Account' section in the website.<br><br>
+				If you have any questions, please reply to this email. We are always happy to help!<br><br>
+				Thanks,<br>
+				Hospitalshop Team""",
 				now=True
 			)
 		except Exception as e:
