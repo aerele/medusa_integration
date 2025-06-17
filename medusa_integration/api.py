@@ -2160,38 +2160,6 @@ def get_website_variants(medusa_id, customer_id=None):
 		frappe.log_error(title= "get_website_variants error", message=frappe.get_traceback())
 		return {"status": "error", "message": str(e)}
 
-# @frappe.whitelist(allow_guest=True)
-# def get_website_image(medusa_id):
-# 	try:
-# 		website_image_url = frappe.get_value("Website Item", {"medusa_id": medusa_id}, "website_image")
-# 		base_url = frappe.utils.get_url()
-
-# 		# image_url = frappe.db.get_value(
-# 		# 	"File",
-# 		# 	{
-# 		# 		"attached_to_doctype": "Website Item",
-# 		# 		"attached_to_name": item.name,
-# 		# 	},
-# 		# 	"file_url"
-# 		# )
-
-# 		# if image_url:
-# 		# 	thumbnail = image_url if image_url.startswith("http") else f"{base_url}{image_url}"
-
-# 		if website_image_url:
-# 			thumbnail = website_image_url if website_image_url.startswith("http") else f"{base_url}{website_image_url}"
-# 		else:
-# 			thumbnail = None
-
-# 		return {
-# 			"status": "success" if thumbnail else "empty",
-# 			"image": thumbnail
-# 		}
-	
-# 	except Exception:
-# 		frappe.log_error("Error getting website image", frappe.get_traceback())
-# 		return {"status": "error", "message": "Internal Server Error"}
-
 @frappe.whitelist(allow_guest=True)
 def get_website_image(medusa_id):
 	try:
