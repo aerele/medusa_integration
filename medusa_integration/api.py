@@ -4220,3 +4220,70 @@ def get_sales_order_name(medusa_order_id):
 	)
 
 	return sales_order if sales_order else None
+
+@frappe.whitelist(allow_guest=True)
+def send_password_reset_email(email, token):
+	try:
+		reset_link = f"https://hospitalshop.com/confirm_password?token={token}"
+
+		html_message = f"""
+		<html>
+		<head>
+			<style>
+				body {{
+					font-family: Arial, sans-serif;
+					background-color: #f4f4f4;
+					margin: 0;
+					padding: 20px;
+				}}
+				.container {{
+					max-width: 600px;
+					background: #ffffff;
+					padding: 20px;
+					border-radius: 8px;
+					box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+					text-align: center;
+				}}
+				.button {{
+					display: inline-block;
+					background-color: #007bff;
+					color: #ffffff;
+					text-decoration: none;
+					padding: 12px 20px;
+					border-radius: 5px;
+					font-size: 16px;
+					font-weight: bold;
+				}}
+				.footer {{
+					margin-top: 20px;
+					font-size: 12px;
+					color: #777;
+				}}
+			</style>
+		</head>
+		<body>
+			<div class="container">
+				<h2>Password Reset Request</h2>
+				<p>We have received a request to reset your Hospitalshop account password. </p>
+				<p>Use the button below to reset your password:</p>
+				<a class="button" href="{reset_link}">Reset Password</a>
+				<p>This link is valid only for 10 minutes.</p>
+				<div class="footer">
+					<p>If you have any questions, contact our support team.</p>
+				</div>
+			</div>
+		</body>
+		</html>
+		"""
+
+		frappe.sendmail(
+			recipients=[email],
+			subject="Password Reset Request - Hospitalshop",
+			message=html_message,
+			now=True
+		)
+
+		return {"status": "success", "message": "Email sent"}
+	except Exception:
+		frappe.log_error("Error sending password reset email", frappe.get_traceback())
+		return {"status": "error", "message": "Could not send email"}
