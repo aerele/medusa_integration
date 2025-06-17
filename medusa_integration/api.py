@@ -2156,34 +2156,59 @@ def get_website_variants(medusa_id, customer_id=None):
 		frappe.log_error(title= "get_website_variants error", message=frappe.get_traceback())
 		return {"status": "error", "message": str(e)}
 
+# @frappe.whitelist(allow_guest=True)
+# def get_website_image(medusa_id):
+# 	try:
+# 		website_image_url = frappe.get_value("Website Item", {"medusa_id": medusa_id}, "website_image")
+# 		base_url = frappe.utils.get_url()
+
+# 		# image_url = frappe.db.get_value(
+# 		# 	"File",
+# 		# 	{
+# 		# 		"attached_to_doctype": "Website Item",
+# 		# 		"attached_to_name": item.name,
+# 		# 	},
+# 		# 	"file_url"
+# 		# )
+
+# 		# if image_url:
+# 		# 	thumbnail = image_url if image_url.startswith("http") else f"{base_url}{image_url}"
+
+# 		if website_image_url:
+# 			thumbnail = website_image_url if website_image_url.startswith("http") else f"{base_url}{website_image_url}"
+# 		else:
+# 			thumbnail = None
+
+# 		return {
+# 			"status": "success" if thumbnail else "empty",
+# 			"image": thumbnail
+# 		}
+	
+# 	except Exception:
+# 		frappe.log_error("Error getting website image", frappe.get_traceback())
+# 		return {"status": "error", "message": "Internal Server Error"}
+
 @frappe.whitelist(allow_guest=True)
 def get_website_image(medusa_id):
 	try:
-		website_image_url = frappe.get_value("Website Item", {"medusa_id": medusa_id}, "website_image")
+		item = frappe.get_doc("Website Item", {"medusa_id": medusa_id})
 		base_url = frappe.utils.get_url()
 
-		# image_url = frappe.db.get_value(
-		# 	"File",
-		# 	{
-		# 		"attached_to_doctype": "Website Item",
-		# 		"attached_to_name": item.name,
-		# 	},
-		# 	"file_url"
-		# )
+		website_image_url = item.website_image
+		main_image = website_image_url if website_image_url and website_image_url.startswith("http") else f"{base_url}{website_image_url}" if website_image_url else None
 
-		# if image_url:
-		# 	thumbnail = image_url if image_url.startswith("http") else f"{base_url}{image_url}"
-
-		if website_image_url:
-			thumbnail = website_image_url if website_image_url.startswith("http") else f"{base_url}{website_image_url}"
-		else:
-			thumbnail = None
+		brand_image = None
+		if item.brand:
+			brand_image_path = frappe.db.get_value("Brand", item.brand, "image")
+			if brand_image_path:
+				brand_image = brand_image_path if brand_image_path.startswith("http") else f"{base_url}{brand_image_path}"
 
 		return {
-			"status": "success" if thumbnail else "empty",
-			"image": thumbnail
+			"status": "success" if main_image or brand_image else "empty",
+			"image": main_image,
+			"brand_image": brand_image
 		}
-	
+
 	except Exception:
 		frappe.log_error("Error getting website image", frappe.get_traceback())
 		return {"status": "error", "message": "Internal Server Error"}
