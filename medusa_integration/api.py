@@ -1417,7 +1417,7 @@ def export_quotation_on_update(doc, method):
 			frappe.sendmail(
 				recipients=[email_id],
 				subject=f"Here is your Quotation {doc.name}",
-				message=f"""Hello {doc.customer_name}<br><br>
+				message=f"""Hello {doc.customer_name},<br><br>
 				Here is the quotation for the items you have requested for review and approval.<br>
 				Review it on the <a href="{get_url()[2]}/profile" target="_blank">website</a>.<br><br>
 				Please note, you are able to approve the full full quotation in one click, or select particular items for your order.<br><br>
@@ -3672,6 +3672,17 @@ def sign_up(
 			otp_doc.logged_in =1
 			otp_doc.save(ignore_permissions=True)
 			frappe.db.commit()
+
+			frappe.sendmail(
+				recipients=[email],
+				subject=f"Registration successful - Hospitalshop",
+				message=f"""Hello {first_name},<br><br>
+				Thank you for registering with Hospitalshop, the one-stop-shop for all your medical needs.<br><br>
+				Please take time to familiarize yourself with our service <a href="{get_url()[2]}" target="_blank">here</a>.<br><br>
+				Thanks,<br>
+				Hospitalshop Team""",
+				now=True
+			)
 
 			return return_data
 	else:
