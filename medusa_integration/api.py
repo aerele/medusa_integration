@@ -4379,3 +4379,43 @@ def update_returned_items():
 		"status": "success",
 		"message": f"Returned items updated for Sales Order {sales_order.name}"
 	}
+
+@frappe.whitelist(allow_guest=True)
+def get_unreturned_items():
+	medusa_order_id = frappe.form_dict.get("medusa_order_id")
+
+	if not medusa_order_id:
+		frappe.local.response["http_status_code"] = 400
+		return {"status": "error", "message": "medusa_order_id is required"}
+
+	sales_order_id = frappe.get_value("Sales Order", {"medusa_order_id": medusa_order_id})
+	if not sales_order_id:
+		frappe.local.response["http_status_code"] = 404
+		return {"status": "error", "message": f"Sales Order not found for Medusa Order ID: {medusa_order_id}"}
+
+	sales_order = frappe.get_doc("Sales Order", sales_order_id)
+
+	returned_qty_map = {}
+	for returned in sales_order.get("custom_returned_items") or []:
+		item_code = returned.item_code
+		returned_qty_map[item_code] = returned_qty_map.get(item_code, 0) + returned.qty
+
+	unreturned_items = []
+	for item in sales_order.items:
+		returned_qty = returned_qty_map.get(item.item_code, 0)
+		balance_qty = item.qty - returned_qty
+		if balance_qty > 0:
+			unreturned_items.append({
+				"item_code": item.item_code,
+				"item_name": item.item_name,
+				"qty": balance_qty,
+				"rate": item.rate,
+				"amount": item.rate * balance_qty,
+				"uom": item.uom
+			})
+
+	return {
+		"status": "success",
+		"sales_order_id": sales_order.name,
+		"unreturned_items": unreturned_items
+	}
