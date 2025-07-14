@@ -4270,3 +4270,62 @@ def send_password_reset_email(email, token):
 	except Exception:
 		frappe.log_error("Error sending password reset email", frappe.get_traceback())
 		return {"status": "error", "message": "Could not send email"}
+
+@frappe.whitelist(allow_guest=True)
+def get_returned_items_info(medusa_order_id):
+	try:
+		sales_order_name = frappe.get_value("Sales Order", {"medusa_order_id": medusa_order_id})
+
+		if not sales_order_name:
+			return {"status": "error", "message": "Sales Order not found"}
+
+		sales_order = frappe.get_doc("Sales Order", sales_order_name)
+
+		returned_qty_map = {}
+		if hasattr(sales_order, "custom_returned_items"):
+			for r_item in sales_order.custom_returned_items:
+				key = r_item.item_code
+				returned_qty_map[key] = returned_qty_map.get(key, 0) + r_item.qty
+
+		unreturned_items = []
+		returned_items = []
+
+		for item in sales_order.items:
+			returned_qty = returned_qty_map.get(item.item_code, 0)
+			balance_qty = item.qty - returned_qty
+
+			if returned_qty > 0:
+				returned_items.append({
+					"item_code": item.item_code,
+					"item_name": item.item_name,
+					"qty": returned_qty,
+					"rate": item.rate,
+					"amount": returned_qty * item.rate
+				})
+
+			if balance_qty > 0:
+				unreturned_items.append({
+					"item_code": item.item_code,
+					"item_name": item.item_name,
+					"qty": balance_qty,
+					"rate": item.rate,
+					"amount": balance_qty * item.rate
+				})
+
+		html = ""
+		if len(returned_items) == 1:
+			html = "<h4>Order Items</h4><table border='1' cellpadding='5'><tr><th>Item</th><th>Qty</th><th>Amount</th></tr>"
+			for i in unreturned_items:
+				html += f"<tr><td>{i['item_name']}</td><td>{i['qty']}</td><td>{i['amount']}</td></tr>"
+			html += "</table>"
+
+		return {
+			"status": "success",
+			"unreturned_items": unreturned_items,
+			"returned_items": returned_items,
+			"html": html
+		}
+
+	except Exception:
+		frappe.log_error("Error in get_returned_items_info", frappe.get_traceback())
+		return {"status": "error", "message": "Internal Server Error"}
