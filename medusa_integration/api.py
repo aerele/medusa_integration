@@ -996,112 +996,112 @@ def fetch_all_customers(name=None):
 
 	return customers
 
-def attach_thumbnail_to_product(image_url, product_id):
-	url = f"{get_url()[0]}/admin/products/{product_id}"
-	headers = get_headers(with_token=True)
-	payload = json.dumps({"thumbnail": image_url})
+# def attach_thumbnail_to_product(image_url, product_id):
+# 	url = f"{get_url()[0]}/admin/products/{product_id}"
+# 	headers = get_headers(with_token=True)
+# 	payload = json.dumps({"thumbnail": image_url})
 
-	args = frappe._dict(
-		{
-			"method": "POST",
-			"url": url,
-			"headers": headers,
-			"payload": payload,
-			"throw_message": f"Error while attaching thumbnail {image_url} to the Medusa product {product_id}",
-		}
-	)
-	send_request(args)
+# 	args = frappe._dict(
+# 		{
+# 			"method": "POST",
+# 			"url": url,
+# 			"headers": headers,
+# 			"payload": payload,
+# 			"throw_message": f"Error while attaching thumbnail {image_url} to the Medusa product {product_id}",
+# 		}
+# 	)
+# 	send_request(args)
 
-def attach_image_to_product(image_url, product_id):
-	url = f"{get_url()[0]}/admin/products/{product_id}"
-	headers = get_headers(with_token=True)
+# def attach_image_to_product(image_url, product_id):
+# 	url = f"{get_url()[0]}/admin/products/{product_id}"
+# 	headers = get_headers(with_token=True)
 
-	response = requests.get(url, headers=headers)
+# 	response = requests.get(url, headers=headers)
 
-	existing_images = response.json().get("product", {}).get("images", [])
-	existing_image_urls = [img.get("url") for img in existing_images if "url" in img]
+# 	existing_images = response.json().get("product", {}).get("images", [])
+# 	existing_image_urls = [img.get("url") for img in existing_images if "url" in img]
 
-	updated_image_urls = existing_image_urls + image_url
+# 	updated_image_urls = existing_image_urls + image_url
 
-	updated_image_urls = list(set(updated_image_urls))
+# 	updated_image_urls = list(set(updated_image_urls))
 
-	payload = json.dumps({"images": updated_image_urls})
+# 	payload = json.dumps({"images": updated_image_urls})
 
-	args = frappe._dict(
-		{
-			"method": "POST",
-			"url": url,
-			"headers": headers,
-			"payload": payload,
-			"throw_message": "Error while attaching image to the Medusa product",
-		}
-	)
-	send_request(args)
+# 	args = frappe._dict(
+# 		{
+# 			"method": "POST",
+# 			"url": url,
+# 			"headers": headers,
+# 			"payload": payload,
+# 			"throw_message": "Error while attaching image to the Medusa product",
+# 		}
+# 	)
+# 	send_request(args)
 
-def export_image_to_medusa(doc):
+# def export_image_to_medusa(doc):
 
-	try:
-		medusa_id = frappe.get_value(
-			"Website Item", {"name": doc.attached_to_name}, "medusa_id"
-		)
+# 	try:
+# 		medusa_id = frappe.get_value(
+# 			"Website Item", {"name": doc.attached_to_name}, "medusa_id"
+# 		)
 
-		if medusa_id and not doc.attached_to_field:
-			image_path = doc.get_full_path()
+# 		if medusa_id and not doc.attached_to_field:
+# 			image_path = doc.get_full_path()
 			
-			url = f"{get_url()[0]}/admin/uploads"
-			headers = get_headers(with_token=True)
-			headers.pop("Content-Type", None)
-			payload = {}
-			image_url = []
+# 			url = f"{get_url()[0]}/admin/uploads"
+# 			headers = get_headers(with_token=True)
+# 			headers.pop("Content-Type", None)
+# 			payload = {}
+# 			image_url = []
 
-			with open(image_path, "rb") as image_file:
-				files = {"files": (image_path, image_file, "image/jpeg")}
-				response = requests.post(url, headers=headers, data=payload, files=files)
+# 			with open(image_path, "rb") as image_file:
+# 				files = {"files": (image_path, image_file, "image/jpeg")}
+# 				response = requests.post(url, headers=headers, data=payload, files=files)
 
-				if response.status_code == 200:
-					uploaded_image_url = response.json().get("uploads")[0].get("url")
-					image_url.append(uploaded_image_url)
+# 				if response.status_code == 200:
+# 					uploaded_image_url = response.json().get("uploads")[0].get("url")
+# 					image_url.append(uploaded_image_url)
 
-				else:
-					frappe.throw("Failed to upload image to Medusa")
+# 				else:
+# 					frappe.throw("Failed to upload image to Medusa")
 
-			attach_image_to_product(image_url, medusa_id)
-			doc.db_set("medusa_id", medusa_id)
-			frappe.db.commit()
+# 			attach_image_to_product(image_url, medusa_id)
+# 			doc.db_set("medusa_id", medusa_id)
+# 			frappe.db.commit()
 		
-		elif medusa_id and doc.attached_to_field == "website_image":
-			image_url = ""
-			image_path = doc.get_full_path()
-			url = f"{get_url()[0]}/admin/uploads"
-			headers = get_headers(with_token=True)
-			headers.pop("Content-Type", None)
-			payload = {}
+# 		elif medusa_id and doc.attached_to_field == "website_image":
+# 			image_url = ""
+# 			image_path = doc.get_full_path()
+# 			url = f"{get_url()[0]}/admin/uploads"
+# 			headers = get_headers(with_token=True)
+# 			headers.pop("Content-Type", None)
+# 			payload = {}
 
-			with open(image_path, "rb") as image_file:
-				files = {"files": (image_path, image_file, "image/jpeg")}
-				response = requests.post(url, headers=headers, data=payload, files=files)
+# 			with open(image_path, "rb") as image_file:
+# 				files = {"files": (image_path, image_file, "image/jpeg")}
+# 				response = requests.post(url, headers=headers, data=payload, files=files)
 
-				if response.status_code == 200:
-					uploaded_image_url = response.json().get("uploads")[0].get("url")
-					image_url = uploaded_image_url
+# 				if response.status_code == 200:
+# 					uploaded_image_url = response.json().get("uploads")[0].get("url")
+# 					image_url = uploaded_image_url
 				
-				else:
-					frappe.throw("Failed to upload image to Medusa")
+# 				else:
+# 					frappe.throw("Failed to upload image to Medusa")
 
-			attach_thumbnail_to_product(image_url, medusa_id)
-			doc.db_set("medusa_id", medusa_id)
-			frappe.db.commit()
+# 			attach_thumbnail_to_product(image_url, medusa_id)
+# 			doc.db_set("medusa_id", medusa_id)
+# 			frappe.db.commit()
 	
-	except Exception as e:
-		frappe.log_error("Image export error", frappe.get_traceback())
-		raise e
+# 	except Exception as e:
+# 		frappe.log_error("Image export error", frappe.get_traceback())
+# 		raise e
 
-def upload_image_to_medusa(doc, method):
-	if doc.attached_to_doctype == "Website Item" and doc.file_type in ["JPG", "JPEG", "PNG"] and not doc.medusa_id:
-		try:
-			export_image_to_medusa(doc)
-		except Exception:
-			frappe.log_error(title=f"Error uploading {doc.name} image file", message=frappe.get_traceback())
+# def upload_image_to_medusa(doc, method):
+# 	if doc.attached_to_doctype == "Website Item" and doc.file_type in ["JPG", "JPEG", "PNG"] and not doc.medusa_id:
+# 		try:
+# 			export_image_to_medusa(doc)
+# 		except Exception:
+# 			frappe.log_error(title=f"Error uploading {doc.name} image file", message=frappe.get_traceback())
 
 def export_all_website_item():
 	doctype = "Website Item"
@@ -1145,26 +1145,26 @@ def export_all_item_groups():
 			except Exception as e:
 				frappe.log_error(title=f"Error exporting {doc.name} item group", message=frappe.get_traceback())
 
-def export_all_website_images():
-	images = frappe.get_all(
-		"File",
-		filters={
-			"attached_to_doctype": "Website Item",
-			"file_type": ["in", ["JPG", "JPEG", "PNG"]],
-			"medusa_id": ["is", "not set"],
-		},
-	)
+# def export_all_website_images():
+# 	images = frappe.get_all(
+# 		"File",
+# 		filters={
+# 			"attached_to_doctype": "Website Item",
+# 			"file_type": ["in", ["JPG", "JPEG", "PNG"]],
+# 			"medusa_id": ["is", "not set"],
+# 		},
+# 	)
 
-	for image in images:
-		doc = frappe.get_doc("File", image)
-		try:
-			export_image_to_medusa(doc)
-		except Exception as e:
-			frappe.log_error(title=f"Error exporting {doc.name} image file", message=frappe.get_traceback())
+# 	for image in images:
+# 		doc = frappe.get_doc("File", image)
+# 		try:
+# 			export_image_to_medusa(doc)
+# 		except Exception as e:
+# 			frappe.log_error(title=f"Error exporting {doc.name} image file", message=frappe.get_traceback())
 
 def export_items_and_images():
 	export_all_website_item()
-	export_all_website_images()
+	# export_all_website_images()
 
 def export_items_and_images_custom():
 	# Export Items
@@ -1183,23 +1183,23 @@ def export_items_and_images_custom():
 		)
 
 	# Export Images
-	total_images = frappe.db.count("File", {
-		"attached_to_doctype": "Website Item",
-		"file_type": ["in", ["JPG", "JPEG", "PNG"]],
-		"medusa_id": ["is", "not set"]
-	})
-	image_batch_size = total_images // 4 + 1
+	# total_images = frappe.db.count("File", {
+	# 	"attached_to_doctype": "Website Item",
+	# 	"file_type": ["in", ["JPG", "JPEG", "PNG"]],
+	# 	"medusa_id": ["is", "not set"]
+	# })
+	# image_batch_size = total_images // 4 + 1
 
-	for i in range(4):
-		frappe.enqueue(
-			"medusa_integration.api.export_images_batch",
-			queue="long",
-			timeout=28800,
-			is_async=True,
-			job_name=f"export_images_batch_{i}",
-			batch_index=i,
-			batch_size=image_batch_size
-		)
+	# for i in range(4):
+	# 	frappe.enqueue(
+	# 		"medusa_integration.api.export_images_batch",
+	# 		queue="long",
+	# 		timeout=28800,
+	# 		is_async=True,
+	# 		job_name=f"export_images_batch_{i}",
+	# 		batch_index=i,
+	# 		batch_size=image_batch_size
+	# 	)
 
 def export_items_batch(batch_index, batch_size):
 	start = batch_index * batch_size
@@ -1221,25 +1221,25 @@ def export_items_batch(batch_index, batch_size):
 		except Exception:
 			frappe.log_error(title=f"Error exporting {doc.name} item", message=frappe.get_traceback())
 
-def export_images_batch(batch_index, batch_size):
-	start = batch_index * batch_size
-	images = frappe.get_all(
-		"File",
-		filters={
-			"attached_to_doctype": "Website Item",
-			"file_type": ["in", ["JPG", "JPEG", "PNG"]],
-			"medusa_id": ["is", "not set"],
-		},
-		start=start,
-		page_length=batch_size
-	)
+# def export_images_batch(batch_index, batch_size):
+# 	start = batch_index * batch_size
+# 	images = frappe.get_all(
+# 		"File",
+# 		filters={
+# 			"attached_to_doctype": "Website Item",
+# 			"file_type": ["in", ["JPG", "JPEG", "PNG"]],
+# 			"medusa_id": ["is", "not set"],
+# 		},
+# 		start=start,
+# 		page_length=batch_size
+# 	)
 
-	for image in images:
-		doc = frappe.get_doc("File", image.name)
-		try:
-			export_image_to_medusa(doc)
-		except Exception:
-			frappe.log_error(title=f"Error exporting {doc.name} image file", message=frappe.get_traceback())
+# 	for image in images:
+# 		doc = frappe.get_doc("File", image.name)
+# 		try:
+# 			export_image_to_medusa(doc)
+# 		except Exception:
+# 			frappe.log_error(title=f"Error exporting {doc.name} image file", message=frappe.get_traceback())
 
 
 def export_all_medusa_price_list():

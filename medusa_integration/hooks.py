@@ -152,9 +152,9 @@ doc_events = {
 		"after_insert": "medusa_integration.api.handle_payment_entry",
 		"on_update": "medusa_integration.api.handle_payment_entry",
 		"on_submit": "medusa_integration.api.handle_payment_entry"
-	},
-	"File": {
-		"after_insert": "medusa_integration.api.upload_image_to_medusa"
+	# },
+	# "File": {
+	# 	"after_insert": "medusa_integration.api.upload_image_to_medusa"
 	}
 }
 
