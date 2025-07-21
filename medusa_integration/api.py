@@ -816,8 +816,16 @@ def create_medusa_price_list(self, called_manually=False):
 	)
 
 	if called_manually:
-		starts_at = self.valid_from.isoformat() if self.valid_from else None
-		ends_at = self.valid_upto.isoformat() if self.valid_upto else None
+		def to_iso(value):
+			if not value:
+				return None
+			if isinstance(value, str):
+				return datetime.strptime(value, "%Y-%m-%d").isoformat()
+			return value.isoformat()
+		# starts_at = self.valid_from.isoformat() if self.valid_from else None
+		# ends_at = self.valid_upto.isoformat() if self.valid_upto else None
+		starts_at = to_iso(self.valid_from) if self.valid_from else None
+		ends_at = to_iso(self.valid_upto) if self.valid_upto else None
 	else:
 		starts_at = (
 			datetime.datetime.strptime(self.valid_from, "%Y-%m-%d").isoformat()
