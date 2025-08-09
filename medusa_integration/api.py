@@ -4392,7 +4392,7 @@ def update_returned_items():
 	}
 
 @frappe.whitelist(allow_guest=True)
-def get_unreturned_items():
+def get_returnable_items():
 	medusa_order_id = frappe.form_dict.get("medusa_order_id")
 
 	if not medusa_order_id:
@@ -4406,23 +4406,44 @@ def get_unreturned_items():
 
 	sales_order = frappe.get_doc("Sales Order", sales_order_id)
 
+	delivered_qty_map = {}
+	delivery_items = frappe.get_all(
+		"Delivery Note Item",
+		filters={"against_sales_order": sales_order_id, "docstatus": 1},
+		fields=["item_code", "sum(qty) as total_qty"],
+		group_by="item_code"
+	)
+
+	for d in delivery_items:
+		delivered_qty_map[d.item_code] = d.total_qty
+
 	returned_qty_map = {}
 	for returned in sales_order.get("custom_returned_items") or []:
 		item_code = returned.item_code
 		returned_qty_map[item_code] = returned_qty_map.get(item_code, 0) + returned.qty
 
 	unreturned_items = []
-	for item in sales_order.items:
-		returned_qty = returned_qty_map.get(item.item_code, 0)
-		balance_qty = item.qty - returned_qty
+	for item_code, delivered_qty in delivered_qty_map.items():
+		returned_qty = returned_qty_map.get(item_code, 0)
+		balance_qty = delivered_qty - returned_qty
+
 		if balance_qty > 0:
+			item_data = frappe.get_value(
+				"Item",
+				{"item_code": item_code},
+				["item_name", "stock_uom"],
+				as_dict=True
+			)
+			sales_order_item = next((i for i in sales_order.items if i.item_code == item_code), None)
+			rate = sales_order_item.rate if sales_order_item else 0
+
 			unreturned_items.append({
-				"item_code": item.item_code,
-				"item_name": item.item_name,
+				"item_code": item_code,
+				"item_name": item_data.item_name if item_data else "",
 				"qty": balance_qty,
-				"rate": item.rate,
-				"amount": item.rate * balance_qty,
-				"uom": item.uom
+				"rate": rate,
+				"amount": rate * balance_qty,
+				"uom": item_data.stock_uom if item_data else ""
 			})
 
 	return {
