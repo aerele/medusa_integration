@@ -2177,6 +2177,16 @@ def get_website_image(medusa_id):
 		item = frappe.get_doc("Website Item", {"medusa_id": medusa_id})
 		base_url = frappe.utils.get_url()
 
+		qty = frappe.db.sql("""
+				SELECT SUM(actual_qty)
+				FROM `tabBin`
+				WHERE item_code = %s
+				AND warehouse IN (
+					SELECT name FROM `tabWarehouse`
+					WHERE company = 'AL FARSI MEDICAL SUPPLIES'
+				)
+			""", (item.item_code))[0][0] or 0
+
 		website_image_url = item.website_image
 		main_image = website_image_url if website_image_url and website_image_url.startswith("http") else f"{base_url}{website_image_url}" if website_image_url else None
 
@@ -2189,7 +2199,8 @@ def get_website_image(medusa_id):
 		return {
 			"status": "success" if main_image or brand_image else "empty",
 			"image": main_image,
-			"brand_image": brand_image
+			"brand_image": brand_image,
+			"qty": qty
 		}
 
 	except Exception:
