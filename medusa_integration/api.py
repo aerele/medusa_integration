@@ -4369,6 +4369,8 @@ def update_returned_items():
 
 	sales_order.set("custom_returned_items", [])
 
+	item_rows = []
+
 	for item in returned_items:
 		medusa_id = item.get("medusa_id")
 
@@ -4395,8 +4397,35 @@ def update_returned_items():
 			"uom": item_data.stock_uom
 		})
 
+		item_rows.append(
+			f"<tr><td>{item_data.item_code}</td><td>{item_data.item_name}</td><td>{item.get('quantity')}</td><td>{item_data.stock_uom}</td></tr>"
+		)
+
 	sales_order.save(ignore_permissions=True)
 	sales_order.reload()
+
+	sales_order_link = f"{frappe.utils.get_url()}/app/sales-order/{sales_order.name}"
+
+	email_subject = f"Returned Items Request for Sales Order {sales_order.name}"
+	email_message = f"""
+	<p>Customer wants to return delivered items for Sales Order: <a href="{sales_order_link}">{sales_order.name}</a></p>
+	<p><b>Returned Items:</b></p>
+	<table border="1" cellspacing="0" cellpadding="4">
+		<tr>
+			<th>Item Code</th>
+			<th>Item Name</th>
+			<th>Qty</th>
+			<th>UOM</th>
+		</tr>
+		{''.join(item_rows)}
+	</table>
+	"""
+
+	frappe.sendmail(
+		recipients=["store@alfarsi.me"],
+		subject=email_subject,
+		message=email_message
+	)
 
 	return {
 		"status": "success",
