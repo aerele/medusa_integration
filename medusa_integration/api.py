@@ -4210,10 +4210,17 @@ def get_sales_order_name(medusa_order_id):
 	sales_order = frappe.get_value(
 		"Sales Order",
 		filters={"medusa_order_id": medusa_order_id},
-		fieldname="name"
+		fieldname=["name", "per_delivered"],
+		as_dict=True
 	)
 
-	return sales_order if sales_order else None
+	if not sales_order:
+		return None
+
+	return {
+		"sales_order_id": sales_order.name,
+		"isReturnable": 1 if (sales_order.per_delivered and sales_order.per_delivered > 0) else 0
+	}
 
 @frappe.whitelist(allow_guest=True)
 def send_password_reset_email(email, token):
