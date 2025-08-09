@@ -562,9 +562,7 @@ def export_website_item(self, method):
 				}
 			)
 			self.db_set("medusa_id", send_request(args).get("product").get("id"))
-			medusa_var_id = create_medusa_variant(
-				self.medusa_id, self.item_code, self.on_backorder, country_code
-			)
+			medusa_var_id = create_medusa_variant(self.medusa_id, self.on_backorder, country_code)
 			self.db_set("medusa_variant_id", medusa_var_id)
 
 			price_payload = json.dumps({
@@ -673,11 +671,7 @@ def website_item_validate(self, method):
 		update_website_item(self, method)
 
 
-def create_medusa_variant(product_id, item_code, backorder=False, country_code=None):
-	inventory_quantity = frappe.get_list(
-		"Bin", filters={"item_code": item_code}, fields="actual_qty", pluck="actual_qty"
-	)
-	qty = int(sum(inventory_quantity))
+def create_medusa_variant(product_id, backorder=False, country_code=None):
 
 	option_id = create_medusa_option(product_id)
 	payload = json.dumps(
@@ -691,7 +685,7 @@ def create_medusa_variant(product_id, item_code, backorder=False, country_code=N
 			"ean": None,
 			"upc": None,
 			"barcode": None,
-			"inventory_quantity": qty,  # Needs to be updated
+			"inventory_quantity": 0,
 			"manage_inventory": True,
 			"allow_backorder": True if backorder else False,
 			"weight": None,
@@ -2177,6 +2171,16 @@ def get_website_image(medusa_id):
 		item = frappe.get_doc("Website Item", {"medusa_id": medusa_id})
 		base_url = frappe.utils.get_url()
 
+		qty = frappe.db.sql("""
+				SELECT SUM(actual_qty)
+				FROM `tabBin`
+				WHERE item_code = %s
+				AND warehouse IN (
+					SELECT name FROM `tabWarehouse`
+					WHERE company = 'AL FARSI MEDICAL SUPPLIES'
+				)
+			""", (item.item_code))[0][0] or 0
+
 		website_image_url = item.website_image
 		main_image = website_image_url if website_image_url and website_image_url.startswith("http") else f"{base_url}{website_image_url}" if website_image_url else None
 
@@ -2189,7 +2193,8 @@ def get_website_image(medusa_id):
 		return {
 			"status": "success" if main_image or brand_image else "empty",
 			"image": main_image,
-			"brand_image": brand_image
+			"brand_image": brand_image,
+			"qty": qty
 		}
 
 	except Exception:
