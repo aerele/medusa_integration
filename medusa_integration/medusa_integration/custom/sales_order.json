@@ -298,7 +298,7 @@
    "modified_by": "Administrator",
    "module": null,
    "name": "Sales Order-custom_medusa_order_id",
-   "no_copy": 0,
+   "no_copy": 1,
    "non_negative": 0,
    "options": null,
    "owner": "Administrator",
