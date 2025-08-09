@@ -562,9 +562,7 @@ def export_website_item(self, method):
 				}
 			)
 			self.db_set("medusa_id", send_request(args).get("product").get("id"))
-			medusa_var_id = create_medusa_variant(
-				self.medusa_id, self.item_code, self.on_backorder, country_code
-			)
+			medusa_var_id = create_medusa_variant(self.medusa_id, self.on_backorder, country_code)
 			self.db_set("medusa_variant_id", medusa_var_id)
 
 			price_payload = json.dumps({
@@ -673,11 +671,7 @@ def website_item_validate(self, method):
 		update_website_item(self, method)
 
 
-def create_medusa_variant(product_id, item_code, backorder=False, country_code=None):
-	inventory_quantity = frappe.get_list(
-		"Bin", filters={"item_code": item_code}, fields="actual_qty", pluck="actual_qty"
-	)
-	qty = int(sum(inventory_quantity))
+def create_medusa_variant(product_id, backorder=False, country_code=None):
 
 	option_id = create_medusa_option(product_id)
 	payload = json.dumps(
@@ -691,7 +685,7 @@ def create_medusa_variant(product_id, item_code, backorder=False, country_code=N
 			"ean": None,
 			"upc": None,
 			"barcode": None,
-			"inventory_quantity": qty,  # Needs to be updated
+			"inventory_quantity": 0,
 			"manage_inventory": True,
 			"allow_backorder": True if backorder else False,
 			"weight": None,
