@@ -3623,7 +3623,11 @@ def sign_up(
 				headers["Referer"] = incoming_referer
 			
 			response = requests.request("POST", url, headers=headers, data=payload)
-			frappe.log_error("response text", response.text)
+			frappe.log_error(f"response text {response.status_code}", response.text)
+			if response.status_code == 504:
+				frappe.local.response['http_status_code'] = 504
+				return {"status": "error", "message": "Gateway Time-out from target server"}
+			
 			return_data =response.json()
 
 			if return_data.get("error"):
