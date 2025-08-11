@@ -1393,9 +1393,6 @@ def export_quotation_on_update(doc, method):
 				frappe.log_error(title="Unable to send mail to website user", message=message)
 				return
 
-			frappe.log_error("frontend url", get_url()[2])
-			frappe.log_error("get url", get_url())
-
 			frappe.sendmail(
 				recipients=[email_id],
 				subject=f"Here is your Quotation {doc.name}",
