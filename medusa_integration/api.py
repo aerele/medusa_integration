@@ -29,29 +29,6 @@ def create_lead():
 	lead.insert(ignore_permissions=True, ignore_mandatory=True)
 	return {"message": ("Lead created successfully"), "Lead ID": lead.name}
 
-
-@frappe.whitelist(allow_guest=True)
-def update_existing_customer():
-	try:
-		data = json.loads(frappe.request.data)
-		customer_id = data.get("erp_customer_id")
-
-		customer = frappe.get_doc("Customer", customer_id)
-
-		customer.medusa_id = data.get("id")
-		customer.email_id = data.get("email_id")
-		customer.mobile_no = data.get("mobile_no")
-		customer.t_c_acceptance = data.get("t_c_acceptance")
-		customer.offers_agreement = data.get("offers_agreement")
-
-		customer.save(ignore_permissions=True)
-		return "Customer updated successfully"
-	except frappe.DoesNotExistError:
-		return {"error": f"Customer with ID '{customer_id}' does not exist."}
-	except Exception as e:
-		frappe.log_error(frappe.get_traceback(), "Update Existing Customer Error")
-		return {"error": str(e)}
-
 @frappe.whitelist(allow_guest=True)
 def create_quotation():
 	data = json.loads(frappe.request.data)
