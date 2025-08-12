@@ -60,6 +60,7 @@ function open_link_medusa_lead_dialog(frm) {
 							frappe.throw(__("This Medusa Lead is already linked to another Customer: {0}", [customers[0].name]));
 						} else {
 							frm.set_value("medusa_id", medusa_id);
+							frm.set_value("lead_name", data.lead);
 							frm.save();
 							frappe.msgprint(__("Medusa Lead linked successfully"));
 							d.hide();
