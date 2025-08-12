@@ -59,10 +59,18 @@ function open_link_medusa_lead_dialog(frm) {
 						if (customers.length > 0) {
 							frappe.throw(__("This Medusa Lead is already linked to another Customer: {0}", [customers[0].name]));
 						} else {
-							frm.set_value("medusa_id", medusa_id);
-							frm.save();
-							frappe.msgprint(__("Medusa Lead linked successfully"));
-							d.hide();
+							frappe.confirm(
+								__("Once linked, this Lead cannot be unlinked. Do you want to proceed?"),
+								() => {
+									frm.set_value("medusa_id", medusa_id);
+									frm.set_value("lead_name", data.lead);
+									frm.save();
+									frappe.msgprint(__("Medusa Lead linked successfully"));
+									d.hide();
+								},
+								() => {
+								}
+							);
 						}
 					});
 				});
