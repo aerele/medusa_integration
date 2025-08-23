@@ -4236,8 +4236,8 @@ def get_sales_order_name(medusa_order_id):
 		fields=["item_code", "qty", "rate"]
 	)
 	for item in returned_items:
-		item["item_name"] = frappe.get_value("Website Item", item.item_code, "web_item_name")
-
+		item["item_name"] = frappe.get_value("Website Item", {"item_code": item.item_code}, "web_item_name")
+	
 	return {
 		"sales_order_id": sales_order.name,
 		"isReturnable": 1 if (sales_order.per_delivered and sales_order.per_delivered > 0) else 0,
