@@ -1726,6 +1726,8 @@ def get_website_items(url=None, customer_id=None):
 		descendant_groups.append(item_group)
 
 		filters = {"item_group": ["in", descendant_groups]}
+		filters["published"] = 1
+		filters["medusa_id"] = ["is", "set"]
 
 		distinct_parent_item_groups = []
 		distinct_collection_titles = []
