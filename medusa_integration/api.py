@@ -2197,7 +2197,7 @@ def get_website_image(medusa_id, customer_id):
 			"image": main_image,
 			"brand_image": brand_image,
 			"qty": qty,
-            "price": last_sold_price
+			"price": last_sold_price
 		}
 
 	except Exception:
@@ -4229,9 +4229,17 @@ def get_sales_order_name(medusa_order_id):
 	if not sales_order:
 		return None
 
+	returned_items = []
+	returned_items = frappe.get_all(
+		"Returned Sales Order Item",
+		filters={"parent": sales_order.name, "parenttype": "Sales Order"},
+		fields=["item_code", "qty", "rate"]
+	)
+
 	return {
 		"sales_order_id": sales_order.name,
-		"isReturnable": 1 if (sales_order.per_delivered and sales_order.per_delivered > 0) else 0
+		"isReturnable": 1 if (sales_order.per_delivered and sales_order.per_delivered > 0) else 0,
+		"returned_items": returned_items
 	}
 
 @frappe.whitelist(allow_guest=True)
