@@ -140,7 +140,8 @@ doc_events = {
 	"Sales Order": {
 		"on_submit": "medusa_integration.api.export_sales_order_on_update",
 		"on_update": "medusa_integration.api.export_sales_order_on_update",
-		"on_update_after_submit": "medusa_integration.api.export_sales_order_on_update"
+		"on_update_after_submit": "medusa_integration.api.export_sales_order_on_update",
+		"before_insert": "medusa_integration.api.validate_medusa_order_id",
 	},
 	"Sales Invoice": {
 		"on_submit": "medusa_integration.api.export_sales_invoice_on_update",

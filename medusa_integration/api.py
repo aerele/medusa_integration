@@ -323,6 +323,7 @@ def update_quotation():
 					sales_order.custom_location_and_contact_no = (
 						custom_location_and_contact_no
 					)
+				sales_order.medusa_order_id = medusa_order_id
 
 				sales_order.flags.ignore_permissions = True
 				sales_order.insert()
@@ -341,6 +342,14 @@ def update_quotation():
 		quote.cancel()
 
 	return {"message": "Quotation updated successfully", "Quotation ID": quote.name}
+
+def validate_medusa_order_id(doc, method):
+	if doc.from_ecommerce and not doc.medusa_order_id:
+		if doc.items and doc.items[0].prevdoc_docname:
+			quotation_name = doc.items[0].prevdoc_docname
+			medusa_order_id = frappe.get_value("Quotation",{"name": quotation_name}, "medusa_order_id")
+			if medusa_order_id:
+				doc.medusa_order_id = medusa_order_id
 
 @frappe.whitelist(allow_guest=True)
 def update_quotation_new():
