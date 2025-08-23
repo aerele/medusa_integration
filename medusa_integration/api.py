@@ -1689,8 +1689,6 @@ def get_website_items(url=None, customer_id=None):
 
 		parts = url.strip("/").split("/")
 
-		url_second_part = parts[1].replace("-", "%") if len(parts) > 1 else None
-
 		last_part = parts[-1].replace("-", "%")
 		second_part = set()
 
