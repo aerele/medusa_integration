@@ -4354,29 +4354,27 @@ def update_returned_items():
 
 	sales_order = frappe.get_doc("Sales Order", sales_order_id)
 
-	sales_order.set("custom_returned_items", [])
-
 	item_rows = []
 
 	for item in returned_items:
-		medusa_id = item.get("medusa_id")
+		item_code = item.get("item_code")
 
 		item_data = frappe.get_value(
 			"Website Item",
-			{"medusa_id": medusa_id},
-			["item_code", "item_name", "stock_uom"],
+			{"item_code": item_code},
+			["item_name", "stock_uom"],
 			as_dict=True
 		)
 
-		if not item_data or not item_data.item_code:
+		if not item_data or not item_code:
 			frappe.local.response['http_status_code'] = 400
 			return {
 				"status": "error",
-				"message": f"Item not found for Medusa ID: {medusa_id}"
+				"message": f"Item {item_code} not found"
 			}
 
 		sales_order.append("custom_returned_items", {
-			"item_code": item_data.item_code,
+			"item_code": item_code,
 			"item_name": item_data.item_name,
 			"qty": item.get("quantity"),
 			"rate": item.get("rate"),
