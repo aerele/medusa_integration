@@ -9,25 +9,46 @@ from alfarsi_erpnext.alfarsi_erpnext.customer import fetch_standard_price
 from frappe.utils import now_datetime, add_to_date
 import random
 
+# @frappe.whitelist(allow_guest=True)
+# def create_lead():
+# 	data = json.loads(frappe.request.data)
+# 	lead = frappe.get_doc(
+# 		{
+# 			"doctype": "Lead",
+# 			"medusa_id": data.get("id"),
+# 			"first_name": data.get("first_name"),
+# 			"last_name": data.get("last_name"),
+# 			"email_id": data.get("email"),
+# 			"mobile_no": data.get("mobile"),
+# 			"source": "Alfarsi Website",
+# 			"status": "Lead",
+# 			"company_name": data.get("organization_name"),
+# 			"t_c_acceptance": data.get("t_c_acceptance"),
+# 		}
+# 	)
+# 	lead.insert(ignore_permissions=True, ignore_mandatory=True)
+# 	return {"message": ("Lead created successfully"), "Lead ID": lead.name}
+
 @frappe.whitelist(allow_guest=True)
 def create_lead():
 	data = json.loads(frappe.request.data)
-	lead = frappe.get_doc(
-		{
-			"doctype": "Lead",
-			"medusa_id": data.get("id"),
-			"first_name": data.get("first_name"),
-			"last_name": data.get("last_name"),
-			"email_id": data.get("email"),
-			"mobile_no": data.get("mobile"),
-			"source": "Alfarsi Website",
-			"status": "Lead",
-			"company_name": data.get("organization_name"),
-			"t_c_acceptance": data.get("t_c_acceptance"),
-		}
-	)
+	frappe.enqueue("medusa_integration.api.insert_lead", data=data)
+	return {"message": "Lead created successfully"}
+
+def insert_lead(data):
+	lead = frappe.get_doc({
+		"doctype": "Lead",
+		"medusa_id": data.get("id"),
+		"first_name": data.get("first_name"),
+		"last_name": data.get("last_name"),
+		"email_id": data.get("email"),
+		"mobile_no": data.get("mobile"),
+		"source": "Alfarsi Website",
+		"status": "Lead",
+		"company_name": data.get("organization_name"),
+		"t_c_acceptance": data.get("t_c_acceptance"),
+	})
 	lead.insert(ignore_permissions=True, ignore_mandatory=True)
-	return {"message": ("Lead created successfully"), "Lead ID": lead.name}
 
 @frappe.whitelist(allow_guest=True)
 def create_quotation():
