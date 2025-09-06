@@ -3669,7 +3669,7 @@ def sign_up(
 			if incoming_referer:
 				headers["Referer"] = incoming_referer
 			
-			response = requests.request("POST", url, headers=headers, data=payload)
+			response = requests.post(url, headers=headers, json=payload, timeout=30)
 			return_data =response.json()
 			frappe.log_error(f"response text {response.status_code}", response.text)
 			if response.status_code == 504:
