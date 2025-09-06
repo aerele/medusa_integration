@@ -3644,8 +3644,8 @@ def sign_up(
 		else:
 			password = str(random.randrange(10**11, (10**12) - 1))
 			otp_doc.password = password
-			url = f"{get_url()[0]}/store/signup"
 
+			url = f"{get_url()[0]}/store/signup"
 			payload = json.dumps(
 				{
 					"email": email,
@@ -3669,18 +3669,33 @@ def sign_up(
 			if incoming_referer:
 				headers["Referer"] = incoming_referer
 			
-			response = requests.request("POST", url, headers=headers, data=payload)
+			response = requests.post(url, headers=headers, json=payload, timeout=30)
+			return_data =response.json()
 			frappe.log_error(f"response text {response.status_code}", response.text)
 			if response.status_code == 504:
 				frappe.local.response['http_status_code'] = 504
 				return {"status": "error", "message": "Gateway Time-out from target server"}
 			
-			return_data =response.json()
-
-			if return_data.get("error"):
-				frappe.local.response['http_status_code'] = 401
-				return return_data.get("error")
+			if response.status_code != 200:
+				frappe.local.response['http_status_code'] = response.status_code
+				if return_data.get("error"):
+					return return_data.get("error")
+				else:
+					return {"status": "error", "message": f"Error from Medusa server: {response.text}"}
 			
+			frappe.enqueue(
+				"medusa_integration.api.insert_lead",
+				data={
+					"id": return_data.get("customer_id"),
+					"first_name": first_name,
+					"last_name": last_name,
+					"email": email,
+					"mobile": mobile,
+					"organization_name": organization_name,
+					"t_c_acceptance": t_c_acceptance,
+				},
+			)
+						
 			otp_doc.logged_in =1
 			otp_doc.save(ignore_permissions=True)
 			frappe.db.commit()
