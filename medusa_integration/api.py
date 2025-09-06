@@ -3643,7 +3643,7 @@ def sign_up(
 			if incoming_referer:
 				headers["Referer"] = incoming_referer
 			
-			response = requests.post(url, headers=headers, json=payload, timeout=30)
+			response = requests.post(url, headers=headers, data=payload, timeout=30)
 			return_data =response.json()
 			frappe.log_error(f"response text {response.status_code}", response.text)
 			if response.status_code == 504:
@@ -3707,7 +3707,7 @@ def login(email, password=None, otp=None):
 
 	if password:
 		payload = json.dumps({"email": email, "password": password})
-		response = requests.request("POST", url, headers=headers, data=payload)
+		response = requests.post(url, headers=headers, data=payload, timeout=30)
 		return response.json()
 	
 	elif otp:
@@ -3719,7 +3719,7 @@ def login(email, password=None, otp=None):
 				payload = json.dumps(
 					{"email": email, "password": otp_doc.get_password("password")}
 				)
-				response = requests.request("POST", url, headers=headers, data=payload)
+				response = requests.post(url, headers=headers, data=payload, timeout=30)
 				return_data =response.json()
 				if return_data.get("error"):
 					frappe.local.response['http_status_code'] = 401
