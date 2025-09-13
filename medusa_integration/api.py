@@ -511,8 +511,11 @@ def export_website_item(self, method):
 	if self.website_specifications:
 		for spec in self.website_specifications:
 			if spec.label and spec.description:
+				clean_desc = strip_html(spec.description)
+				final_desc = html.unescape(clean_desc)
+
 				specifications.append(
-					{"label": spec.label, "description": spec.description}
+					{"label": spec.label, "description": final_desc}
 				)
 
 	payload = {
@@ -584,6 +587,9 @@ def export_website_item(self, method):
 
 
 def update_website_item(self, method):
+	import html
+	from frappe.utils import strip_html
+	
 	def send_update_request(payload, throw_message):
 		try:
 			args = frappe._dict(
@@ -622,8 +628,11 @@ def update_website_item(self, method):
 	if self.website_specifications:
 		for spec in self.website_specifications:
 			if spec.label and spec.description:
+				clean_desc = strip_html(spec.description)
+				final_desc = html.unescape(clean_desc)
+
 				specifications.append(
-					{"label": spec.label, "description": spec.description}
+					{"label": spec.label, "description": final_desc}
 				)
 
 	payload = {
