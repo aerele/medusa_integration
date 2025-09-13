@@ -589,7 +589,7 @@ def export_website_item(self, method):
 def update_website_item(self, method):
 	import html
 	from frappe.utils import strip_html
-	
+
 	def send_update_request(payload, throw_message):
 		try:
 			args = frappe._dict(
@@ -623,6 +623,12 @@ def update_website_item(self, method):
 			"Country", {"name": origin_country}, "code"
 		)
 	country_code = country_of_origin.upper() if origin_country else None
+	web_long_description = self.web_long_description
+	clean_description = ""
+	final_description = ""
+	if web_long_description:
+		clean_description = strip_html(web_long_description)
+		final_description = html.unescape(clean_description)
 
 	specifications = []
 	if self.website_specifications:
@@ -641,7 +647,7 @@ def update_website_item(self, method):
 		"discountable": False,
 		"collection_id": item_group.medusa_id,
 		"short_description": self.short_description,
-		"description": self.web_long_description,
+		"description": final_description,
 		"ranking": self.ranking,
 		"status": "published" if self.published else "draft",
 		"brand_name": self.brand,
