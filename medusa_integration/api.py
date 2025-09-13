@@ -2853,10 +2853,18 @@ def fetch_relevant_collection_products(cus_id=None):
 	try:
 		data = json.loads(frappe.request.data)
 		item_group = data.get("item_group")
+		if not item_group:
+			frappe.local.response['http_status_code'] = 400
+			return {"status": "error", "message": "item_group is required"}
+		
 		second_part = ""
 		base_url = frappe.utils.get_url()
 
 		route = frappe.db.get_value("Item Group", {"name": item_group}, "custom_medusa_route")
+		if not route:
+			frappe.local.response['http_status_code'] = 400
+			return {"status": "error", "message": "No route found for the given item_group"}
+		
 		parts = route.strip("/").split("/")
 		if len(parts) > 1:
 			second_part = parts[1].replace("-", "%")
