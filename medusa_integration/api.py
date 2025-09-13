@@ -2161,6 +2161,18 @@ def get_website_variants(medusa_id, customer_id=None):
 @frappe.whitelist(allow_guest=True)
 def get_website_image(medusa_id, customer_id):
 	try:
+		website_item_name = frappe.db.get_value("Website Item", {"medusa_id": medusa_id}, "name")
+		if not website_item_name:
+			delete_medusa_item({"medusa_id": medusa_id})
+			
+			return {
+				"status": "empty",
+				"image": None,
+				"brand_image": None,
+				"qty": 0,
+				"price": 0
+			}
+
 		item = frappe.get_doc("Website Item", {"medusa_id": medusa_id})
 		base_url = frappe.utils.get_url()
 
@@ -4541,8 +4553,13 @@ def get_returnable_items():
 		"unreturned_items": unreturned_items
 	}
 
-def delete_medusa_item(doc, method):
-	if not doc.medusa_id:
+def delete_medusa_item(doc, method=None):
+	if isinstance(doc, dict):
+		medusa_id = doc.get("medusa_id")
+	else:
+		medusa_id = getattr(doc, "medusa_id", None)
+
+	if not medusa_id:
 		return
 	
 	try:
