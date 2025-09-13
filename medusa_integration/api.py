@@ -2879,13 +2879,13 @@ def fetch_relevant_collection_products(cus_id=None):
 		collection = frappe.get_single("Product Collection")
 
 		products_list = []
-		if parent_group == "DENTAL":
+		if parent_group == "Dental":
 			products_list = collection.dental_items
-		elif parent_group == "MEDICAL":
+		elif parent_group == "Medical":
 			products_list = collection.medical_items
-		elif parent_group == "INFECTION CONTROL":
+		elif parent_group == "Infection Control":
 			products_list = collection.infection_control_items
-		elif parent_group == "MEDICAL LABORATORY IVD":
+		elif parent_group == "Medical Laboratory IVD":
 			products_list = collection.medical_laboratory_ivd_items
 
 		item_codes = [item.item_code for item in products_list]
