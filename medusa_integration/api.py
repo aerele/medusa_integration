@@ -4540,3 +4540,22 @@ def get_returnable_items():
 		"sales_order_id": sales_order.name,
 		"unreturned_items": unreturned_items
 	}
+
+def delete_medusa_item(doc, method):
+	if not doc.medusa_id:
+		return
+	
+	try:
+		args = frappe._dict(
+					{
+						"method": "DELETE",
+						"url": f"{get_url()[0]}/admin/products/{doc.medusa_id}",
+						"headers": get_headers(with_token=True),
+						"payload": {}
+					}
+				)
+		
+		send_request(args)
+	except Exception as e:
+		frappe.log_error(title=f"Error deleting Medusa item {doc.medusa_id}", message=frappe.get_traceback())
+		return {"status": "error", "message": str(e)}

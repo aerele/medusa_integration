@@ -132,7 +132,8 @@ doc_events = {
 		"validate": "medusa_integration.api.create_medusa_price_list"
 	},
 	"Website Item": {
-		"validate": "medusa_integration.api.website_item_validate"
+		"validate": "medusa_integration.api.website_item_validate",
+		"on_trash": "medusa_integration.api.delete_medusa_item",
 	},
 	"Quotation": {
 		"on_update": "medusa_integration.api.export_quotation_on_update"
