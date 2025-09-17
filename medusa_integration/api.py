@@ -610,6 +610,9 @@ def update_website_item(self, method):
 	if self.custom_skip_update_hook:
 		frappe.db.set_value("Website Item", self.name, "custom_skip_update_hook", 0)
 		return
+	
+	if not get_url()[1]:
+		return
 
 	item_group = frappe.get_doc("Item Group", self.item_group)
 	if not item_group.medusa_id:
