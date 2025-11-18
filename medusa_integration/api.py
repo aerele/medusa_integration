@@ -397,6 +397,8 @@ def update_quotation_new():
 			tax_template = tax.item_tax_template
 			if tax_template:
 				tax_template_doc = frappe.get_doc("Item Tax Template", tax_template)
+				if tax_template_doc.company != 'AL FARSI MEDICAL SUPPLIES':
+					continue
 				for template_tax in tax_template_doc.taxes:
 					account_head = template_tax.tax_type
 					if account_head not in tax_summary:
