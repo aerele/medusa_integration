@@ -34,8 +34,9 @@
   },
   {
    "fieldname": "claimed_by",
-   "fieldtype": "Data",
-   "label": "Claimed By"
+   "fieldtype": "Link",
+   "label": "Claimed By",
+   "options": "Customer"
   },
   {
    "fieldname": "claimed_order",
@@ -46,7 +47,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-11-29 10:54:41.329585",
+ "modified": "2025-11-29 14:39:51.018790",
  "modified_by": "Administrator",
  "module": "Medusa Integration",
  "name": "Website Coupon Code",
