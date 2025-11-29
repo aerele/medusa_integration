@@ -4672,3 +4672,16 @@ def delete_medusa_item(doc, method=None):
 	except Exception as e:
 		frappe.log_error(title=f"Error deleting Medusa item {doc.medusa_id}", message=frappe.get_traceback())
 		return {"status": "error", "message": str(e)}
+
+def update_webitem_stock():
+	from erpnext.stock.get_item_details import get_bin_details
+	items = frappe.get_all("Website Item", filters = {"published": 1}, fields = ["name", "website_warehouse", "item_code", "custom_threshold_qty"])
+	for item in items:
+		bin_details = get_bin_details(item.item_code, item.website_warehouse, include_child_warehouses = 1)
+		if bin_details["actual_qty"]:
+			if bin_details["actual_qty"] > item.custom_threshold_qty:
+				frappe.db.set_value('Website Item', item.name, 'custom_in_stock', 1)
+			else:
+				frappe.db.set_value('Website Item', item.name, 'custom_in_stock', 1)
+		else:
+			frappe.db.set_value('Website Item', item.name, 'custom_in_stock', 0)

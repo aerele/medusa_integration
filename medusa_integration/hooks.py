@@ -193,7 +193,10 @@ scheduler_events = {
 			"medusa_integration.api.export_items_and_images_custom",
 			"medusa_integration.api.sync_missing_prices_to_medusa"
 		]
-	}
+	},
+	"daily_long": [
+		"medusa_integration.api.update_webitem_stock"
+	]
 }
 
 # Testing
