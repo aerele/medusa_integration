@@ -13,6 +13,7 @@
   "admin_password",
   "access_token",
   "section_break_vuwpv",
+  "allow_coupon_discounts",
   "cart_value",
   "discount_amount",
   "coupon_expiry_date"
@@ -77,12 +78,18 @@
    "fieldtype": "Date",
    "in_list_view": 1,
    "label": "Coupon Expiry Date"
+  },
+  {
+   "default": "0",
+   "fieldname": "allow_coupon_discounts",
+   "fieldtype": "Check",
+   "label": "Allow Coupon Discounts?"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-11-29 10:47:34.874533",
+ "modified": "2025-11-29 11:29:36.961028",
  "modified_by": "Administrator",
  "module": "Medusa Integration",
  "name": "Medusa Configuration",
