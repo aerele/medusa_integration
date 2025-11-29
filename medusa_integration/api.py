@@ -4318,7 +4318,7 @@ def verify_coupon(order_id, coupon_code):
 
 	config = frappe.get_single("Medusa Configuration")
 
-	if frappe.utils.getdate(config.coupon_expiry_date) < frappe.utils.today():
+	if frappe.utils.getdate(config.coupon_expiry_date) < datetime.today().date():
 		return False
 
 	coupon.claimed_by = frappe.db.get_value("Sales Order", order_id, "customer")
