@@ -4274,7 +4274,7 @@ def get_sales_order_name(medusa_order_id):
 	sales_order = frappe.get_value(
 		"Sales Order",
 		filters={"medusa_order_id": medusa_order_id},
-		fieldname=["name", "per_delivered"],
+		fieldname=["name", "per_delivered", "grand_total"],
 		as_dict=True
 	)
 
@@ -4290,10 +4290,24 @@ def get_sales_order_name(medusa_order_id):
 	for item in returned_items:
 		item["item_name"] = frappe.get_value("Website Item", {"item_code": item.item_code}, "web_item_name")
 	
+	config = frappe.get_single("Medusa Configuration")
+	cart_value = 0
+	discount_amount = 0
+
+	if (
+		config.allow_coupon_discounts
+		and frappe.utils.getdate(config.coupon_expiry_date) >= datetime.today().date()
+		and sales_order.grand_total > config.cart_value
+	):
+		cart_value = config.cart_value
+		discount_amount = config.discount_amount
+	
 	return {
 		"sales_order_id": sales_order.name,
 		"isReturnable": 1 if (sales_order.per_delivered and sales_order.per_delivered > 0) else 0,
-		"returned_items": returned_items
+		"returned_items": returned_items,
+		"cart_value": cart_value,
+		"discount_amount": discount_amount
 	}
 
 @frappe.whitelist(allow_guest=True)
