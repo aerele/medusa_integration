@@ -1475,6 +1475,9 @@ def export_sales_order(self, method):
 		if sales_order.status == "Draft"
 		else sales_order.status,
 		"payment_status": payment_status,
+		"discount_amount": sales_order.discount_amount,
+		"net_total": sales_order.net_total,
+		"grand_total": sales_order.grand_total
 	}
 
 	try:
