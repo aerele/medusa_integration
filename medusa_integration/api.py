@@ -4320,16 +4320,20 @@ def verify_coupon(order_id, coupon_code):
 
 	if frappe.utils.getdate(config.coupon_expiry_date) < datetime.today().date():
 		return False
+	
+	so_amount = frappe.db.get_value("Sales Order", order_id, "grand_total")
+	if (so_amount or 0) < config.cart_value:
+		return False
 
-	coupon.claimed_by = frappe.db.get_value("Sales Order", order_id, "customer")
-	coupon.claimed_order = order_id
-	coupon.claimed = 1
-	coupon.save(ignore_permissions=True)
+	# coupon.claimed_by = frappe.db.get_value("Sales Order", order_id, "customer")
+	# coupon.claimed_order = order_id
+	# coupon.claimed = 1
+	# coupon.save(ignore_permissions=True)
 
-	so = frappe.get_doc("Sales Order", order_id)
-	so.apply_discount_on = "Grand Total"
-	so.discount_amount = config.discount_amount
-	so.save(ignore_permissions=True)
+	# so = frappe.get_doc("Sales Order", order_id)
+	# so.apply_discount_on = "Grand Total"
+	# so.discount_amount = config.discount_amount
+	# so.save(ignore_permissions=True)
 
 	return True
 
