@@ -4371,6 +4371,7 @@ def pay_now(order_id, coupon_code=None):
 			return_doc=True,
 			ignore_permissions=True
 		)
+		payment_request.submit()
 
 		return {"success": True, "sales_invoice": si.name, "payment_request": payment_request.name}
 	
