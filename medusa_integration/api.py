@@ -4311,6 +4311,29 @@ def get_sales_order_name(medusa_order_id):
 	}
 
 @frappe.whitelist(allow_guest=True)
+def verify_coupon(order_id, coupon_code):
+	coupon = frappe.get_doc("Website Coupon Code", coupon_code)
+	if not coupon or coupon.claimed or coupon.expired:
+		return False
+
+	config = frappe.get_single("Medusa Configuration")
+
+	if frappe.utils.getdate(config.coupon_expiry_date) < frappe.utils.today():
+		return False
+
+	coupon.claimed_by = frappe.db.get_value("Sales Order", order_id, "customer")
+	coupon.claimed_order = order_id
+	coupon.claimed = 1
+	coupon.save(ignore_permissions=True)
+
+	so = frappe.get_doc("Sales Order", order_id)
+	so.apply_discount_on = "Grand Total"
+	so.discount_amount = config.discount_amount
+	so.save(ignore_permissions=True)
+
+	return True
+
+@frappe.whitelist(allow_guest=True)
 def send_password_reset_email(email, token):
 	try:
 		reset_link = f"{get_url()[2]}/confirm_password?token={token}"
