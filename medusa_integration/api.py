@@ -324,7 +324,7 @@ def update_quotation():
 
 				sales_order.flags.ignore_permissions = True
 				sales_order.insert()
-				sales_order.submit()
+				# sales_order.submit()
 			except Exception as e:
 				return {"error": "Failed to create Sales Order: {}".format(str(e))}
 		quote.reload()
@@ -1475,6 +1475,9 @@ def export_sales_order(self, method):
 		if sales_order.status == "Draft"
 		else sales_order.status,
 		"payment_status": payment_status,
+		"discount_amount": sales_order.discount_amount,
+		"net_total": sales_order.net_total,
+		"grand_total": sales_order.grand_total
 	}
 
 	try:
@@ -4274,7 +4277,7 @@ def get_sales_order_name(medusa_order_id):
 	sales_order = frappe.get_value(
 		"Sales Order",
 		filters={"medusa_order_id": medusa_order_id},
-		fieldname=["name", "per_delivered"],
+		fieldname=["name", "per_delivered", "grand_total"],
 		as_dict=True
 	)
 
@@ -4290,11 +4293,97 @@ def get_sales_order_name(medusa_order_id):
 	for item in returned_items:
 		item["item_name"] = frappe.get_value("Website Item", {"item_code": item.item_code}, "web_item_name")
 	
+	config = frappe.get_single("Medusa Configuration")
+	cart_value = 0
+	discount_amount = 0
+
+	if (
+		config.allow_coupon_discounts
+		and frappe.utils.getdate(config.coupon_expiry_date) >= datetime.today().date()
+		and sales_order.grand_total > config.cart_value
+	):
+		cart_value = config.cart_value
+		discount_amount = config.discount_amount
+	
 	return {
 		"sales_order_id": sales_order.name,
 		"isReturnable": 1 if (sales_order.per_delivered and sales_order.per_delivered > 0) else 0,
-		"returned_items": returned_items
+		"returned_items": returned_items,
+		"cart_value": cart_value,
+		"discount_amount": discount_amount
 	}
+
+@frappe.whitelist(allow_guest=True)
+def verify_coupon(order_id, coupon_code):
+	coupon = frappe.get_doc("Website Coupon Code", coupon_code)
+	if not coupon or coupon.claimed or coupon.expired:
+		return False
+
+	config = frappe.get_single("Medusa Configuration")
+
+	if frappe.utils.getdate(config.coupon_expiry_date) < datetime.today().date():
+		return False
+	
+	so_amount = frappe.db.get_value("Sales Order", order_id, "grand_total")
+	if (so_amount or 0) < config.cart_value:
+		return False
+
+	return True
+
+@frappe.whitelist(allow_guest=True)
+def pay_now(order_id, coupon_code=None):
+	try:
+		frappe.set_user("Administrator")
+		if coupon_code:
+			coupon = frappe.get_doc("Website Coupon Code", coupon_code)
+			coupon.claimed_by = frappe.db.get_value("Sales Order", order_id, "customer")
+			coupon.claimed_order = order_id
+			coupon.claimed = 1
+			coupon.save(ignore_permissions=True)
+		
+		config = frappe.get_single("Medusa Configuration")
+		
+		so = frappe.get_doc("Sales Order", order_id)
+		so.apply_discount_on = "Grand Total"
+		so.discount_amount = config.discount_amount
+		so.save(ignore_permissions=True)
+		so.submit()
+
+		si = frappe.call(
+			"erpnext.selling.doctype.sales_order.sales_order.make_sales_invoice",
+			source_name=order_id,
+			ignore_permissions=True
+		)
+		si.medusa_order_id = so.medusa_order_id
+
+		si.insert()
+		si.submit()
+
+		customer_email = frappe.db.get_value("Customer", so.customer, "email_id")
+
+		payment_request = frappe.call(
+			"erpnext.accounts.doctype.payment_request.payment_request.make_payment_request",
+			dt="Sales Invoice",
+			dn=si.name,
+			recipient_id=customer_email,
+			payment_request_type="Inward",
+			party_type="Customer",
+			party=so.customer,
+			mode_of_payment="Bank Draft",
+			payment_gateway_account="BankMuscat-443 - OMR",
+			return_doc=True,
+			ignore_permissions=True
+		)
+		payment_request.submit()
+
+		return {"success": True, "sales_invoice": si.name, "payment_request": payment_request.name}
+	
+	except Exception as e:
+		frappe.log_error("Pay Now API Error", frappe.get_traceback(with_context=True))
+		return {
+			"success": False,
+			"error": str(e)
+		}
 
 @frappe.whitelist(allow_guest=True)
 def send_password_reset_email(email, token):
