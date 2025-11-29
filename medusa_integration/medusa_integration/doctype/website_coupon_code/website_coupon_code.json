@@ -1,0 +1,72 @@
+{
+ "actions": [],
+ "autoname": "field:code",
+ "creation": "2025-11-27 12:01:52.377338",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "code",
+  "claimed",
+  "expired",
+  "claimed_by",
+  "claimed_order"
+ ],
+ "fields": [
+  {
+   "fieldname": "code",
+   "fieldtype": "Data",
+   "label": "Code",
+   "unique": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "claimed",
+   "fieldtype": "Check",
+   "label": "Claimed"
+  },
+  {
+   "default": "0",
+   "fieldname": "expired",
+   "fieldtype": "Check",
+   "label": "Expired"
+  },
+  {
+   "fieldname": "claimed_by",
+   "fieldtype": "Data",
+   "label": "Claimed By"
+  },
+  {
+   "fieldname": "claimed_order",
+   "fieldtype": "Link",
+   "label": "Claimed Order",
+   "options": "Sales Order"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-11-29 10:54:41.329585",
+ "modified_by": "Administrator",
+ "module": "Medusa Integration",
+ "name": "Website Coupon Code",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

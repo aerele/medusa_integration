@@ -11,7 +11,11 @@
   "frontend_url",
   "admin_email",
   "admin_password",
-  "access_token"
+  "access_token",
+  "section_break_vuwpv",
+  "cart_value",
+  "discount_amount",
+  "coupon_expiry_date"
  ],
  "fields": [
   {
@@ -48,12 +52,37 @@
    "fieldname": "frontend_url",
    "fieldtype": "Data",
    "label": "Frontend URL"
+  },
+  {
+   "fieldname": "section_break_vuwpv",
+   "fieldtype": "Section Break",
+   "label": "Coupon Discount Details"
+  },
+  {
+   "description": "The minimum order amount to enable coupon",
+   "fieldname": "cart_value",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Cart Value",
+   "precision": "3"
+  },
+  {
+   "fieldname": "discount_amount",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Discount Amount"
+  },
+  {
+   "fieldname": "coupon_expiry_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Coupon Expiry Date"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-05-10 10:38:37.424898",
+ "modified": "2025-11-29 10:47:34.874533",
  "modified_by": "Administrator",
  "module": "Medusa Integration",
  "name": "Medusa Configuration",
