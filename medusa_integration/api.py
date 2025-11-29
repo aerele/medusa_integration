@@ -324,7 +324,7 @@ def update_quotation():
 
 				sales_order.flags.ignore_permissions = True
 				sales_order.insert()
-				sales_order.submit()
+				# sales_order.submit()
 			except Exception as e:
 				return {"error": "Failed to create Sales Order: {}".format(str(e))}
 		quote.reload()
