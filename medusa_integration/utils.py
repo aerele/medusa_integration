@@ -1,4 +1,5 @@
 import frappe,json,requests,random,string
+from frappe import _
 from medusa_integration.constants import get_headers
 
 
@@ -42,5 +43,37 @@ def send_request(args):
 	else:
 		frappe.throw(args.get("throw_message") or response.text)
 
+@frappe.whitelist()
+def link_medusa_lead(customer, lead):
+	customer_doc = frappe.get_doc("Customer", customer)
 
+	original_name = customer_doc.customer_name
 
+	lead_doc = frappe.get_doc("Lead", lead)
+	if not lead_doc:
+		frappe.throw(_("Lead does not exist"))
+
+	if not lead_doc.medusa_id:
+		frappe.throw(_("Selected Lead does not have a Medusa ID"))
+
+	medusa_id = lead_doc.medusa_id
+
+	exists = frappe.db.exists(
+		"Customer",
+		{"medusa_id": medusa_id, "name": ("!=", customer)}
+	)
+
+	if exists:
+		frappe.throw(
+			_("This Medusa Lead is already linked to another Customer: {0}")
+			.format(exists)
+		)
+
+	customer_doc.medusa_id = medusa_id
+	customer_doc.lead_name = lead
+
+	customer_doc.customer_name = original_name
+
+	customer_doc.save(ignore_permissions=True)
+
+	return {"status": "success"}
