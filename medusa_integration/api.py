@@ -247,6 +247,8 @@ def update_quotation():
 		quote.workflow_state = "Approved"
 		quote.order_type = "Sales"
 		quote.medusa_order_id = medusa_order_id
+		if quote.title == "Unapproved Lead":
+			quote.title = quote.customer_name
 
 		# tax_summary = set()
 
