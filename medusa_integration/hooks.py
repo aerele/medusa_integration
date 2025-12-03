@@ -119,10 +119,6 @@ doctype_js = {
 # ---------------
 # Override standard doctype classes
 
-override_doctype_class = {
-	"Sales Order": "medusa_integration.custom_selling_controller.CustomSellingController",
-	"Sales Invoice": "medusa_integration.custom_selling_controller.CustomSellingController"
-}
 
 # Document Events
 # ---------------
