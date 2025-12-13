@@ -2,9 +2,9 @@ import frappe
 from frappe import _, bold, throw
 from frappe.utils import flt, get_link_to_form
 
-from erpnext.controllers.selling_controller import SellingController
+from erpnext.accounts.doctype.sales_invoice.sales_invoice import SalesInvoice
 
-class CustomSellingController(SellingController):	
+class CustomSalesInvoice(SalesInvoice):	
 	def validate_selling_price(self):
 		if self.from_ecommerce:
 			return

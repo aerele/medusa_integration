@@ -4356,6 +4356,7 @@ def pay_now(order_id, coupon_code=None):
 			source_name=order_id,
 			ignore_permissions=True
 		)
+		si.from_ecommerce = so.from_ecommerce
 		si.medusa_order_id = so.medusa_order_id
 
 		si.insert()
@@ -4687,3 +4688,31 @@ def update_webitem_stock():
 				frappe.db.set_value('Website Item', item.name, 'custom_in_stock', 1)
 		else:
 			frappe.db.set_value('Website Item', item.name, 'custom_in_stock', 0)
+
+def set_ecommerce_details_from_sales_order(doc, method):
+	if not doc.items:
+		return
+
+	first_item = doc.items[0]
+
+	sales_order = (
+		first_item.sales_order
+		if doc.doctype == "Sales Invoice"
+		else first_item.against_sales_order
+	)
+
+	if not sales_order:
+		return
+
+	so_values = frappe.db.get_value(
+		"Sales Order",
+		sales_order,
+		["from_ecommerce", "medusa_order_id"],
+		as_dict=True
+	)
+
+	if not so_values:
+		return
+
+	doc.from_ecommerce = so_values.from_ecommerce
+	doc.medusa_order_id = so_values.medusa_order_id

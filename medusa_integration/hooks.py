@@ -119,6 +119,11 @@ doctype_js = {
 # ---------------
 # Override standard doctype classes
 
+override_doctype_class = {
+	"Sales Order": "medusa_integration.custom_sales_order.CustomSalesOrder",
+	"Sales Invoice": "medusa_integration.custom_sales_invoice.CustomSalesInvoice",
+	"Delivery Note": "medusa_integration.custom_delivery_note.CustomDeliveryNote"
+}
 
 # Document Events
 # ---------------
@@ -143,9 +148,11 @@ doc_events = {
 	},
 	"Sales Invoice": {
 		"on_submit": "medusa_integration.api.export_sales_invoice_on_update",
+		"before_insert": "medusa_integration.api.set_ecommerce_details_from_sales_order"
 	},
 	"Delivery Note": {
 		"on_submit": "medusa_integration.api.export_delivery_note_on_update",
+		"before_insert": "medusa_integration.api.set_ecommerce_details_from_sales_order"
 	},
 	"Payment Entry": {
 		"after_insert": "medusa_integration.api.handle_payment_entry",
