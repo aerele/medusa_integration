@@ -148,9 +148,11 @@ doc_events = {
 	},
 	"Sales Invoice": {
 		"on_submit": "medusa_integration.api.export_sales_invoice_on_update",
+		"before_insert": "medusa_integration.api.set_ecommerce_details_from_sales_order"
 	},
 	"Delivery Note": {
 		"on_submit": "medusa_integration.api.export_delivery_note_on_update",
+		"before_insert": "medusa_integration.api.set_ecommerce_details_from_sales_order"
 	},
 	"Payment Entry": {
 		"after_insert": "medusa_integration.api.handle_payment_entry",
