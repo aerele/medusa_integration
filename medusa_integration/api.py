@@ -4356,6 +4356,7 @@ def pay_now(order_id, coupon_code=None):
 			source_name=order_id,
 			ignore_permissions=True
 		)
+		si.from_ecommerce = so.from_ecommerce
 		si.medusa_order_id = so.medusa_order_id
 
 		si.insert()
