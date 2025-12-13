@@ -119,6 +119,11 @@ doctype_js = {
 # ---------------
 # Override standard doctype classes
 
+override_doctype_class = {
+	"Sales Order": "medusa_integration.custom_sales_order.CustomSalesOrder",
+	"Sales Invoice": "medusa_integration.custom_sales_invoice.CustomSalesInvoice",
+	"Delivery Note": "medusa_integration.custom_delivery_note.CustomDeliveryNote"
+}
 
 # Document Events
 # ---------------
