@@ -5,7 +5,6 @@ from frappe import _
 from medusa_integration.constants import get_headers, get_url
 from medusa_integration.utils import send_request
 from datetime import datetime, timedelta
-from alfarsi_erpnext.alfarsi_erpnext.customer import fetch_standard_price
 from frappe.utils import now_datetime, add_to_date
 import random
 
@@ -23,6 +22,21 @@ def insert_lead(data):
 		"t_c_acceptance": data.get("t_c_acceptance"),
 	})
 	lead.insert(ignore_permissions=True, ignore_mandatory=True)
+
+@frappe.whitelist()
+def fetch_standard_price(items, price_list, party, quotation_to):
+    import json
+    items = json.loads(items)
+    customer = None
+    if quotation_to == 'Customer':
+        customer = frappe.db.get_value("Customer", party)
+    if quotation_to == 'Lead':
+        customer = frappe.db.get_value("Customer", {"lead_name": party})
+    result = {}
+    for item in items:
+        result[item['item_code']] = frappe.db.get_value("Item Price",{"price_list": price_list, "item_code": item['item_code'], "selling": 1}, "price_list_rate")
+        result[item['item_code'] + "-negotiated"] = frappe.db.get_value("Item Price",{"price_list": price_list, "item_code": item['item_code'], "customer": customer, "selling": 1}, "price_list_rate")
+    return result
 
 @frappe.whitelist(allow_guest=True)
 def create_quotation():
