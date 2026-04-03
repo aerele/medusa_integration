@@ -2245,7 +2245,8 @@ def get_website_image(medusa_id, customer_id):
 			"image": main_image,
 			"brand_image": brand_image,
 			"qty": qty,
-			"price": last_sold_price
+			"price": last_sold_price,
+			"description": item.web_long_description
 		}
 
 	except Exception:
