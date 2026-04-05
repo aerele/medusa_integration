@@ -2221,31 +2221,43 @@ def get_website_image(medusa_id, customer_id):
 			if brand_image_path:
 				brand_image = brand_image_path if brand_image_path.startswith("http") else f"{base_url}{brand_image_path}"
 
-		last_sold_price = 0
-		if customer_id and customer_id != "null":
-			customer = frappe.db.get_value("Customer", {"medusa_id": customer_id}, "name")
-			if customer:
-				result = frappe.db.sql("""
-					SELECT soi.rate
-					FROM `tabSales Order Item` soi
-					INNER JOIN `tabSales Order` so ON so.name = soi.parent
-					WHERE so.customer = %s
-					  AND soi.item_code = %s
-					  AND so.docstatus = 1
-					  AND so.workflow_state = 'Approved'
-					ORDER BY so.transaction_date DESC, so.creation DESC
-					LIMIT 1
-				""", (customer, item.item_code), as_dict=True)
+		display_price = 0
+		if item.item_code:
+			price_list = "Standard Selling"
+			party = ""
+			if customer_id and str(customer_id).lower() != "null":
+				customer_name = frappe.db.get_value(
+					"Customer", {"medusa_id": customer_id}, "name"
+				)
+				if customer_name:
+					party = customer_name
+					dpl = frappe.db.get_value(
+						"Customer", customer_name, "default_price_list"
+					)
+					if dpl:
+						price_list = dpl
+			try:
+				prices = fetch_standard_price(
+					items=json.dumps([{"item_code": item.item_code}]),
+					price_list=price_list,
+					party=party,
+					quotation_to="Customer",
+				)
+				standard_price = prices.get(item.item_code) or 0
+				if standard_price < 50:
+					display_price = standard_price
+			except Exception as price_err:
+				frappe.log_error(
+					message=str(price_err),
+					title="get_website_image price fetch failed",
+				)
 
-				if result:
-					last_sold_price = result[0].rate
-		
 		return {
 			"status": "success" if main_image or brand_image else "empty",
 			"image": main_image,
 			"brand_image": brand_image,
 			"qty": qty,
-			"price": last_sold_price,
+			"price": display_price,
 			"description": item.web_long_description
 		}
 
