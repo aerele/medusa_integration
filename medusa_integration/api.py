@@ -3330,8 +3330,6 @@ def get_best_deals():
 		return {"status": "error", "message": str(e)}
 
 def fetch_items_from_homepage(item_field_name, customer_id=None):
-	import random
-
 	try:
 		homepage_landing = frappe.get_doc("Homepage Landing", "Active Homepage Landing")
 		all_items = getattr(homepage_landing, item_field_name, [])
@@ -3354,6 +3352,7 @@ def fetch_items_from_homepage(item_field_name, customer_id=None):
 					"medusa_id",
 					"medusa_variant_id",
 					"web_item_name",
+					"item_code",
 					"item_group",
 					"custom_overall_rating",
 					"has_variants",
@@ -3393,13 +3392,70 @@ def fetch_items_from_homepage(item_field_name, customer_id=None):
 						"product_id": website_item_details.medusa_id,
 						"variant_id": website_item_details.medusa_variant_id,
 						"item_name": website_item_details.web_item_name,
+						"item_code": website_item_details.item_code,
 						"item_group": website_item_details.item_group,
 						"overall_rating": website_item_details.custom_overall_rating,
 						"thumbnail": thumbnail,
 						"is_wishlisted": is_wishlisted,
-						"has_variants": website_item_details.has_variants
+						"has_variants": website_item_details.has_variants,
+						"standard_price": None,
+						"rate": None,
 					}
 				)
+
+		price_items = [
+			{"item_code": e["item_code"]}
+			for e in entries_data
+			if e.get("item_code")
+		]
+		if price_items:
+			price_list = "Standard Selling"
+			party = ""
+			if customer_id and str(customer_id).lower() != "null":
+				customer_name = frappe.db.get_value(
+					"Customer", {"medusa_id": customer_id}, "name"
+				)
+				if customer_name:
+					party = customer_name
+					dpl = frappe.db.get_value(
+						"Customer", customer_name, "default_price_list"
+					)
+					if dpl:
+						price_list = dpl
+			try:
+				prices = fetch_standard_price(
+					items=json.dumps(price_items),
+					price_list=price_list,
+					party=party,
+					quotation_to="Customer",
+				)
+				for entry in entries_data:
+					ic = entry.get("item_code")
+					if not ic:
+						continue
+
+					standard_price = prices.get(ic) or 0
+					rate = prices.get(f"{ic}-negotiated") or 0
+
+					# Apply condition
+					if standard_price < 50:
+						entry["standard_price"] = standard_price
+					else:
+						entry["standard_price"] = None
+
+					if rate < 50:
+						entry["rate"] = rate
+					else:
+						entry["rate"] = None
+			
+			except Exception as price_err:
+				frappe.log_error(
+					message=str(price_err),
+					title="Fetch Homepage Item Prices Failed",
+				)
+				for entry in entries_data:
+					entry["standard_price"] = entry["standard_price"] or 0
+					entry["rate"] = entry["rate"] or 0
 
 		return entries_data
 
