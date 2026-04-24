@@ -23,7 +23,8 @@
   "urls",
   "product_details_banner",
   "clearance_items",
-  "best_deals"
+  "best_deals",
+  "price_visibility_threshold"
  ],
  "fields": [
   {
@@ -127,11 +128,17 @@
    "fieldtype": "Table",
    "label": "Best Deals",
    "options": "Best Deals"
+  },
+  {
+   "fieldname": "price_visibility_threshold",
+   "fieldtype": "Currency",
+   "label": "Price Visibility Threshold",
+   "non_negative": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-04-09 10:36:53.219215",
+ "modified": "2026-04-22 18:00:47.017792",
  "modified_by": "Administrator",
  "module": "Medusa Integration",
  "name": "Homepage Landing",
