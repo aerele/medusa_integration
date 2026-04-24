@@ -2244,7 +2244,14 @@ def get_website_image(medusa_id, customer_id):
 					quotation_to="Customer",
 				)
 				standard_price = prices.get(item.item_code) or 0
-				if standard_price < 50:
+
+				price_visibility_threshold = frappe.db.get_value(
+					"Homepage Landing",
+					"Active Homepage Landing",
+					"price_visibility_threshold"
+				) or 50
+
+				if standard_price < price_visibility_threshold:
 					display_price = standard_price
 			except Exception as price_err:
 				frappe.log_error(
@@ -3441,6 +3448,11 @@ def fetch_items_from_homepage(item_field_name, customer_id=None):
 					party=party,
 					quotation_to="Customer",
 				)
+				price_visibility_threshold = frappe.db.get_value(
+					"Homepage Landing",
+					"Active Homepage Landing",
+					"price_visibility_threshold"
+				) or 50
 				for entry in entries_data:
 					ic = entry.get("item_code")
 					if not ic:
@@ -3448,14 +3460,13 @@ def fetch_items_from_homepage(item_field_name, customer_id=None):
 
 					standard_price = prices.get(ic) or 0
 					rate = prices.get(f"{ic}-negotiated") or 0
-
+					
 					# Apply condition
-					if standard_price < 50:
+					if standard_price < price_visibility_threshold:
 						entry["standard_price"] = standard_price
 					else:
 						entry["standard_price"] = None
-
-					if rate < 50:
+					if rate < price_visibility_threshold:
 						entry["rate"] = rate
 					else:
 						entry["rate"] = None
