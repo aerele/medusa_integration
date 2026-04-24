@@ -152,6 +152,7 @@ def create_quotation():
 @frappe.whitelist(allow_guest=True)
 def update_quotation():
 	data = json.loads(frappe.request.data)
+	create_so = data.get("create_so", False)
 	medusa_quotation_id = data.get("quotation_id")
 	quotation_id = frappe.get_value(
 		"Quotation", {"medusa_quotation_id": medusa_quotation_id}, "name"
@@ -321,7 +322,7 @@ def update_quotation():
 		
 		quote.submit()
 		
-		if quote.quotation_to == "Customer":
+		if quote.quotation_to == "Customer" and create_so == True:
 			try:
 				sales_order = frappe.call(
 					"erpnext.selling.doctype.quotation.quotation.make_sales_order",
