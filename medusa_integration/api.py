@@ -47,6 +47,12 @@ def get_medusa_prices(items, price_list=None, customer_id=None):
 
     customer = frappe.db.get_value("Customer", {"medusa_id": customer_id})
 
+    price_visibility_threshold = frappe.db.get_value(
+        "Homepage Landing",
+        "Active Homepage Landing",
+        "price_visibility_threshold"
+    ) or 50
+
     result = {}
 
     for item in items:
@@ -94,11 +100,13 @@ def get_medusa_prices(items, price_list=None, customer_id=None):
                 },
                 "price_list_rate"
             )
+        
+        display_price = standard_price if standard_price < price_visibility_threshold else 0
 
         result[medusa_product_id or medusa_variant_id] = {
             "item_code": item_code,
-            "standard_price": standard_price or 0,
-            "negotiated_price": negotiated_price
+            "standard_price": display_price or 0,
+            "negotiated_price": display_price
         }
 
     return result
