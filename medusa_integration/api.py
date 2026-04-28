@@ -25,7 +25,6 @@ def insert_lead(data):
 
 @frappe.whitelist()
 def fetch_standard_price(items, price_list, party, quotation_to):
-    import json
     items = json.loads(items)
     customer = None
     if quotation_to == 'Customer':
@@ -36,6 +35,72 @@ def fetch_standard_price(items, price_list, party, quotation_to):
     for item in items:
         result[item['item_code']] = frappe.db.get_value("Item Price",{"price_list": price_list, "item_code": item['item_code'], "selling": 1}, "price_list_rate")
         result[item['item_code'] + "-negotiated"] = frappe.db.get_value("Item Price",{"price_list": price_list, "item_code": item['item_code'], "customer": customer, "selling": 1}, "price_list_rate")
+    return result
+
+@frappe.whitelist(allow_guest=True)
+def get_medusa_prices(items, price_list=None, customer_id=None):
+    if isinstance(items, str):
+        items = json.loads(items)
+
+    if not items:
+        return {}
+
+    customer = frappe.db.get_value("Customer", {"medusa_id": customer_id})
+
+    result = {}
+
+    for item in items:
+        medusa_product_id = item.get("medusa_product_id")
+        medusa_variant_id = item.get("medusa_variant_id")
+
+        item_code = None
+
+        if medusa_product_id:
+            item_code = frappe.db.get_value(
+                "Website Item",
+                {"medusa_id": medusa_product_id},
+                "item_code"
+            )
+
+        if not item_code and medusa_variant_id:
+            item_code = frappe.db.get_value(
+                "Item",
+                {"medusa_variant_id": medusa_variant_id},
+                "name"
+            )
+
+        if not item_code:
+            continue
+
+        standard_price = frappe.db.get_value(
+            "Item Price",
+            {
+                "price_list": price_list,
+                "item_code": item_code,
+                "selling": 1
+            },
+            "price_list_rate"
+        )
+
+        negotiated_price = None
+        if customer:
+            negotiated_price = frappe.db.get_value(
+                "Item Price",
+                {
+                    "price_list": price_list,
+                    "item_code": item_code,
+                    "customer": customer,
+                    "selling": 1
+                },
+                "price_list_rate"
+            )
+
+        result[medusa_product_id or medusa_variant_id] = {
+            "item_code": item_code,
+            "standard_price": standard_price or 0,
+            "negotiated_price": negotiated_price
+        }
+
     return result
 
 @frappe.whitelist(allow_guest=True)
