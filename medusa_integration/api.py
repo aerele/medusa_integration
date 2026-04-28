@@ -216,6 +216,8 @@ def create_quotation():
 
 @frappe.whitelist(allow_guest=True)
 def update_quotation():
+	from frappe.model.mapper import get_mapped_doc
+
 	data = json.loads(frappe.request.data)
 	create_so = data.get("create_so", False)
 	medusa_quotation_id = data.get("quotation_id")
@@ -329,6 +331,23 @@ def update_quotation():
 		quote.medusa_order_id = medusa_order_id
 		if quote.title == "Unapproved Lead":
 			quote.title = quote.customer_name
+		
+		if quote.quotation_to == "Lead" and create_so == True:
+			customer = get_mapped_doc(
+				"Lead",
+				quote.party_name,
+				{
+					"Lead": {
+						"doctype": "Customer",}
+				}
+			)
+			customer.flags.ignore_permissions = True
+			customer.insert(ignore_mandatory = True)
+
+			quote.quotation_to = "Customer"
+			quote.party_name = customer.name
+			quote.flags.ignore_permissions = True
+			quote.save()
 
 		# tax_summary = set()
 
@@ -387,7 +406,7 @@ def update_quotation():
 		
 		quote.submit()
 		
-		if quote.quotation_to == "Customer" and create_so == True:
+		if create_so == True:
 			try:
 				sales_order = frappe.call(
 					"erpnext.selling.doctype.quotation.quotation.make_sales_order",
