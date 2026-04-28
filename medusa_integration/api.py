@@ -115,6 +115,7 @@ def get_medusa_prices(items, price_list=None, customer_id=None):
 def create_quotation():
 	data = json.loads(frappe.request.data)
 	medusa_id = data.get("customer_id")
+	create_so = data.get("create_so", False)
 	items = data.get("items", [])
 	valid_till = datetime.today() + timedelta(days=30)
 
@@ -219,6 +220,27 @@ def create_quotation():
 		quote.save(ignore_permissions=True)
 	except Exception as e:
 		return {"error": f"Failed to fetch and update standard prices: {str(e)}"}
+    
+	quote.reload()
+	
+	if create_so == True:
+			try:
+				sales_order = frappe.call(
+					"erpnext.selling.doctype.quotation.quotation.make_sales_order",
+					source_name=quote.name,
+				)
+
+				sales_order.delivery_date = frappe.utils.add_days(
+					frappe.utils.nowdate(), 1
+				)
+				sales_order.medusa_order_id = quote.medusa_order_id
+
+				sales_order.flags.ignore_permissions = True
+				sales_order.insert()
+				sales_order.submit()
+			except Exception as e:
+				return {"error": "Failed to create Sales Order: {}".format(str(e))}
+	quote.reload()
 
 	return {"message": "Quotation created successfully", "quotationId": quote.name}
 
@@ -433,7 +455,7 @@ def update_quotation():
 
 				sales_order.flags.ignore_permissions = True
 				sales_order.insert()
-				# sales_order.submit()
+				sales_order.submit()
 			except Exception as e:
 				return {"error": "Failed to create Sales Order: {}".format(str(e))}
 		quote.reload()
