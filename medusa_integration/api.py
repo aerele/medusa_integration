@@ -6,6 +6,7 @@ from medusa_integration.constants import get_headers, get_url
 from medusa_integration.utils import send_request
 from datetime import datetime, timedelta
 from frappe.utils import now_datetime, add_to_date
+from frappe.model.mapper import get_mapped_doc
 import random
 
 def insert_lead(data):
@@ -264,6 +265,23 @@ def update_quotation():
 		quote.medusa_order_id = medusa_order_id
 		if quote.title == "Unapproved Lead":
 			quote.title = quote.customer_name
+
+		if quote.quotation_to == "Lead" and create_so == True:
+			customer = get_mapped_doc(
+				"Lead",
+				quote.party_name,
+				{
+					"Lead": {
+						"doctype": "Customer",}
+				}
+			)
+			customer.flags.ignore_permissions = True
+			customer.insert(ignore_mandatory = True)
+
+			quote.quotation_to = "Customer"
+			quote.party_name = customer.name
+			quote.flags.ignore_permissions = True
+			quote.save()
 
 		# tax_summary = set()
 
