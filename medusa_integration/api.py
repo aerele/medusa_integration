@@ -3156,6 +3156,7 @@ def fetch_relevant_collection_products(cus_id=None):
 			website_items_data.append(
 				{
 					"product_id": website_item_details.medusa_id,
+					"item_code": website_item_details.item_code,
 					"variant_id": website_item_details.medusa_variant_id,
 					"title": website_item_details.web_item_name,
 					"item_group": website_item_details.item_group,
@@ -3168,6 +3169,49 @@ def fetch_relevant_collection_products(cus_id=None):
 			)
 
 		website_items_data.sort(key=lambda x: x.get("sales_count", 0), reverse=True)
+
+		item_payload = [
+			{"item_code": item["item_code"]}
+			for item in website_items_data
+		]
+
+		price_visibility_threshold = frappe.db.get_value(
+			"Homepage Landing",
+			"Active Homepage Landing",
+			"price_visibility_threshold"
+		) or 50
+
+		price_list = "Standard Selling"
+		party = ""
+		if cus_id and str(cus_id).lower() != "null":
+			customer_name = frappe.db.get_value(
+				"Customer", {"medusa_id": cus_id}, "name"
+			)
+			if customer_name:
+				party = customer_name
+				dpl = frappe.db.get_value(
+					"Customer", customer_name, "default_price_list"
+				)
+				if dpl:
+					price_list = dpl
+
+		prices = fetch_standard_price(
+			items=json.dumps(item_payload),
+			price_list=price_list,
+			party=party,
+			quotation_to="Customer",
+		)
+
+		for item in website_items_data:
+			item_code = item["item_code"]
+
+			standard_price = prices.get(item_code) or 0
+			negotiated_price = prices.get(f"{item_code}-negotiated") or 0
+
+			display_price = standard_price if standard_price < price_visibility_threshold else 0
+
+			item["standard_price"] = display_price
+			item["negotiated_price"] = negotiated_price if display_price else 0
 
 		return {
 			"top_collection": parent_group,
@@ -3278,6 +3322,7 @@ def fetch_relevant_items():
 				"product_id": medusa_id,
 				"variant_id": item_data.medusa_variant_id,
 				"title": item_data.web_item_name,
+				"item_code": item_data.item_code,
 				"item_group": item_data.item_group,
 				"thumbnail": thumbnail,
 				"rating": item_data.custom_overall_rating,
@@ -3378,6 +3423,7 @@ def fetch_relevant_items():
 					"item_code": website_item_details.item_code,
 					"product_id": website_item_details.medusa_id,
 					"variant_id": website_item_details.medusa_variant_id,
+					"item_code": website_item_details.item_code,
 					"title": website_item_details.web_item_name,
 					"item_group": website_item_details.item_group,
 					"thumbnail": thumbnail,
@@ -3417,6 +3463,49 @@ def fetch_relevant_items():
 		recommended_items_data = [
 			item for item in recommended_items_data if item.get("product_id") != product_id
 		]
+
+		item_payload = [
+			{"item_code": item["item_code"]}
+			for item in recommended_items_data
+		]
+
+		price_visibility_threshold = frappe.db.get_value(
+			"Homepage Landing",
+			"Active Homepage Landing",
+			"price_visibility_threshold"
+		) or 50
+
+		price_list = "Standard Selling"
+		party = ""
+		if cus_id and str(cus_id).lower() != "null":
+			customer_name = frappe.db.get_value(
+				"Customer", {"medusa_id": cus_id}, "name"
+			)
+			if customer_name:
+				party = customer_name
+				dpl = frappe.db.get_value(
+					"Customer", customer_name, "default_price_list"
+				)
+				if dpl:
+					price_list = dpl
+
+		prices = fetch_standard_price(
+			items=json.dumps(item_payload),
+			price_list=price_list,
+			party=party,
+			quotation_to="Customer",
+		)
+
+		for item in recommended_items_data:
+			item_code = item["item_code"]
+
+			standard_price = prices.get(item_code) or 0
+			negotiated_price = prices.get(f"{item_code}-negotiated") or 0
+
+			display_price = standard_price if standard_price < price_visibility_threshold else 0
+
+			item["standard_price"] = display_price
+			item["negotiated_price"] = negotiated_price if display_price else 0
 
 		return recommended_items_data
 	
