@@ -2201,6 +2201,49 @@ def get_website_items(url=None, customer_id=None):
 
 		modified_items = fetch_items(filters, order_by, offset, page_size, customer_id)
 
+		item_payload = [
+			{"item_code": item["item_code"]}
+			for item in modified_items
+		]
+
+		price_visibility_threshold = frappe.db.get_value(
+			"Homepage Landing",
+			"Active Homepage Landing",
+			"price_visibility_threshold"
+		) or 50
+
+		price_list = "Standard Selling"
+		party = ""
+		if customer_id and str(customer_id).lower() != "null":
+			customer_name = frappe.db.get_value(
+				"Customer", {"medusa_id": customer_id}, "name"
+			)
+			if customer_name:
+				party = customer_name
+				dpl = frappe.db.get_value(
+					"Customer", customer_name, "default_price_list"
+				)
+				if dpl:
+					price_list = dpl
+
+		prices = fetch_standard_price(
+			items=json.dumps(item_payload),
+			price_list=price_list,
+			party=party,
+			quotation_to="Customer",
+		)
+
+		for item in modified_items:
+			item_code = item["item_code"]
+
+			standard_price = prices.get(item_code) or 0
+			negotiated_price = prices.get(f"{item_code}-negotiated") or 0
+
+			display_price = standard_price if standard_price < price_visibility_threshold else 0
+
+			item["standard_price"] = display_price
+			item["negotiated_price"] = negotiated_price if display_price else 0
+
 		return {
 			"product_count": total_products,
 			"total_pages": math.ceil(total_products / page_size),
