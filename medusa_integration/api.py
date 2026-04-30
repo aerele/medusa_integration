@@ -113,6 +113,7 @@ def get_medusa_prices(items, price_list=None, customer_id=None):
 
 @frappe.whitelist(allow_guest=True)
 def create_quotation():
+	from frappe.model.mapper import get_mapped_doc
 	data = json.loads(frappe.request.data)
 	medusa_id = data.get("customer_id")
 	create_so = data.get("create_so", False)
@@ -151,6 +152,7 @@ def create_quotation():
 	)
 
 	tax_summary = set()
+	frappe.log_error("11111111111111111111")
 
 	for item in items:
 		variant_id = item.get("variant_id")
@@ -160,6 +162,7 @@ def create_quotation():
 			"Website Item", {"medusa_variant_id": variant_id}, "item_code"
 		)
 		if not item_code:
+			frappe.local.response["http_status_code"] = 404
 			return {"error": "Item not found for variant ID: {}".format(variant_id)}
 
 		quote.append(
@@ -193,6 +196,7 @@ def create_quotation():
 						)
 
 	quote.insert(ignore_permissions=True)
+	frappe.log_error("2222222222222222222")
 
 	serialized_items = json.dumps(
 		[
@@ -217,29 +221,69 @@ def create_quotation():
 			item.standard_price = prices.get(item_code, 0)
 			item.rate = prices.get(f"{item_code}-negotiated", 0)
 
+		frappe.log_error("3333333333333333")
 		quote.save(ignore_permissions=True)
+		frappe.log_error("44444444444444444444444444444")
 	except Exception as e:
+		frappe.log_error("555555555555555555555555555555555")
+		frappe.local.response["http_status_code"] = 500
 		return {"error": f"Failed to fetch and update standard prices: {str(e)}"}
     
+	frappe.log_error("66666666666666666666666666666666")
 	quote.reload()
+	frappe.log_error("77777777777777777777777777")
+
+	if quote.quotation_to == "Lead" and create_so == True:
+		frappe.log_error("88888888888888888888888888")
+		customer = get_mapped_doc(
+			"Lead",
+			quote.party_name,
+			{
+				"Lead": {
+					"doctype": "Customer",}
+			}
+		)
+		frappe.log_error("customer", customer.as_dict(True))
+		try:
+			customer.insert(ignore_permissions=True, ignore_mandatory=True)
+		except Exception as e:
+			frappe.log_error("Failed to create customer", format(str(e)))
+			frappe.local.response["http_status_code"] = 500
+			return {"error": "Failed to create customer: {}".format(str(e))}
+
+		quote.quotation_to = "Customer"
+		quote.party_name = customer.name
+		quote.flags.ignore_permissions = True
+		quote.save()
+		# quote.submit()
 	
-	if create_so == True:
-			try:
-				sales_order = frappe.call(
-					"erpnext.selling.doctype.quotation.quotation.make_sales_order",
-					source_name=quote.name,
-				)
+	frappe.log_error("999999999999999999999999999999")
+	
+	# if create_so == True:
+	# 	frappe.log_error("999999999999999999999999999999")
+	# 	quote.submit()
+	# 	frappe.log_error("aaaaaaaaaaaaaaaaaaaaaaaa")
+	# 	quote.reload()
+	# 	frappe.log_error("bbbbbbbbbbbbbbbbbbbbbbbbb")
+	# 	try:
+	# 		sales_order = frappe.call(
+	# 			"erpnext.selling.doctype.quotation.quotation.make_sales_order",
+	# 			source_name=quote.name,
+	# 		)
 
-				sales_order.delivery_date = frappe.utils.add_days(
-					frappe.utils.nowdate(), 1
-				)
-				sales_order.medusa_order_id = quote.medusa_order_id
+	# 		sales_order.delivery_date = frappe.utils.add_days(
+	# 			frappe.utils.nowdate(), 1
+	# 		)
+	# 		sales_order.medusa_order_id = quote.medusa_order_id
 
-				sales_order.flags.ignore_permissions = True
-				sales_order.insert()
-				sales_order.submit()
-			except Exception as e:
-				return {"error": "Failed to create Sales Order: {}".format(str(e))}
+	# 		sales_order.flags.ignore_permissions = True
+	# 		sales_order.insert()
+	# 		sales_order.submit()
+	# 	except Exception as e:
+	# 		frappe.local.response["http_status_code"] = 500
+	# 		return {"error": "Failed to create Sales Order: {}".format(str(e))}
+		
+	# 	return {"message": "Sales Order created successfully", "quotationId": quote.name, "salesOrderId": sales_order.name}
 	quote.reload()
 
 	return {"message": "Quotation created successfully", "quotationId": quote.name}
@@ -362,22 +406,22 @@ def update_quotation():
 		if quote.title == "Unapproved Lead":
 			quote.title = quote.customer_name
 		
-		if quote.quotation_to == "Lead" and create_so == True:
-			customer = get_mapped_doc(
-				"Lead",
-				quote.party_name,
-				{
-					"Lead": {
-						"doctype": "Customer",}
-				}
-			)
-			customer.flags.ignore_permissions = True
-			customer.insert(ignore_mandatory = True)
+		# if quote.quotation_to == "Lead" and create_so == True:
+		# 	customer = get_mapped_doc(
+		# 		"Lead",
+		# 		quote.party_name,
+		# 		{
+		# 			"Lead": {
+		# 				"doctype": "Customer",}
+		# 		}
+		# 	)
+		# 	customer.flags.ignore_permissions = True
+		# 	customer.insert(ignore_mandatory = True)
 
-			quote.quotation_to = "Customer"
-			quote.party_name = customer.name
-			quote.flags.ignore_permissions = True
-			quote.save()
+		# 	quote.quotation_to = "Customer"
+		# 	quote.party_name = customer.name
+		# 	quote.flags.ignore_permissions = True
+		# 	quote.save()
 
 		# tax_summary = set()
 
@@ -457,6 +501,7 @@ def update_quotation():
 				sales_order.insert()
 				sales_order.submit()
 			except Exception as e:
+				frappe.local.response["http_status_code"] = 500
 				return {"error": "Failed to create Sales Order: {}".format(str(e))}
 		quote.reload()
 
@@ -493,6 +538,7 @@ def update_quotation_new():
 	try:
 		quote = frappe.get_doc("Quotation", quotation_id)
 	except frappe.DoesNotExistError:
+		frappe.local.response["http_status_code"] = 404
 		return {"error": "Quotation not found for ID: {}".format(quotation_id)}
 
 	quote.status = "Open"
@@ -509,6 +555,7 @@ def update_quotation_new():
 		
 		item_code = item_details["item_code"]
 		if not item_code:
+			frappe.local.response["http_status_code"] = 404
 			return {"error": "Item not found for variant ID: {}".format(variant_id)}
 
 		quote.append("items", {
