@@ -117,11 +117,16 @@ def get_medusa_prices(items, price_list=None, customer_id=None, draft_order_id=N
 		result[medusa_product_id or medusa_variant_id] = {
 			"item_code": item_code,
 			"standard_price": display_price or 0,
-			"negotiated_price": negotiated_price or 0,
-			"payment_url": payment_url if draft_order_id else None
+			"negotiated_price": negotiated_price or 0
 		}
 
-	return result
+	if draft_order_id:
+		return {
+			"prices": result,
+			"payment_url": payment_url if draft_order_id else None
+		}
+	else:
+		return result
 
 @frappe.whitelist(allow_guest=True)
 def create_quotation():
