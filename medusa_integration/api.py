@@ -243,6 +243,18 @@ def create_quotation():
 					"doctype": "Customer",}
 			}
 		)
+		company_name = frappe.db.get_value("Lead", quote.party_name, "company_name")
+		customer.customer_name = company_name
+
+		customer.append("credit_limits", {
+			"company": "ALFARSI NATIONAL MEDICAL STORE",
+			"bypass_credit_limit_check": 1
+		})
+
+		customer.append("sales_team", {
+			"sales_person": "Website Sales",
+			"contribution": 100
+		})
 		frappe.log_error("customer", customer.as_dict(True))
 		try:
 			customer.insert(ignore_permissions=True, ignore_mandatory=True)
@@ -290,7 +302,7 @@ def create_quotation():
 
 @frappe.whitelist(allow_guest=True)
 def update_quotation():
-	from frappe.model.mapper import get_mapped_doc
+	# from frappe.model.mapper import get_mapped_doc
 
 	data = json.loads(frappe.request.data)
 	create_so = data.get("create_so", False)
