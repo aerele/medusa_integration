@@ -1712,9 +1712,9 @@ def export_sales_order(self, method):
 			response = send_request(args)
 
 			if response.message == "Order updated successfully":
-				frappe.msgprint("Sales order details updated in e-commerce site successfully")
+				frappe.log_error(f"Sales order {sales_order.name} details updated in e-commerce site successfully")
 			else:
-				frappe.throw("Error updating sales order on e-commerce site")
+				frappe.log_error(f"Error updating sales order {sales_order.name} on e-commerce site")
 	except Exception as e:
 		frappe.log_error("Error updating sales order", frappe.get_traceback())
 
@@ -1722,7 +1722,7 @@ def export_sales_order_on_update(doc, method):
 	if doc.from_ecommerce == 1:
 		try:
 			export_sales_order(doc.name, "")
-			frappe.msgprint("Order details updated in Medusa site successfully")
+			frappe.log_error("Order details updated in Medusa site successfully")
 		except Exception as e:
 			frappe.log_error(
 				f"Failed to export Sales Order {doc.name}: {str(e)}",
