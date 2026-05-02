@@ -25,103 +25,103 @@ def insert_lead(data):
 
 @frappe.whitelist()
 def fetch_standard_price(items, price_list, party, quotation_to):
-    items = json.loads(items)
-    customer = None
-    if quotation_to == 'Customer':
-        customer = frappe.db.get_value("Customer", party)
-    if quotation_to == 'Lead':
-        customer = frappe.db.get_value("Customer", {"lead_name": party})
-    result = {}
-    for item in items:
-        result[item['item_code']] = frappe.db.get_value("Item Price",{"price_list": price_list, "item_code": item['item_code'], "selling": 1}, "price_list_rate")
-        result[item['item_code'] + "-negotiated"] = frappe.db.get_value("Item Price",{"price_list": price_list, "item_code": item['item_code'], "customer": customer, "selling": 1}, "price_list_rate")
-    return result
+	items = json.loads(items)
+	customer = None
+	if quotation_to == 'Customer':
+		customer = frappe.db.get_value("Customer", party)
+	if quotation_to == 'Lead':
+		customer = frappe.db.get_value("Customer", {"lead_name": party})
+	result = {}
+	for item in items:
+		result[item['item_code']] = frappe.db.get_value("Item Price",{"price_list": price_list, "item_code": item['item_code'], "selling": 1}, "price_list_rate")
+		result[item['item_code'] + "-negotiated"] = frappe.db.get_value("Item Price",{"price_list": price_list, "item_code": item['item_code'], "customer": customer, "selling": 1}, "price_list_rate")
+	return result
 
 @frappe.whitelist(allow_guest=True)
 def get_medusa_prices(items, price_list=None, customer_id=None, draft_order_id=None):
-    frappe.log_error("get_medusa_prices", items)
-    if isinstance(items, str):
-        items = json.loads(items)
+	frappe.log_error("get_medusa_prices", items)
+	if isinstance(items, str):
+		items = json.loads(items)
 
-    frappe.log_error("newwwwwwwww get_medusa_prices", items)
+	frappe.log_error("newwwwwwwww get_medusa_prices", items)
 
-    if not items:
-        frappe.log_error("No items to fetch price")
-        return {}
+	if not items:
+		frappe.log_error("No items to fetch price")
+		return {}
 
-    customer = frappe.db.get_value("Customer", {"medusa_id": customer_id})
+	customer = frappe.db.get_value("Customer", {"medusa_id": customer_id})
 
-    price_visibility_threshold = frappe.db.get_value(
-        "Homepage Landing",
-        "Active Homepage Landing",
-        "price_visibility_threshold"
-    ) or 50
+	price_visibility_threshold = frappe.db.get_value(
+		"Homepage Landing",
+		"Active Homepage Landing",
+		"price_visibility_threshold"
+	) or 50
 
-    result = {}
+	result = {}
 
-    for item in items:
-        medusa_product_id = item.get("medusa_product_id")
-        medusa_variant_id = item.get("medusa_variant_id")
+	for item in items:
+		medusa_product_id = item.get("medusa_product_id")
+		medusa_variant_id = item.get("medusa_variant_id")
 
-        item_code = None
+		item_code = None
 
-        if medusa_product_id:
-            item_code = frappe.db.get_value(
-                "Website Item",
-                {"medusa_id": medusa_product_id},
-                "item_code"
-            )
+		if medusa_product_id:
+			item_code = frappe.db.get_value(
+				"Website Item",
+				{"medusa_id": medusa_product_id},
+				"item_code"
+			)
 
-        if not item_code and medusa_variant_id:
-            item_code = frappe.db.get_value(
-                "Website Item",
-                {"medusa_variant_id": medusa_variant_id},
-                "item_code"
-            )
+		if not item_code and medusa_variant_id:
+			item_code = frappe.db.get_value(
+				"Website Item",
+				{"medusa_variant_id": medusa_variant_id},
+				"item_code"
+			)
 
-        frappe.log_error("Item Code", item_code)
-        if not item_code:
-            continue
+		frappe.log_error("Item Code", item_code)
+		if not item_code:
+			continue
 
-        standard_price = frappe.db.get_value(
-            "Item Price",
-            {
-                "price_list": price_list,
-                "item_code": item_code,
-                "selling": 1
-            },
-            "price_list_rate"
-        )
+		standard_price = frappe.db.get_value(
+			"Item Price",
+			{
+				"price_list": price_list,
+				"item_code": item_code,
+				"selling": 1
+			},
+			"price_list_rate"
+		)
 
-        negotiated_price = None
-        if customer:
-            negotiated_price = frappe.db.get_value(
-                "Item Price",
-                {
-                    "price_list": price_list,
-                    "item_code": item_code,
-                    "customer": customer,
-                    "selling": 1
-                },
-                "price_list_rate"
-            )
-        
-        display_price = standard_price if standard_price < price_visibility_threshold else 0
+		negotiated_price = None
+		if customer:
+			negotiated_price = frappe.db.get_value(
+				"Item Price",
+				{
+					"price_list": price_list,
+					"item_code": item_code,
+					"customer": customer,
+					"selling": 1
+				},
+				"price_list_rate"
+			)
+		
+		display_price = standard_price if standard_price < price_visibility_threshold else 0
 
-        if draft_order_id:
-            medusa_order_id = frappe.db.get_value("Quotation", {"medusa_draft_order_id": draft_order_id}, "medusa_order_id")
-            erp_so_id = frappe.db.get_value("Sales Order", {"medusa_order_id": medusa_order_id}, "name")
-            if erp_so_id:
-                payment_url = frappe.db.get_value("Payment Request", {"reference_name": erp_so_id}, "payment_url")	
+		if draft_order_id:
+			medusa_order_id = frappe.db.get_value("Quotation", {"medusa_draft_order_id": draft_order_id}, "medusa_order_id")
+			erp_so_id = frappe.db.get_value("Sales Order", {"medusa_order_id": medusa_order_id}, "name")
+			if erp_so_id:
+				payment_url = frappe.db.get_value("Payment Request", {"reference_name": erp_so_id}, "payment_url")	
 
-        result[medusa_product_id or medusa_variant_id] = {
-            "item_code": item_code,
-            "standard_price": display_price or 0,
-            "negotiated_price": negotiated_price or 0,
-            "payment_url": payment_url if draft_order_id else None
-        }
+		result[medusa_product_id or medusa_variant_id] = {
+			"item_code": item_code,
+			"standard_price": display_price or 0,
+			"negotiated_price": negotiated_price or 0,
+			"payment_url": payment_url if draft_order_id else None
+		}
 
-    return result
+	return result
 
 @frappe.whitelist(allow_guest=True)
 def create_quotation():
@@ -240,7 +240,7 @@ def create_quotation():
 		frappe.log_error("555555555555555555555555555555555")
 		frappe.local.response["http_status_code"] = 500
 		return {"error": f"Failed to fetch and update standard prices: {str(e)}"}
-    
+	
 	frappe.log_error("66666666666666666666666666666666")
 	quote.reload()
 	frappe.log_error("77777777777777777777777777")
