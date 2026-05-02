@@ -491,6 +491,7 @@ def update_quotation():
 		# 	})
 		
 		quote.submit()
+		quote.reload()
 		
 		if create_so == True:
 			try:
@@ -512,10 +513,37 @@ def update_quotation():
 				sales_order.flags.ignore_permissions = True
 				sales_order.insert()
 				sales_order.submit()
+
+				customer_email = frappe.db.get_value("Customer", sales_order.customer, "email_id")
+
+				payment_request = frappe.call(
+					"erpnext.accounts.doctype.payment_request.payment_request.make_payment_request",
+					dt="Sales Order",
+					dn=sales_order.name,
+					recipient_id=customer_email,
+					payment_request_type="Inward",
+					party_type="Customer",
+					party=sales_order.customer,
+					mode_of_payment="Bank Draft",
+					payment_gateway_account="BankMuscat-443 - OMR",
+					return_doc=True,
+					ignore_permissions=True
+				)
+				payment_request.submit()
+				frappe.db.commit()
+			
 			except Exception as e:
+				frappe.log_error("Error in creating Sales Order or Payment Request", frappe.get_traceback())
 				frappe.local.response["http_status_code"] = 500
-				return {"error": "Failed to create Sales Order: {}".format(str(e))}
-		quote.reload()
+				return {"error": "Failed to create Sales Order or Payment Request: {}".format(str(e))}
+
+			return {
+				"message": "Quotation updated successfully, Sales Order created & Payment URL generated",
+				"quotation_id": quote.name,
+				"sales_order_id": sales_order.name,
+				"payment_id": payment_request.name,
+				"payment_url": payment_request.get("payment_url"),
+			}
 
 	if approval != "Rejected":
 		quote.save(ignore_permissions=True)
