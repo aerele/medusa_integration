@@ -39,10 +39,14 @@ def fetch_standard_price(items, price_list, party, quotation_to):
 
 @frappe.whitelist(allow_guest=True)
 def get_medusa_prices(items, price_list=None, customer_id=None):
+    frappe.log_error("get_medusa_prices", items)
     if isinstance(items, str):
         items = json.loads(items)
 
+    frappe.log_error("newwwwwwwww get_medusa_prices", items)
+
     if not items:
+        frappe.log_error("No items to fetch price")
         return {}
 
     customer = frappe.db.get_value("Customer", {"medusa_id": customer_id})
@@ -75,6 +79,7 @@ def get_medusa_prices(items, price_list=None, customer_id=None):
                 "name"
             )
 
+        frappe.log_error("Item Code", item_code)
         if not item_code:
             continue
 
@@ -106,7 +111,7 @@ def get_medusa_prices(items, price_list=None, customer_id=None):
         result[medusa_product_id or medusa_variant_id] = {
             "item_code": item_code,
             "standard_price": display_price or 0,
-            "negotiated_price": display_price
+            "negotiated_price": negotiated_price or 0
         }
 
     return result
