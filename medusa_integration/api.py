@@ -263,15 +263,12 @@ def create_quotation():
 		company_name = frappe.db.get_value("Lead", quote.party_name, "company_name")
 		customer.customer_name = company_name
 
-		customer.append("credit_limits", {
-			"company": "ALFARSI NATIONAL MEDICAL STORE",
-			"bypass_credit_limit_check": 1
-		})
-
 		customer.append("sales_team", {
 			"sales_person": "Website Sales",
 			"contribution": 100
 		})
+		customer.customer_group = "Ecommerce Customer"
+
 		frappe.log_error("customer", customer.as_dict(True))
 		try:
 			customer.insert(ignore_permissions=True, ignore_mandatory=True)
