@@ -588,6 +588,9 @@ def update_quotation_new():
 	items = data.get("items", [])
 	unapproved_items = data.get("unapproved_items", [])
 	custom_increased_items = data.get("increased_items", [])
+	billing_address = data.get("billing_address")
+	city = billing_address.get("city")
+
 
 	try:
 		quote = frappe.get_doc("Quotation", quotation_id)
@@ -640,6 +643,24 @@ def update_quotation_new():
 							"account_head": account_head,
 							"description": account_head
 						})
+
+	if not (city and "muscat" in city.strip().lower()): #delivery charge validation
+		delivery_charge = (
+			frappe.db.get_value(
+			"Homepage Landing",
+			"Active Homepage Landing",
+			"delivery_charges"
+			) or 2
+		)
+		quote.append(
+			"taxes",
+			{
+				"charge_type": "Actual",
+				"account_head": "Freight and Forwarding Charges - AFMS",
+				"description": "Delivery Charges",
+				"tax_amount": delivery_charge,
+			},
+		)
 
 	quote.unapproved_items = []
 	for item in unapproved_items:

@@ -7,6 +7,8 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
+  "price_visibility_threshold",
+  "delivery_charges",
   "menu_section",
   "top_section",
   "top_sellers",
@@ -23,8 +25,7 @@
   "urls",
   "product_details_banner",
   "clearance_items",
-  "best_deals",
-  "price_visibility_threshold"
+  "best_deals"
  ],
  "fields": [
   {
@@ -134,11 +135,16 @@
    "fieldtype": "Currency",
    "label": "Price Visibility Threshold",
    "non_negative": 1
+  },
+  {
+   "fieldname": "delivery_charges",
+   "fieldtype": "Currency",
+   "label": "Delivery Charges"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-04-22 18:00:47.017792",
+ "modified": "2026-05-11 12:47:48.827394",
  "modified_by": "Administrator",
  "module": "Medusa Integration",
  "name": "Homepage Landing",
