@@ -135,6 +135,8 @@ def create_quotation():
 	medusa_id = data.get("customer_id")
 	create_so = data.get("create_so", False)
 	items = data.get("items", [])
+
+	billing_address = data.get("billing_address")
 	valid_till = datetime.today() + timedelta(days=30)
 
 	customer_details = frappe.get_value(
@@ -284,7 +286,89 @@ def create_quotation():
 		# quote.submit()
 	
 	frappe.log_error("999999999999999999999999999999")
-	
+
+	final_customer = quote.party_name
+
+	address = None
+	if billing_address and final_customer:
+		is_default = billing_address.get("is_default", False)
+		country_code = billing_address.get(
+			"country_code",
+			""
+		).lower()
+		country = frappe.db.get_value(
+			"Country",
+			{"code": country_code},
+			"name"
+		)
+		if is_default:
+			existing_primary = None
+			existing_addresses = frappe.get_all(
+				"Dynamic Link",
+				filters={
+					"link_doctype": "Customer",
+					"link_name": final_customer,
+					"parenttype": "Address",
+				},
+				fields=["parent"],
+			)
+			for addr in existing_addresses:
+				addr_doc = frappe.get_doc(
+					"Address",
+					addr.parent
+				)
+				if addr_doc.is_primary_address:
+					existing_primary = addr_doc
+					break
+			if existing_primary:
+				existing_primary.address_title = final_customer
+				existing_primary.address_line1 = billing_address.get("address_1")
+				existing_primary.address_type = "Billing"
+				existing_primary.city = billing_address.get("city")
+				existing_primary.country = country
+				existing_primary.pincode = billing_address.get("postal_code")
+				existing_primary.is_primary_address = 1
+
+				existing_primary.save(ignore_permissions=True)
+				address = existing_primary
+			else:
+				address = frappe.get_doc({
+					"doctype": "Address",
+					"address_title": final_customer,
+					"address_type": "Billing",
+					"address_line1": billing_address.get("address_1"),
+					"city": billing_address.get("city"),
+					"country": country,
+					"pincode": billing_address.get("postal_code"),
+					"is_primary_address": 1 if is_default else 0,
+					"links": [
+						{
+							"link_doctype": "Customer",
+							"link_name": final_customer,
+						}
+					]
+				})
+				address.insert(ignore_permissions=True)
+		else:
+			address = frappe.get_doc({
+				"doctype": "Address",
+				"address_title": final_customer,
+				"address_type": "Billing",
+				"address_line1": billing_address.get("address_1"),
+				"city": billing_address.get("city"),
+				"country": country,
+				"pincode": billing_address.get("postal_code"),
+				"is_primary_address": 1 if is_default else 0,
+				"links": [
+					{
+						"link_doctype": "Customer",
+						"link_name": final_customer,
+					}
+				]
+			})
+			address.insert(ignore_permissions=True)
+		quote.customer_address = address.name
+		quote.save(ignore_permissions=True)
 	# if create_so == True:
 	# 	frappe.log_error("999999999999999999999999999999")
 	# 	quote.submit()
