@@ -132,7 +132,6 @@ def get_medusa_prices(items, price_list=None, customer_id=None, draft_order_id=N
 def create_quotation():
 	from frappe.model.mapper import get_mapped_doc
 	data = json.loads(frappe.request.data)
-	frappe.log_error("create_quotation called with data", data)
 	medusa_id = data.get("customer_id")
 	create_so = data.get("create_so", False)
 	items = data.get("items", [])
@@ -292,7 +291,6 @@ def create_quotation():
 
 	address = None
 	if billing_address and final_customer:
-		frappe.log_error("billing_address", billing_address)
 		is_default = billing_address.get("is_default", False)
 		country_code = billing_address.get(
 			"country_code",
