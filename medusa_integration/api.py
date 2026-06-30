@@ -1881,6 +1881,56 @@ def get_distinct_clinic_counts(item_codes, months=12):
 	return {r["item_code"]: r["clinics"] for r in rows}
 
 
+def get_item_vat_rates(item_codes):
+	# Per-item VAT rate (percent, e.g. 5.0 or 0.0) read from each Item's Item Tax
+	# Template for the AFMS company. None when no template is configured, so the
+	# frontend can show "VAT where applicable" instead of assuming a rate (#6).
+	if not item_codes:
+		return {}
+	rows = frappe.get_all(
+		"Item Tax",
+		filters={
+			"parent": ["in", list(item_codes)],
+			"parenttype": "Item",
+			"parentfield": "taxes",
+		},
+		fields=["parent", "item_tax_template"],
+	)
+	template_rate = {}
+
+	def rate_for(tmpl):
+		if tmpl in template_rate:
+			return template_rate[tmpl]
+		rate = None
+		try:
+			doc = frappe.get_cached_doc("Item Tax Template", tmpl)
+			if doc.company == "AL FARSI MEDICAL SUPPLIES":
+				for row in doc.taxes:
+					rate = row.tax_rate
+					break
+		except Exception:
+			rate = None
+		template_rate[tmpl] = rate
+		return rate
+
+	result = {}
+	for row in rows:
+		if result.get(row.parent) is not None:
+			continue
+		if not row.item_tax_template:
+			continue
+		rate = rate_for(row.item_tax_template)
+		if rate is not None:
+			result[row.parent] = rate
+	return result
+
+
+def get_item_vat_rate(item_code):
+	if not item_code:
+		return None
+	return get_item_vat_rates([item_code]).get(item_code)
+
+
 @frappe.whitelist(allow_guest=True)
 def get_website_items(url=None, customer_id=None):
 	import re
@@ -1985,11 +2035,23 @@ def get_website_items(url=None, customer_id=None):
 			"name",
 		)
 
+		# Brand-only or root "all products" listing (#10a): when the URL resolves
+		# to no category, fall back to the catalog root ("Products") so the whole
+		# tree is the baseline and any brand filter still applies. Only for a
+		# genuine root/brand request — an unrecognised category still errors, so
+		# the existing contract for bad URLs is unchanged.
 		if not item_group:
-			return {
-				"status": "error",
-				"message": f"No matching item group found for the URL: {url}",
-			}
+			root_indicator = parts[-1].lower() in ("products", "all-products", "all", "")
+			if brands or root_indicator:
+				item_group = (
+					frappe.db.get_value("Item Group", {"name": "Products"}, "name")
+					or frappe.db.get_value("Item Group", {"name": "AFMS Products"}, "name")
+				)
+			if not item_group:
+				return {
+					"status": "error",
+					"message": f"No matching item group found for the URL: {url}",
+				}
 
 		if sort_order == "default":
 			order_by = "ranking desc"
@@ -2370,8 +2432,10 @@ def get_website_items(url=None, customer_id=None):
 		# pill hides itself when the value is 0/absent.
 		page_item_codes = [it["item_code"] for it in modified_items if it.get("item_code")]
 		clinic_counts = get_distinct_clinic_counts(page_item_codes)
+		vat_rates = get_item_vat_rates(page_item_codes)
 		for it in modified_items:
 			it["clinic_count"] = clinic_counts.get(it["item_code"], 0)
+			it["vat_rate"] = vat_rates.get(it["item_code"])
 
 		item_payload = [
 			{"item_code": item["item_code"]}
@@ -2595,6 +2659,7 @@ def get_website_image(medusa_id, customer_id):
 			"brand_image": brand_image,
 			"qty": qty,
 			"price": display_price,
+			"vat_rate": get_item_vat_rate(item.item_code),
 			"description": item.web_long_description
 		}
 
