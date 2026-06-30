@@ -1859,6 +1859,78 @@ def send_quotation_emails():
 			frappe.log_error(message=str(e), title="Quotation Email Sending Failed")
 
 
+def get_distinct_clinic_counts(item_codes, months=12):
+	# Distinct customers ("clinics") that bought each item in the trailing N
+	# months, from submitted Sales Invoices. Batched: one query for a whole page
+	# of item_codes. Powers the "Ordered by N+ clinics" social-proof pill (#12).
+	if not item_codes:
+		return {}
+	rows = frappe.db.sql(
+		"""
+		SELECT sii.item_code AS item_code, COUNT(DISTINCT si.customer) AS clinics
+		FROM `tabSales Invoice Item` sii
+		INNER JOIN `tabSales Invoice` si ON sii.parent = si.name
+		WHERE sii.item_code IN %(item_codes)s
+		  AND si.docstatus = 1
+		  AND si.posting_date >= DATE_SUB(CURDATE(), INTERVAL %(months)s MONTH)
+		GROUP BY sii.item_code
+		""",
+		{"item_codes": tuple(item_codes), "months": months},
+		as_dict=True,
+	)
+	return {r["item_code"]: r["clinics"] for r in rows}
+
+
+def get_item_vat_rates(item_codes):
+	# Per-item VAT rate (percent, e.g. 5.0 or 0.0) read from each Item's Item Tax
+	# Template for the AFMS company. None when no template is configured, so the
+	# frontend can show "VAT where applicable" instead of assuming a rate (#6).
+	if not item_codes:
+		return {}
+	rows = frappe.get_all(
+		"Item Tax",
+		filters={
+			"parent": ["in", list(item_codes)],
+			"parenttype": "Item",
+			"parentfield": "taxes",
+		},
+		fields=["parent", "item_tax_template"],
+	)
+	template_rate = {}
+
+	def rate_for(tmpl):
+		if tmpl in template_rate:
+			return template_rate[tmpl]
+		rate = None
+		try:
+			doc = frappe.get_cached_doc("Item Tax Template", tmpl)
+			if doc.company == "AL FARSI MEDICAL SUPPLIES":
+				for row in doc.taxes:
+					rate = row.tax_rate
+					break
+		except Exception:
+			rate = None
+		template_rate[tmpl] = rate
+		return rate
+
+	result = {}
+	for row in rows:
+		if result.get(row.parent) is not None:
+			continue
+		if not row.item_tax_template:
+			continue
+		rate = rate_for(row.item_tax_template)
+		if rate is not None:
+			result[row.parent] = rate
+	return result
+
+
+def get_item_vat_rate(item_code):
+	if not item_code:
+		return None
+	return get_item_vat_rates([item_code]).get(item_code)
+
+
 @frappe.whitelist(allow_guest=True)
 def get_website_items(url=None, customer_id=None):
 	import re
@@ -1947,6 +2019,8 @@ def get_website_items(url=None, customer_id=None):
 		shapes = data.get("shape")
 		colors = data.get("colour")
 		shades = data.get("shade")
+		min_price = data.get("min_price")
+		max_price = data.get("max_price")
 
 		parts = url.strip("/").split("/")
 
@@ -1961,11 +2035,23 @@ def get_website_items(url=None, customer_id=None):
 			"name",
 		)
 
+		# Brand-only or root "all products" listing (#10a): when the URL resolves
+		# to no category, fall back to the catalog root ("Products") so the whole
+		# tree is the baseline and any brand filter still applies. Only for a
+		# genuine root/brand request — an unrecognised category still errors, so
+		# the existing contract for bad URLs is unchanged.
 		if not item_group:
-			return {
-				"status": "error",
-				"message": f"No matching item group found for the URL: {url}",
-			}
+			root_indicator = parts[-1].lower() in ("products", "all-products", "all", "")
+			if brands or root_indicator:
+				item_group = (
+					frappe.db.get_value("Item Group", {"name": "Products"}, "name")
+					or frappe.db.get_value("Item Group", {"name": "AFMS Products"}, "name")
+				)
+			if not item_group:
+				return {
+					"status": "error",
+					"message": f"No matching item group found for the URL: {url}",
+				}
 
 		if sort_order == "default":
 			order_by = "ranking desc"
@@ -1985,11 +2071,16 @@ def get_website_items(url=None, customer_id=None):
 		distinct_collection_titles = []
 		distinct_brands = []
 
+		# Facet counts must reflect the in-stock filter when it's active (#30), so
+		# the subcategory/brand/spec counts agree with product_count instead of
+		# summing the whole (unfiltered) catalog. Constant string — safe to inline.
+		availability_clause = " AND custom_in_stock = 1" if availability else ""
+
 		distinct_collection_titles = frappe.db.sql(
-			"""
+			f"""
 			SELECT item_group AS name, COUNT(*) AS count
 			FROM `tabWebsite Item`
-			WHERE item_group IN %(descendant_groups)s
+			WHERE item_group IN %(descendant_groups)s{availability_clause}
 			GROUP BY item_group
 			ORDER BY name
 		""",
@@ -2008,10 +2099,10 @@ def get_website_items(url=None, customer_id=None):
 			filters["item_group"] = ["in", list(set(collection_descendants))]
 
 			distinct_brands = frappe.db.sql(
-				"""
+				f"""
 				SELECT brand AS name, COUNT(*) AS count
 				FROM `tabWebsite Item`
-				WHERE item_group IN %(collection_descendants)s AND brand IS NOT NULL AND brand != ''
+				WHERE item_group IN %(collection_descendants)s AND brand IS NOT NULL AND brand != ''{availability_clause}
 				GROUP BY brand
 				ORDER BY brand
 			""",
@@ -2021,10 +2112,10 @@ def get_website_items(url=None, customer_id=None):
 
 		else:
 			distinct_brands = frappe.db.sql(
-				"""
+				f"""
 				SELECT brand AS name, COUNT(*) AS count
 				FROM `tabWebsite Item`
-				WHERE item_group IN %(descendant_groups)s AND brand IS NOT NULL AND brand != ''
+				WHERE item_group IN %(descendant_groups)s AND brand IS NOT NULL AND brand != ''{availability_clause}
 				GROUP BY brand
 				ORDER BY brand
 			""",
@@ -2042,11 +2133,11 @@ def get_website_items(url=None, customer_id=None):
 				"""
 				SELECT item_group AS name, COUNT(*) AS count
 				FROM `tabWebsite Item`
-				WHERE item_group IN %(descendant_groups)s
+				WHERE item_group IN %(descendant_groups)s{availability_clause}
 				{brand_filter}
 				GROUP BY item_group
 				ORDER BY name
-			""".format(brand_filter="AND brand IN %(brands)s" if brands else ""),
+			""".format(brand_filter="AND brand IN %(brands)s" if brands else "", availability_clause=availability_clause),
 				{
 					"descendant_groups": tuple(descendant_groups),
 					"brands": tuple(brands) if brands else None,
@@ -2134,6 +2225,11 @@ def get_website_items(url=None, customer_id=None):
 		filters_clause = "1=1"
 		params = {}
 
+		# Spec facets (colour/shape/shade) derive from this item set, so apply the
+		# in-stock filter here too when active (#30).
+		if availability:
+			filters_clause += " AND custom_in_stock = 1"
+
 		if item_group:
 			filters_clause += " AND item_group IN %(descendant_groups)s"
 			params["descendant_groups"] = tuple(descendant_groups)
@@ -2206,9 +2302,36 @@ def get_website_items(url=None, customer_id=None):
 		if all_shades:
 			distinct_shades = clean_entries(all_shades, skip_digit_check=True)
 		
+		# Price-range filter (#29): restrict to items whose Standard Selling rate
+		# (OMR, excl. VAT) falls within [min_price, max_price]. Resolve the matching
+		# item_codes once and compose them into the Website Item filters, so BOTH
+		# the product list and the counts (base + spec paths) reflect the range.
+		# No params => no restriction (unchanged). No matches => a sentinel that
+		# matches nothing, so the page correctly comes back empty.
+		price_filtered_codes = None
+		if (min_price not in (None, "")) or (max_price not in (None, "")):
+			pf_conditions = ["ip.price_list = 'Standard Selling'", "ip.selling = 1"]
+			pf_params = {}
+			if min_price not in (None, ""):
+				pf_conditions.append("ip.price_list_rate >= %(min_price)s")
+				pf_params["min_price"] = frappe.utils.flt(min_price)
+			if max_price not in (None, ""):
+				pf_conditions.append("ip.price_list_rate <= %(max_price)s")
+				pf_params["max_price"] = frappe.utils.flt(max_price)
+			pf_rows = frappe.db.sql(
+				"SELECT DISTINCT ip.item_code FROM `tabItem Price` ip WHERE "
+				+ " AND ".join(pf_conditions),
+				pf_params,
+				as_dict=True,
+			)
+			price_filtered_codes = [r["item_code"] for r in pf_rows] or ["__no_match__"]
+
+		if price_filtered_codes is not None:
+			filters["item_code"] = ["in", price_filtered_codes]
+
 		if availability:
 			filters["custom_in_stock"] = ["=", 1]
-		
+
 		base_filters_count = frappe.db.count("Website Item", filters=filters)
 
 		if shapes and not isinstance(shapes, list):
@@ -2294,6 +2417,8 @@ def get_website_items(url=None, customer_id=None):
 				filters = {
 					"name": ["in", tuple(filtered_item_names)]
 				}
+				if price_filtered_codes is not None:
+					filters["item_code"] = ["in", price_filtered_codes]
 				total_products = frappe.db.count("Website Item", filters=filters)
 			else:
 				total_products = 0
@@ -2301,6 +2426,16 @@ def get_website_items(url=None, customer_id=None):
 			total_products = base_filters_count
 
 		modified_items = fetch_items(filters, order_by, offset, page_size, customer_id)
+
+		# Distinct-clinic count (#12) for the current page only (<= page_size
+		# items), so it's a single batched query regardless of page size. The FE
+		# pill hides itself when the value is 0/absent.
+		page_item_codes = [it["item_code"] for it in modified_items if it.get("item_code")]
+		clinic_counts = get_distinct_clinic_counts(page_item_codes)
+		vat_rates = get_item_vat_rates(page_item_codes)
+		for it in modified_items:
+			it["clinic_count"] = clinic_counts.get(it["item_code"], 0)
+			it["vat_rate"] = vat_rates.get(it["item_code"])
 
 		item_payload = [
 			{"item_code": item["item_code"]}
@@ -2524,6 +2659,7 @@ def get_website_image(medusa_id, customer_id):
 			"brand_image": brand_image,
 			"qty": qty,
 			"price": display_price,
+			"vat_rate": get_item_vat_rate(item.item_code),
 			"description": item.web_long_description
 		}
 
@@ -2811,6 +2947,47 @@ def update_all_item_groups():
 
 @frappe.whitelist(allow_guest=True)
 def get_menu(parent=None, mobile_view=0):
+	_menu_pc = {}
+
+	def subtree_product_count(group_name):
+		# Subtree total of published, Medusa-synced Website Items under group_name
+		# (the group itself + all descendants). Same definition as
+		# get_website_items' product_count for that handle on the DEFAULT listing:
+		# published + medusa_id set, and NO in-stock filter (the listing defaults
+		# to availability off, and applying in-stock here would undercount badly
+		# given how few items currently carry the flag). Precomputed once per
+		# request over the Item Group nested set (lft/rgt) and rolled up in Python,
+		# so we never run a query per node. Returns None when the count is unknown
+		# (node missing nested-set bounds) — never a misleading 0. (#33)
+		if not _menu_pc:
+			rows = frappe.db.sql(
+				"""
+				SELECT item_group, COUNT(*) AS cnt
+				FROM `tabWebsite Item`
+				WHERE published = 1 AND IFNULL(medusa_id, '') != ''
+				GROUP BY item_group
+				""",
+				as_dict=True,
+			)
+			_menu_pc["count_by_group"] = {r["item_group"]: r["cnt"] for r in rows}
+			_menu_pc["groups"] = frappe.get_all(
+				"Item Group", fields=["name", "lft", "rgt"]
+			)
+			_menu_pc["bounds"] = {
+				g["name"]: (g["lft"], g["rgt"]) for g in _menu_pc["groups"]
+			}
+
+		bounds = _menu_pc["bounds"].get(group_name)
+		if not bounds or bounds[0] is None or bounds[1] is None:
+			return None
+		lft, rgt = bounds
+		cbg = _menu_pc["count_by_group"]
+		return sum(
+			cbg.get(g["name"], 0)
+			for g in _menu_pc["groups"]
+			if g["lft"] is not None and lft <= g["lft"] and g["rgt"] <= rgt
+		)
+
 	def fetch_image(item_group_name):
 		image_url = frappe.db.get_value(
 			"File",
@@ -2868,6 +3045,7 @@ def get_menu(parent=None, mobile_view=0):
 				"url": route,
 				"thumbnail": image,
 				"childCount": sub_child_count,
+				"product_count": subtree_product_count(child["name"]),
 			}
 
 			if sub_child_count > 0 and (mobile_view or depth < max_depth):
@@ -2900,6 +3078,7 @@ def get_menu(parent=None, mobile_view=0):
 			"url": parent_data["custom_medusa_route"],
 			"thumbnail": fetch_image(parent_data["name"]),
 			"childCount": frappe.db.count("Item Group", {"parent_item_group": parent}),
+			"product_count": subtree_product_count(parent_data["name"]),
 			"children": fetch_child_groups(parent, max_depth=max_depth),
 		}
 
@@ -3254,6 +3433,8 @@ def fetch_relevant_collection_products(cus_id=None):
 				)
 				is_wishlisted = 1 if is_wishlisted else 0
 			
+			colour, shape, shade = get_item_specifications(website_item_details.name)
+
 			website_items_data.append(
 				{
 					"product_id": website_item_details.medusa_id,
@@ -3265,6 +3446,9 @@ def fetch_relevant_collection_products(cus_id=None):
 					"rating": website_item_details.custom_overall_rating,
 					"is_wishlisted": is_wishlisted,
 					"has_variants": website_item_details.has_variants,
+					"colour": colour,
+					"shape": shape,
+					"shade": shade,
 					"sales_count": sales_count_map.get(website_item_details.item_code, 0)
 				}
 			)
@@ -3419,6 +3603,8 @@ def fetch_relevant_items():
 				)
 				is_wishlisted = 1 if is_wishlisted else 0
 
+			colour, shape, shade = get_item_specifications(website_item_name)
+
 			item_entry = {
 				"product_id": medusa_id,
 				"variant_id": item_data.medusa_variant_id,
@@ -3429,6 +3615,9 @@ def fetch_relevant_items():
 				"rating": item_data.custom_overall_rating,
 				"is_wishlisted": is_wishlisted,
 				"has_variants": item_data.has_variants,
+				"colour": colour,
+				"shape": shape,
+				"shade": shade,
 			}
 
 			results.append(item_entry)
@@ -3519,6 +3708,8 @@ def fetch_relevant_items():
 				)
 				is_wishlisted = 1 if is_wishlisted else 0
 			
+			colour, shape, shade = get_item_specifications(website_item_details.name)
+
 			website_items_data.append(
 				{
 					"item_code": website_item_details.item_code,
@@ -3531,6 +3722,9 @@ def fetch_relevant_items():
 					"rating": website_item_details.custom_overall_rating,
 					"is_wishlisted": is_wishlisted,
 					"has_variants": website_item_details.has_variants,
+					"colour": colour,
+					"shape": shape,
+					"shade": shade,
 				}
 			)
 			added_product_ids.add(medusa_id)
@@ -3625,8 +3819,8 @@ def get_recommended_items(customer_id=None):
 
 
 @frappe.whitelist(allow_guest=True)
-def get_trending_items(customer_id=None):
-	return fetch_items_from_homepage("trending_items", customer_id)
+def get_trending_items(customer_id=None, category=None):
+	return fetch_items_from_homepage("trending_items", customer_id, category=category)
 
 
 @frappe.whitelist(allow_guest=True)
@@ -3696,10 +3890,33 @@ def get_best_deals():
 		)
 		return {"status": "error", "message": str(e)}
 
-def fetch_items_from_homepage(item_field_name, customer_id=None):
+def fetch_items_from_homepage(item_field_name, customer_id=None, category=None):
 	try:
 		homepage_landing = frappe.get_doc("Homepage Landing", "Active Homepage Landing")
 		all_items = getattr(homepage_landing, item_field_name, [])
+
+		# Department-scoped trending (#34): when a category is supplied, keep only
+		# entries whose Website Item lives in that category's subtree. Returns an
+		# empty list (NOT the global set) when nothing matches, so a department
+		# panel never shows out-of-department products.
+		if category:
+			category_groups = frappe.db.get_descendants("Item Group", category) or []
+			category_groups.append(category)
+			entry_codes = [
+				e.website_item for e in all_items if getattr(e, "website_item", None)
+			]
+			group_map = {}
+			if entry_codes:
+				for row in frappe.get_all(
+					"Website Item",
+					filters={"name": ["in", entry_codes]},
+					fields=["name", "item_group"],
+				):
+					group_map[row["name"]] = row["item_group"]
+			all_items = [
+				e for e in all_items
+				if group_map.get(getattr(e, "website_item", None)) in category_groups
+			]
 
 		if len(all_items) <= 20:
 			random_entries = random.sample(all_items, len(all_items))
@@ -3754,6 +3971,7 @@ def fetch_items_from_homepage(item_field_name, customer_id=None):
 				is_wishlisted = 1 if is_wishlisted else 0
 
 			if website_item_details:
+				colour, shape, shade = get_item_specifications(website_item_code)
 				entries_data.append(
 					{
 						"product_id": website_item_details.medusa_id,
@@ -3765,6 +3983,9 @@ def fetch_items_from_homepage(item_field_name, customer_id=None):
 						"thumbnail": thumbnail,
 						"is_wishlisted": is_wishlisted,
 						"has_variants": website_item_details.has_variants,
+						"colour": colour,
+						"shape": shape,
+						"shade": shade,
 						"standard_price": None,
 						"rate": None,
 					}
