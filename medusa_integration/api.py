@@ -1859,6 +1859,28 @@ def send_quotation_emails():
 			frappe.log_error(message=str(e), title="Quotation Email Sending Failed")
 
 
+def get_distinct_clinic_counts(item_codes, months=12):
+	# Distinct customers ("clinics") that bought each item in the trailing N
+	# months, from submitted Sales Invoices. Batched: one query for a whole page
+	# of item_codes. Powers the "Ordered by N+ clinics" social-proof pill (#12).
+	if not item_codes:
+		return {}
+	rows = frappe.db.sql(
+		"""
+		SELECT sii.item_code AS item_code, COUNT(DISTINCT si.customer) AS clinics
+		FROM `tabSales Invoice Item` sii
+		INNER JOIN `tabSales Invoice` si ON sii.parent = si.name
+		WHERE sii.item_code IN %(item_codes)s
+		  AND si.docstatus = 1
+		  AND si.posting_date >= DATE_SUB(CURDATE(), INTERVAL %(months)s MONTH)
+		GROUP BY sii.item_code
+		""",
+		{"item_codes": tuple(item_codes), "months": months},
+		as_dict=True,
+	)
+	return {r["item_code"]: r["clinics"] for r in rows}
+
+
 @frappe.whitelist(allow_guest=True)
 def get_website_items(url=None, customer_id=None):
 	import re
@@ -1947,6 +1969,8 @@ def get_website_items(url=None, customer_id=None):
 		shapes = data.get("shape")
 		colors = data.get("colour")
 		shades = data.get("shade")
+		min_price = data.get("min_price")
+		max_price = data.get("max_price")
 
 		parts = url.strip("/").split("/")
 
@@ -2216,9 +2240,36 @@ def get_website_items(url=None, customer_id=None):
 		if all_shades:
 			distinct_shades = clean_entries(all_shades, skip_digit_check=True)
 		
+		# Price-range filter (#29): restrict to items whose Standard Selling rate
+		# (OMR, excl. VAT) falls within [min_price, max_price]. Resolve the matching
+		# item_codes once and compose them into the Website Item filters, so BOTH
+		# the product list and the counts (base + spec paths) reflect the range.
+		# No params => no restriction (unchanged). No matches => a sentinel that
+		# matches nothing, so the page correctly comes back empty.
+		price_filtered_codes = None
+		if (min_price not in (None, "")) or (max_price not in (None, "")):
+			pf_conditions = ["ip.price_list = 'Standard Selling'", "ip.selling = 1"]
+			pf_params = {}
+			if min_price not in (None, ""):
+				pf_conditions.append("ip.price_list_rate >= %(min_price)s")
+				pf_params["min_price"] = frappe.utils.flt(min_price)
+			if max_price not in (None, ""):
+				pf_conditions.append("ip.price_list_rate <= %(max_price)s")
+				pf_params["max_price"] = frappe.utils.flt(max_price)
+			pf_rows = frappe.db.sql(
+				"SELECT DISTINCT ip.item_code FROM `tabItem Price` ip WHERE "
+				+ " AND ".join(pf_conditions),
+				pf_params,
+				as_dict=True,
+			)
+			price_filtered_codes = [r["item_code"] for r in pf_rows] or ["__no_match__"]
+
+		if price_filtered_codes is not None:
+			filters["item_code"] = ["in", price_filtered_codes]
+
 		if availability:
 			filters["custom_in_stock"] = ["=", 1]
-		
+
 		base_filters_count = frappe.db.count("Website Item", filters=filters)
 
 		if shapes and not isinstance(shapes, list):
@@ -2304,6 +2355,8 @@ def get_website_items(url=None, customer_id=None):
 				filters = {
 					"name": ["in", tuple(filtered_item_names)]
 				}
+				if price_filtered_codes is not None:
+					filters["item_code"] = ["in", price_filtered_codes]
 				total_products = frappe.db.count("Website Item", filters=filters)
 			else:
 				total_products = 0
@@ -2311,6 +2364,14 @@ def get_website_items(url=None, customer_id=None):
 			total_products = base_filters_count
 
 		modified_items = fetch_items(filters, order_by, offset, page_size, customer_id)
+
+		# Distinct-clinic count (#12) for the current page only (<= page_size
+		# items), so it's a single batched query regardless of page size. The FE
+		# pill hides itself when the value is 0/absent.
+		page_item_codes = [it["item_code"] for it in modified_items if it.get("item_code")]
+		clinic_counts = get_distinct_clinic_counts(page_item_codes)
+		for it in modified_items:
+			it["clinic_count"] = clinic_counts.get(it["item_code"], 0)
 
 		item_payload = [
 			{"item_code": item["item_code"]}
