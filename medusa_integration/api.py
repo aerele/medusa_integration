@@ -5,7 +5,7 @@ from frappe import _
 from medusa_integration.constants import get_headers, get_url
 from medusa_integration.utils import send_request
 from datetime import datetime, timedelta
-from frappe.utils import now_datetime, add_to_date
+from frappe.utils import now_datetime, add_to_date, time_diff_in_seconds
 import random
 
 def insert_lead(data):
@@ -4354,18 +4354,16 @@ def sign_up(
 				headers["Referer"] = incoming_referer
 			
 			response = requests.post(url, headers=headers, data=payload, timeout=30)
-			return_data =response.json()
+			return_data = response.json() if response.content else {}
 			frappe.log_error(f"response text {response.status_code}", response.text)
 			if response.status_code == 504:
 				frappe.local.response['http_status_code'] = 504
 				return {"status": "error", "message": "Gateway Time-out from target server"}
-			
-			if response.status_code != 200:
+
+			if not response.ok and return_data.get("success") is False:
 				frappe.local.response['http_status_code'] = response.status_code
-				if return_data.get("error"):
-					return return_data.get("error")
-				else:
-					return {"status": "error", "message": f"Error from Medusa server: {response.text}"}
+				error_message = return_data.get("message") or return_data.get("error") or response.text
+				return {"status": "error", "message": error_message}
 			
 			frappe.enqueue(
 				"medusa_integration.api.insert_lead",
@@ -4513,22 +4511,25 @@ def get_otp(email,isLogin):
 
 
 def verify_otp(email, user_otp):
-	otp_record = (
-		frappe.db.get_value(
-			"Email OTP",
-			{
-				"email": email,
-				"status": "Pending",
-				"expiration_time": [">", now_datetime()],
-				"otp": str(user_otp),
-			},
-		)
+	otp_record = frappe.db.get_value(
+		"Email OTP",
+		{
+			"email": email,
+			"status": "Pending",
+			"otp": str(user_otp),
+		},
+		["name", "expiration_time"],
+		as_dict=True,
 	) or None
 	if not otp_record:
 		return {"otp_name": None, "message": "Invalid OTP or email"}
-	frappe.db.set_value("Email OTP",otp_record,"status","Verified")
+
+	if time_diff_in_seconds(now_datetime(), otp_record.expiration_time) > 120:
+		return {"otp_name": None, "message": "OTP expired"}
+
+	frappe.db.set_value("Email OTP", otp_record.name, "status", "Verified")
 	frappe.db.commit()
-	return {"otp_name": otp_record, "message": "OTP verified successfully"}
+	return {"otp_name": otp_record.name, "message": "OTP verified successfully"}
 
 
 def expire_otps():
