@@ -4397,6 +4397,21 @@ def sign_up(
 	else:
 		return validate_otp.get("message")
 
+def _validate_login_response(return_data):
+	"""
+	If the login response carries a token but is missing the customer_id, treat
+	it as a failed login and return a string error message instead of the dict.
+	"""
+	if (
+		isinstance(return_data, dict)
+		and return_data.get("access_token")
+		and not return_data.get("customer_id")
+	):
+		frappe.local.response["http_status_code"] = 401
+		return "Unable to complete login. Please try again."
+	return return_data
+
+
 @frappe.whitelist(allow_guest=True)
 def login(email, password=None, otp=None):
 	headers = {
@@ -4416,7 +4431,7 @@ def login(email, password=None, otp=None):
 	if password:
 		payload = json.dumps({"email": email, "password": password})
 		response = requests.post(url, headers=headers, data=payload, timeout=30)
-		return response.json()
+		return _validate_login_response(response.json())
 	
 	elif otp:
 		validate_otp = verify_otp(email=email, user_otp=otp)
@@ -4432,7 +4447,7 @@ def login(email, password=None, otp=None):
 				if return_data.get("error"):
 					frappe.local.response['http_status_code'] = 401
 					return return_data.get("error")
-				return return_data
+				return _validate_login_response(return_data)
 
 			else:
 				return "Please kindly register first"
