@@ -16,7 +16,8 @@ def insert_lead(data):
 		"last_name": data.get("last_name"),
 		"email_id": data.get("email"),
 		"mobile_no": data.get("mobile"),
-		"source": "Alfarsi Website",
+		"phone": data.get("phone"),
+		"utm_source": data.get("source") or "Alfarsi Website",
 		"status": "Lead",
 		"company_name": data.get("organization_name"),
 		"t_c_acceptance": data.get("t_c_acceptance"),
@@ -4574,11 +4575,11 @@ def fetch_clearance_items():
 
 	if not batches:
 		return
-	
+
 	item_expiry_map = {batch["item"]: batch["expiry_date"] for batch in batches}
 
 	item_names = list(item_expiry_map.keys())
-	
+
 	website_items = frappe.get_all(
 		"Website Item",
 		filters={"item_code": ["in", item_names]},
@@ -4587,11 +4588,11 @@ def fetch_clearance_items():
 
 	if not website_items:
 		return
-	
+
 	fetched_website_items = [
 		{"name": item["name"], "item_code": item["item_code"]} for item in website_items
 	]
-	
+
 	expiring_doc = frappe.get_single('Expiring Items')
 
 	existing_items = {row.website_item: row for row in expiring_doc.expiring_items}
@@ -4613,7 +4614,7 @@ def fetch_clearance_items():
 			"expiry_date": expiry_date,
 			"show": show_flag
 		})
-	
+
 	new_expiring_items.sort(key=lambda x: x["expiry_date"])
 
 	expiring_doc.expiring_items = []
@@ -4631,6 +4632,106 @@ def fetch_clearance_items():
 
 	homepage_doc.save()
 	frappe.db.commit()
+
+@frappe.whitelist(allow_guest=True)
+def google_auth(access_token=None, id_token=None, google_id=None, email=None, first_name=None, last_name=None):
+	"""
+	Google OAuth authentication — entry point from the frontend.
+	Accepts a Google access_token (GIS token flow) or id_token (One Tap),
+	forwards it to Medusa, and returns the Medusa session tokens.
+	"""
+	# Validate up front so we fail cleanly instead of making a wasted Medusa call.
+	if not access_token and not id_token:
+		frappe.throw(_("Google access token is required"))
+
+	try:
+		medusa_config = frappe.get_doc("Medusa Configuration", "Medusa Configuration")
+		medusa_url = medusa_config.url
+	except Exception:
+		frappe.log_error(
+			title="Google Auth: Medusa Configuration missing",
+			message=frappe.get_traceback()
+		)
+		frappe.throw(_("Authentication service is not configured"))
+
+	# Forward to Medusa backend
+	try:
+		import requests
+		response = requests.post(
+			f"{medusa_url}/store/auth-google",
+			json={
+				"access_token": access_token,
+				"id_token": id_token,
+				"google_id": google_id,
+				"email": email,
+				"first_name": first_name,
+				"last_name": last_name,
+			},
+			headers=get_headers(),
+			timeout=30,
+		)
+	except requests.exceptions.Timeout:
+		frappe.throw(_("Authentication service timed out. Please try again."))
+	except requests.exceptions.ConnectionError:
+		frappe.throw(_("Unable to reach the authentication service"))
+	except requests.exceptions.RequestException as e:
+		frappe.log_error(
+			title="Google Auth Request Error",
+			message=f"Google auth request error: {str(e)}"
+		)
+		frappe.throw(_("Unable to connect to the authentication service"))
+
+	# Handle the Medusa response
+	if response.status_code == 200:
+		data = response.json()
+
+		# Best-effort Lead creation for CRM tracking — never block login on it.
+		# Email/name come from Medusa (it verified them via userinfo); the
+		# frontend only sends the access_token, so the request params are None.
+		try:
+			if data.get("customer_id") and not frappe.db.exists("Lead", {"medusa_id": data.get("customer_id")}):
+				insert_lead({
+					"id": data.get("customer_id"),
+					"email": data.get("email") or email,
+					"first_name": data.get("first_name") or first_name,
+					"last_name": data.get("last_name") or last_name,
+					"mobile": data.get("mobile"),
+					"phone": data.get("phone"),
+				})
+		except Exception as lead_error:
+			frappe.log_error(
+				title="Google Auth Lead",
+				message = f"Failed to create Lead: {str(lead_error)}"
+			)
+
+		return {
+			"access_token": data.get("access_token"),
+			"customer_id": data.get("customer_id"),
+			"cart_id": data.get("cart_id"),
+		}
+
+	if response.status_code == 409:
+		# Email already exists in Medusa → the frontend should sign in instead.
+		data = response.json()
+		return {
+			"requires_linking": True,
+			"message": "An account with this email already exists. Please sign in to continue.",
+			"customer_id": data.get("customer_id"),
+			"email": data.get("email") or email,
+		}
+
+	# Any other Medusa failure — surface the real reason and log it.
+	medusa_err = None
+	try:
+		err_body = response.json()
+		medusa_err = err_body.get("message") or err_body.get("error")
+	except Exception:
+		pass
+	frappe.log_error(
+		title="Google Auth Medusa Failure",
+		message=f"Medusa google auth failed ({response.status_code}): {medusa_err or response.text}"
+	)
+	frappe.throw(_(medusa_err or "Google authentication failed"))
 
 @frappe.whitelist(allow_guest=True)
 def get_product_details_banner_item_group(item_group):
