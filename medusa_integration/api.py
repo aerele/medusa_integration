@@ -261,11 +261,16 @@ def create_quotation():
 			}
 		)
 		company_name = frappe.db.get_value("Lead", quote.party_name, "company_name")
-		customer.customer_name = company_name
+		customer.customer_name = company_name or frappe.db.get_value(
+			"Lead", quote.party_name, "lead_name"
+		)
+		# Customer.lead_name is a Link to Lead in v16 (was Data in v14), so it
+		# must hold the Lead docname, not the Lead's display name.
+		customer.lead_name = quote.party_name
 
 		customer.append("sales_team", {
 			"sales_person": "Website Sales",
-			"contribution": 100
+			"allocated_percentage": 100
 		})
 		customer.customer_group = "Ecommerce Customer"
 
@@ -540,9 +545,15 @@ def update_quotation():
 					mode_of_payment="Bank Draft",
 					payment_gateway_account="BankMuscat-443 - OMR",
 					return_doc=True,
+					submit_doc=True,
 					ignore_permissions=True
 				)
-				payment_request.submit()
+				# In v16 the payment URL is generated in before_submit, so the
+				# Payment Request row must exist in the DB before submission
+				# (submit_doc=True inserts it); otherwise the Integration
+				# Request's dynamic link to the PR fails validation.
+				if payment_request.docstatus == 0:
+					payment_request.submit()
 				frappe.db.commit()
 			
 			except Exception as e:
