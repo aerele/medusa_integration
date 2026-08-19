@@ -666,7 +666,7 @@ def update_quotation_new():
 	quote.save()
 	quote.reload()
 
-	export_quotation(self=quote, method='')
+	export_quotation(self=quote.name, method='')
 
 	return {"message": "Quotation updated successfully", "Quotation ID": quote.name}
 
@@ -1538,9 +1538,51 @@ def clear_all_item_price_id():  # For item price
 
 	frappe.db.commit()
 
+def get_itemised_tax_breakup_data(doc):
+	itemised_tax = get_itemised_tax(doc)
+	itemised_tax_data = []
+	for item_code, taxes in itemised_tax.items():
+		taxable_amount = next(iter(taxes.values())).get("taxable_amount")
+		itemised_tax_data.append(frappe._dict({"item": item_code, "taxable_amount": taxable_amount, **taxes}))
+
+	return itemised_tax_data
+
+
+def get_itemised_tax(doc, with_tax_account=False):
+	itemised_tax = {}
+	precision = doc.precision("tax_amount", "taxes")
+
+	for row in doc.get("item_wise_tax_details"):
+		item = row.get("item")
+		tax = row.get("tax")
+		if not item or not tax:
+			continue
+
+		item_code = item.item_code or item.item_name
+		if getattr(tax, "category", None) and tax.category == "Valuation":
+			continue
+
+		tax_info = itemised_tax.setdefault(item_code, frappe._dict()).setdefault(
+			tax.description,
+			frappe._dict(
+				{
+					"tax_amount": 0.0,
+					"taxable_amount": 0.0,
+					"tax_rate": row.rate,
+				}
+			),
+		)
+
+		tax_info.tax_amount += flt(row.amount, precision)
+		conversion_rate = doc.conversion_rate or 1
+		tax_info.taxable_amount += flt(row.taxable_amount / conversion_rate, precision)
+
+		if with_tax_account:
+			tax_info.tax_account = tax.account_head
+
+	return itemised_tax
 
 def export_quotation(self, method):
-	from erpnext.controllers.taxes_and_totals import get_itemised_tax_breakup_data
 
 	quotation = frappe.get_doc("Quotation", self)
 
