@@ -1219,31 +1219,6 @@ def sync_missing_prices_to_medusa():
 				frappe.db.set_value("Item Price", item_price_data["name"], "medusa_price_id", response["prices"][0]["id"])
 				frappe.db.commit()
 
-@frappe.whitelist(allow_guest=True)
-def fetch_all_customers(name=None):
-	base_query = """
-		SELECT 
-			name, customer_name, email_id, mobile_no
-		FROM 
-			`tabCustomer`
-		WHERE 
-			medusa_id IS NULL
-	"""
-
-	if name:
-		name_parts = name.split()
-		conditions = " AND ".join(
-			[f"customer_name LIKE '%{part}%'" for part in name_parts]
-		)
-		base_query += f" AND ({conditions})"
-
-	customers = frappe.db.sql(base_query, as_dict=True)
-
-	if not customers:
-		return "No relevant customers found"
-
-	return customers
-
 # def attach_thumbnail_to_product(image_url, product_id):
 # 	url = f"{get_url()[0]}/admin/products/{product_id}"
 # 	headers = get_headers(with_token=True)
